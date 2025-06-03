@@ -211,13 +211,13 @@ const app = {
         }
 
         if (commandText === '') {
-            this.addOutput(`<span class="text-green-400">user@webconsole</span>:<span class="text-blue-400">${this.currentDir}</span>$ `, 'command');
+            this.addOutput(`<span class="text-green-400">${this.getPseudoFromCookie() || "user"}@webconsole</span>:<span class="text-blue-400">${this.currentDir}</span>$ `, 'command');
             this.commandInputElement.value = '';
             this.historyIndex = -1;
             return;
         }
 
-        this.addOutput(`<span class="text-green-400">user@webconsole</span>:<span class="text-blue-400">${this.currentDir}</span>$ ${commandText.replace(/</g, "&lt;").replace(/>/g, "&gt;")}`, 'command');
+        this.addOutput(`<span class="text-green-400">${this.getPseudoFromCookie() || "user"}@webconsole</span>:<span class="text-blue-400">${this.currentDir}</span>$ ${commandText.replace(/</g, "&lt;").replace(/>/g, "&gt;")}`, 'command');
 
         // Ajout à l'historique avec date/heure
         const now = new Date();
@@ -361,6 +361,7 @@ const app = {
             this.addOutput('  help                  - Affiche cette aide.');
             this.addOutput('  about                 - Affiche des informations sur cette console.');
             this.addOutput('  cconnect <span class="bg-gray-700 text-gray-300 px-1 rounded">&lt;username&gt;</span>   - Change de pseudo utilisateur.');
+            this.addOutput('  cdisconnect           - Déconnecte l\'utilisateur et réinitialise le pseudo.');
         },
         mkdir(args) {
             if (!args || args.length === 0 || !args[0].trim()) {
@@ -461,7 +462,14 @@ const app = {
             document.cookie = "pseudo=;path=/;max-age=0";
             this.addOutput('Déconnecté. Le pseudo a été réinitialisé à "user".', "system");
             this.updatePrompt();
-        }
+        },
+        history: function() {
+            if (this.history.length === 0) {
+                this.addOutput('Aucune commande enregistrée.', 'system');
+            } else {
+                this.openHistoryModal();
+            }
+        },
     },
 
     // --- Event Handlers ---
@@ -519,8 +527,11 @@ const app = {
             this.commandInputElement.value = (baseCommand ? baseCommand + " " : "") + suggestions[0] + (suggestions[0].endsWith('/') ? '' : ' ');
         } else if (suggestions.length > 1) {
             this.addOutput(suggestions.join('  '));
-            // Re-add current input line below suggestions for better UX
-            this.addOutput(`<span class="text-green-400">user@webconsole</span>:<span class="text-blue-400">${this.currentDir}</span>$ ${currentCommandValue.replace(/</g, "&lt;").replace(/>/g, "&gt;")}`, 'command');
+            const pseudo = this.getPseudoFromCookie() || "user";
+            this.addOutput(
+                `<span class="text-green-400">${pseudo}@webconsole</span>:<span class="text-blue-400">${this.currentDir}</span>$ ${currentCommandValue.replace(/</g, "&lt;").replace(/>/g, "&gt;")}`,
+                'command'
+            );
 
         }
     },

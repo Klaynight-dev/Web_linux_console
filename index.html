@@ -65,7 +65,7 @@
                     </div>
                 </div>
             </div>
-            <span class="text-xs sm:text-sm text-gray-400">Console Linux Web</span>
+            <span class="text-xs sm:text-sm text-gray-400 mr-3 select-none">Console Linux Web</span>
         </nav>
 
         <div id="console-output" class="flex-grow bg-gray-800 p-3 overflow-y-auto custom-scrollbar rounded-b-lg">
@@ -74,8 +74,10 @@
         </div>
 
         <form id="command-form" class="flex mt-2 flex-shrink-0">
-            <label for="command-input" id="prompt-label" class="flex-shrink-0 text-green-400 mr-1 flex items-center">
-                user@webconsole:<span class="text-blue-400">/home/user</span>$
+            <label for="command-input" id="prompt-label" class="flex-shrink-0 text-green-400 mr-1 flex items-center select-none">
+                <span class="select-none">
+                @webconsole:<span class="text-blue-400">/home/user</span>$
+                </span>
             </label>
             <input
                 id="command-input"
