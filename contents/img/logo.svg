@@ -1,0 +1,14 @@
+<svg width="150" height="120" viewBox="0 0 150 120" xmlns="http://www.w3.org/2000/svg">
+    <rect x="5" y="5" width="140" height="110" rx="10" ry="10" fill="#374151" stroke="#4b5563" stroke-width="3"/>
+
+    <path d="M5 15 C5 9.477 9.477 5 15 5 L135 5 C140.523 5 145 9.477 145 15 L145 30 L5 30 Z" fill="#4b5563"/>
+    <circle cx="20" cy="17.5" r="4" fill="#ef4444"/> <circle cx="35" cy="17.5" r="4" fill="#f59e0b"/> <circle cx="50" cy="17.5" r="4" fill="#22c55e"/> <!-- Using a specific monospace font like 'Roboto Mono' is good for terminal aesthetics.
+         Ensure this font is available or use a generic 'monospace'. -->
+    <text x="25" y="75" font-family="'Roboto Mono', monospace" font-size="28" fill="#4ade80">
+        <tspan>&gt;</tspan><tspan dy="-2" dx="-2">_</tspan>
+    </text>
+
+    <text x="75" y="76" font-family="'Roboto Mono', monospace" font-size="20" fill="#60a5fa" opacity="0.8">
+        Web
+    </text>
+</svg>

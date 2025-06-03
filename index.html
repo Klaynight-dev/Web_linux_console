@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web - Console Linux </title>
+    <link rel="icon" type="image/svg" href="./contents/img/logo.svg">
+    <link rel="stylesheet" href="./contents/css/styles.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-900">
+
+    <div id="app-container" class="main-container bg-gray-900 text-gray-100 font-mono p-4 rounded-lg shadow-lg overflow-hidden">
+        <nav class="menu-bar bg-gray-800 p-2 rounded-t-lg flex items-center justify-between relative z-10 flex-shrink-0">
+            <div class="flex space-x-1 sm:space-x-4">
+                <div class="relative">
+                    <button id="file-menu-button" class="menu-button px-2 sm:px-3 py-1 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base">
+                        Fichier
+                    </button>
+                    <div id="file-menu-dropdown" class="hidden absolute top-full left-0 mt-1 w-48 bg-gray-700 rounded-md shadow-lg py-1 z-20">
+                        <button id="import-code-button" class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-sm sm:text-base">
+                            Importer du code...
+                        </button>
+                        <button class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-sm sm:text-base" onclick="app.addOutput('Fonctionnalité \"Nouveau fichier\" en cours de développement.'); app.closeAllMenus();">
+                            Nouveau fichier
+                        </button>
+                        <button class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-sm sm:text-base" onclick="app.addOutput('Fonctionnalité \"Enregistrer\" en cours de développement.'); app.closeAllMenus();">
+                            Enregistrer
+                        </button>
+                    </div>
+                </div>
+
+                <div class="relative">
+                    <button id="tools-menu-button" class="menu-button px-2 sm:px-3 py-1 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base">
+                        Outils
+                    </button>
+                    <div id="tools-menu-dropdown" class="hidden absolute top-full left-0 mt-1 w-48 bg-gray-700 rounded-md shadow-lg py-1 z-20">
+                        <button class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-sm sm:text-base" onclick="app.addOutput('Fonctionnalité \"Paramètres\" en cours de développement.'); app.closeAllMenus();">
+                            Paramètres
+                        </button>
+                        <button class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-sm sm:text-base" onclick="app.addOutput('Fonctionnalité \"Déboguer\" en cours de développement.'); app.closeAllMenus">
+                            Déboguer
+                        </button>
+                        <button class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-sm sm:text-base" onclick="(function(){ app.commands.clear.call(app); app.closeAllMenus(); })();">
+                            Vider la console (Ctrl+L)
+                        </button>
+                        <button id="show-history-button" class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-sm sm:text-base">
+                            Afficher l'historique
+                        </button>
+                    </div>
+                </div>
+
+                <div class="relative">
+                    <button id="help-menu-button" class="menu-button px-2 sm:px-3 py-1 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base">
+                        Aide
+                    </button>
+                    <div id="help-menu-dropdown" class="hidden absolute top-full left-0 mt-1 w-48 bg-gray-700 rounded-md shadow-lg py-1 z-20">
+                        <button class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-sm sm:text-base" onclick="app.commands.help(); app.closeAllMenus();">
+                            Commandes
+                        </button>
+                        <button class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-sm sm:text-base" onclick="document.getElementById('about-modal').classList.remove('hidden'); app.closeAllMenus();">
+                            À propos
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <span class="text-xs sm:text-sm text-gray-400">Console Linux Web</span>
+        </nav>
+
+        <div id="console-output" class="flex-grow bg-gray-800 p-3 overflow-y-auto custom-scrollbar rounded-b-lg">
+            <div id="loading-llm-indicator" class="text-yellow-400 hidden">Génération en cours...</div>
+            <div id="console-end-ref"></div>
+        </div>
+
+        <form id="command-form" class="flex mt-2 flex-shrink-0">
+            <label for="command-input" id="prompt-label" class="flex-shrink-0 text-green-400 mr-1 flex items-center">
+                user@webconsole:<span class="text-blue-400">/home/user</span>$
+            </label>
+            <input
+                id="command-input"
+                type="text"
+                class="flex-grow bg-gray-700 text-white border-none focus:outline-none px-2 py-1 rounded-md"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+            />
+        </form>
+
+        <div id="code-import-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-20 p-4">
+            <div class="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg sm:w-11/12 md:w-1/2 lg:w-1/3">
+                <h2 class="text-xl font-bold mb-4 text-white">Importer du code</h2>
+                <textarea
+                    id="code-to-import-textarea"
+                    class="w-full h-48 bg-gray-700 text-white p-2 rounded-md focus:outline-none resize-none custom-scrollbar"
+                    placeholder="Collez votre code ici (par exemple, une nouvelle commande JavaScript)..."
+                ></textarea>
+                <div class="mt-4 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
+                    <button
+                        id="cancel-import-button"
+                        class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 w-full sm:w-auto"
+                    >
+                        Annuler
+                    </button>
+                    <button
+                        id="confirm-import-button"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full sm:w-auto"
+                    >
+                        Importer
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal About -->
+        <div id="about-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden">
+            <div class="bg-gray-800 rounded-lg p-6 shadow-lg max-w-md w-full text-gray-100">
+                <h2 class="text-xl font-bold mb-2">À propos</h2>
+                <div id="about-modal-content" class="mb-4">
+                    WebConsole - Console Linux Web<br>
+                    Version: 1.0.0<br>
+                    Développé par: Klaynight<br>
+                    Licence: MIT<br>
+                    Source: <a href="https://github.com/Klaynight-dev/web_linux_console" class="text-blue-400 underline" target="_blank">GitHub</a>
+                </div>
+                <div class="flex justify-end">
+                    <button id="close-about-modal" class="mt-2 px-4 py-2 bg-blue-600 rounded hover:bg-blue-700">Fermer</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Historique des commandes -->
+<div id="history-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-gray-800 rounded-lg p-6 w-full max-w-lg shadow-lg">
+    <h2 class="text-xl font-bold mb-4 text-purple-300">Historique des commandes</h2>
+    <div id="history-list" class="bg-gray-900 rounded p-2 max-h-64 overflow-y-auto text-gray-200 text-sm mb-4"></div>
+    <button id="close-history-modal" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded">Fermer</button>
+  </div>
+</div>
+    </div>
+    <script src="./contents/js/app.js"></script>
+</body>
+</html>
