@@ -35,3 +35,33 @@ html, body {
 .menu-button {
     user-select: none;
 }
+
+/* styles.css ou tailwind.css */
+.theme-dark {
+  @apply dark;
+  filter: none !important;
+  background: #18181b !important;
+  color: #f3f4f6 !important;
+}
+.theme-light {
+  /* rien, Tailwind applique le mode clair par défaut */
+  filter: invert(1) hue-rotate(180deg) !important;
+  background: #f3f4f6 !important;
+  color: #18181b !important;
+}
+
+/* Animation de transition pour le filtre invert */
+.theme-dark, .theme-light {
+    transition:
+        filter 0.5s cubic-bezier(.4,2,.6,1),
+        background 0.5s cubic-bezier(.4,0,.2,1),
+        color 0.5s cubic-bezier(.4,0,.2,1),
+        box-shadow 0.4s cubic-bezier(.4,0,.2,1);
+    box-shadow: 0 4px 24px 0 rgba(0,0,0,0.12), 0 1.5px 6px 0 rgba(0,0,0,0.08);
+    border-radius: 1rem;
+    outline: 2px solid rgba(107,114,128,0.15);
+}
+
+body {
+  transition: background 0.5s, color 0.5s;
+}

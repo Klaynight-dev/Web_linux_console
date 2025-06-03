@@ -32,7 +32,7 @@ const app = {
     closeHistoryModalButton: document.getElementById('close-history-modal'),
     showHistoryButton: document.getElementById('show-history-button'),
 
-    // --- State ---
+    // --- État ---
     currentDir: '/home/user',
     fileSystem: {
         '/': {
@@ -41,12 +41,20 @@ const app = {
                 'bin': {
                     type: 'directory',
                     children: {
-                        'echo': { type: 'file', content: 'A command to display text.' },
-                        'ls': { type: 'file', content: 'A command to list directory contents.' },
-                        'cd': { type: 'file', content: 'A command to change the current directory.' },
-                        'pwd': { type: 'file', content: 'A command to print the current working directory.' },
-                        'clear': { type: 'file', content: 'A command to clear the console.' },
-                        'help': { type: 'file', content: 'A command to display help information.' },
+                        'echo': { type: 'file', content: 'Une commande pour afficher du texte.' },
+                        'ls': { type: 'file', content: 'Une commande pour lister le contenu d\'un dossier.' },
+                        'cd': { type: 'file', content: 'Une commande pour changer de dossier courant.' },
+                        'pwd': { type: 'file', content: 'Une commande pour afficher le dossier courant.' },
+                        'clear': { type: 'file', content: 'Une commande pour effacer la console.' },
+                        'help': { type: 'file', content: 'Une commande pour afficher l\'aide.' },
+                        'cat': { type: 'file', content: 'Une commande pour afficher le contenu d\'un fichier.' },
+                        'mkdir': { type: 'file', content: 'Une commande pour créer un dossier.' },
+                        'rm': { type: 'file', content: 'Une commande pour supprimer un fichier ou un dossier.' },
+                        'touch': { type: 'file', content: 'Une commande pour créer un fichier vide.' },
+                        'about': { type: 'file', content: 'Affiche des informations sur cette console.' },
+                        'cconnect': { type: 'file', content: 'Change le pseudo utilisateur.' },
+                        'cdisconnect': { type: 'file', content: 'Déconnecte l\'utilisateur et réinitialise le pseudo.' },
+                        'history': { type: 'file', content: 'Affiche l\'historique des commandes.' }
                     }
                 },
                 'home': {
@@ -64,7 +72,40 @@ const app = {
                 'etc': {
                     type: 'directory',
                     children: {
-                        'motd': { type: 'file', content: 'Message du jour: Amusez-vous bien!' }
+                        'motd': { 
+                            type: 'file', 
+                            get content() {
+                                // Liste de messages du jour
+                                const mots = [
+                                    "Message du jour : Amusez-vous bien !",
+                                    "Message du jour : Apprenez quelque chose de nouveau aujourd'hui.",
+                                    "Message du jour : La persévérance paie toujours.",
+                                    "Message du jour : Codez avec passion.",
+                                    "Message du jour : Prenez une pause et respirez.",
+                                    "Message du jour : La curiosité est une qualité.",
+                                    "Message du jour : Essayez une nouvelle commande.",
+                                    "Message du jour : Partagez vos connaissances.",
+                                    "Message du jour : La simplicité est la sophistication suprême.",
+                                    "Message du jour : Un bug aujourd'hui, une solution demain.",
+                                    "Message du jour : La créativité commence par une idée.",
+                                    "Message du jour : Osez sortir de votre zone de confort.",
+                                    "Message du jour : La collaboration fait la force.",
+                                    "Message du jour : Chaque jour est une nouvelle opportunité.",
+                                    "Message du jour : L'échec est le début du succès.",
+                                    "Message du jour : Prenez soin de vous.",
+                                    "Message du jour : La patience est une vertu.",
+                                    "Message du jour : Faites de votre mieux.",
+                                    "Message du jour : Le partage, c'est la vie."
+                                ];
+                                // Utilise le jour de l'année pour choisir un message
+                                const now = new Date();
+                                const start = new Date(now.getFullYear(), 0, 0);
+                                const diff = now - start;
+                                const oneDay = 1000 * 60 * 60 * 24;
+                                const dayOfYear = Math.floor(diff / oneDay);
+                                return mots[dayOfYear % mots.length];
+                            }
+                        }
                     }
                 }
             }
@@ -73,13 +114,14 @@ const app = {
     history: [],
     historyIndex: -1,
     isLoadingLLM: false,
-    currentOpenMenu: null, // 'file', 'tools', 'help', or null
+    currentOpenMenu: null, // 'file', 'tools', 'help', ou null
     awaitingPseudo: false,
     defaultMessage: "Console initialisée. Tapez \"help\" pour une liste de commandes.",
 
     // --- Initialization ---
     init() {
         this.loadHistoryFromCookie();
+        this.loadFileSystemFromCookie();
         // Event Listeners for command input
         this.commandFormElement.addEventListener('submit', this.handleCommandSubmit.bind(this));
         this.commandInputElement.addEventListener('keydown', this.handleKeyDown.bind(this));
@@ -109,13 +151,112 @@ const app = {
         this.commandInputElement.focus();
         this.addOutput(this.defaultMessage, 'system');
 
+        document.getElementById('font-size-range').addEventListener('input', function() {
+            document.getElementById('font-size-value').textContent = this.value + 'px';
+            document.getElementById('console-output').style.fontSize = this.value + 'px';
+        });
+
+        // Gestion du modal paramètres
+        document.getElementById('cancel-settings-modal').onclick = function() {
+            document.getElementById('settings-modal').classList.add('hidden');
+            app.clearConsole();
+            app.history.forEach(entry => {
+                if (entry.output) {
+                    app.addOutput(entry.output, entry.type || 'command');
+                }
+            });
+        };
+
+        document.getElementById('save-settings-modal').onclick = function() {
+            document.getElementById('settings-modal').classList.add('hidden');
+            // Ajoute ici la logique de sauvegarde des paramètres si besoin
+        };
+
+        this.loadTheme();
+
+        // Gestion du changement de thème
+        const themeSelect = document.getElementById('theme-select');
+        if (themeSelect) {
+            themeSelect.addEventListener('change', function() {
+                app.applyTheme(this.value);
+            });
+        }
+
+        // Gestion du changement de police
+        const fontSelect = document.getElementById('font-family-select');
+        if (fontSelect) {
+            fontSelect.addEventListener('change', function() {
+                app.applyFontFamily(this.value);
+            });
+        }
+
+        this.loadFontFamily();
+        this.loadFontSize();
+        this.loadConsoleBackground();
+
+        // Fond console
+        const bgType = document.getElementById('console-bg-type');
+        const bgColor = document.getElementById('console-bg-color');
+        const bgUrl = document.getElementById('console-bg-url');
+        const bgFile = document.getElementById('console-bg-file');
+        const bgImageImportGroup = document.getElementById('console-bg-image-import-group');
+            if (bgType && bgColor && bgUrl && bgFile && bgImageImportGroup) {
+                bgType.addEventListener('change', function() {
+                    if (this.value === 'color') {
+                        bgColor.style.display = 'inline-block';
+                        bgUrl.style.display = 'none';
+                        bgImageImportGroup.style.display = 'none';
+                        // Restaure la dernière couleur utilisée
+                        const lastColor = localStorage.getItem('console_bg_last_color') || '#18181b';
+                        bgColor.value = lastColor;
+                        app.applyConsoleBackground('color', lastColor);
+                    } else {
+                        bgColor.style.display = 'none';
+                        bgUrl.style.display = 'inline-block';
+                        bgImageImportGroup.style.display = 'block';
+                        // Restaure la dernière image utilisée
+                        const lastImage = localStorage.getItem('console_bg_last_image') || '';
+                        bgUrl.value = lastImage;
+                        app.applyConsoleBackground('image', lastImage);
+                    }
+            });
+            
+            bgColor.addEventListener('input', function() {
+                if (bgType.value === 'color') {
+                    app.applyConsoleBackground('color', this.value);
+                }
+            });
+            bgUrl.addEventListener('input', function() {
+                if (bgType.value === 'image') {
+                    app.applyConsoleBackground('image', this.value);
+                }
+            });
+            bgFile.addEventListener('change', function() {
+                if (bgType.value === 'image' && this.files && this.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        app.applyConsoleBackground('image', e.target.result);
+                        // Met à jour l'input URL pour garder la cohérence
+                        bgUrl.value = e.target.result;
+                    };
+                    reader.readAsDataURL(this.files[0]);
+                }
+            });
+        }
+
+        const clearHistoryBtn = document.getElementById('clear-history-btn');
+        if (clearHistoryBtn) {
+            clearHistoryBtn.onclick = function() {
+                app.history = [];
+                app.saveHistoryToCookie();
+                app.openHistoryModal(); // Rafraîchit la vue du modal
+            };
+        }
     },
 
     // --- Output Management ---
     addOutput(line, type = 'normal') {
         const lineDiv = document.createElement('div');
-        // Sanitize HTML to prevent XSS, but allow specific tags for styling (like span for colors)
-        // For simplicity, we're using innerHTML. In a production app, a more robust sanitizer is recommended.
         lineDiv.innerHTML = line;
         if (type === 'command') {
             lineDiv.classList.add('text-gray-400');
@@ -217,18 +358,11 @@ const app = {
             return;
         }
 
-        this.addOutput(`<span class="text-green-400">${this.getPseudoFromCookie() || "user"}@webconsole</span>:<span class="text-blue-400">${this.currentDir}</span>$ ${commandText.replace(/</g, "&lt;").replace(/>/g, "&gt;")}`, 'command');
+        const promptLine = `<span class="text-green-400">${this.getPseudoFromCookie() || "user"}@webconsole</span>:<span class="text-blue-400">${this.currentDir}</span>$ ${commandText.replace(/</g, "&lt;").replace(/>/g, "&gt;")}`;
+        this.addOutput(promptLine, 'command');
+        this.addToHistory(commandText, promptLine, 'command');
 
-        // Ajout à l'historique avec date/heure
-        const now = new Date();
-        const entry = {
-            cmd: commandText,
-            date: now.toLocaleDateString(),
-            time: now.toLocaleTimeString(),
-            timestamp: now.getTime()
-        };
-        this.history = [...this.history, entry].slice(-50);
-        this.saveHistoryToCookie();
+
         this.historyIndex = -1;
 
         const [cmd, ...args] = commandText.split(/\s+/);
@@ -335,33 +469,45 @@ const app = {
             this.addOutput(targetNode.content.replace(/</g, "&lt;").replace(/>/g, "&gt;").split('\n').join('<br>'));
         },
         help() {
-            this.addOutput('<span class="font-bold text-purple-300">Commandes disponibles :</span>');
+            this.addOutput('<span class="font-bold text-purple-300 text-lg">Commandes disponibles :</span>');
+            
             // Section: Navigation
-            this.addOutput('<span class="underline text-blue-300">Navigation :</span>');
-            this.addOutput('  pwd                   - Affiche le dossier courant.');
-            this.addOutput('  cd <span class="bg-gray-700 text-gray-300 px-1 rounded">[dossier]</span>          - Change le dossier courant.');
-            this.addOutput('  ls <span class="bg-gray-700 text-gray-300 px-1 rounded">[dossier]</span>          - Liste le contenu du dossier.');
-            this.addOutput('<hr class="my-1 border-gray-600">');
+            this.addOutput('<span class="underline text-blue-300 font-semibold mt-2">🗂️ Navigation</span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">pwd</span> <span class="text-gray-400">- Affiche le dossier courant.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">cd</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;dossier&gt;</span> <span class="text-gray-400">- Change le dossier courant.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">ls</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[dossier]</span> <span class="text-gray-400">- Liste le contenu du dossier.</span></span>');
+
+            this.addOutput('<hr class="my-2 border-gray-700">');
 
             // Section: Fichiers & Dossiers
-            this.addOutput('<span class="underline text-blue-300">Gestion de fichiers & dossiers :</span>');
-            this.addOutput('  cat <span class="bg-gray-700 text-gray-300 px-1 rounded">&lt;fichier&gt;</span>         - Affiche le contenu d\'un fichier.');
-            this.addOutput('  mkdir <span class="bg-gray-700 text-gray-300 px-1 rounded">&lt;dossier&gt;</span>       - Crée un dossier ' +
-            '<span class="px-2 py-1 rounded bg-yellow-700 text-yellow-200 font-semibold inline-block">(en développement)</span>.');
-            this.addOutput('  touch <span class="bg-gray-700 text-gray-300 px-1 rounded">&lt;fichier&gt;</span>       - Crée un fichier ' +
-            '<span class="px-2 py-1 rounded bg-yellow-700 text-yellow-200 font-semibold inline-block">(en développement)</span>.');
-            this.addOutput('  rm <span class="bg-gray-700 text-gray-300 px-1 rounded">&lt;fichier/dossier&gt;</span> - Supprime un fichier/dossier ' +
-            '<span class="px-2 py-1 rounded bg-yellow-700 text-yellow-200 font-semibold inline-block">(en développement)</span>.');
-            this.addOutput('<hr class="my-1 border-gray-600">');
+            this.addOutput('<span class="underline text-blue-300 font-semibold mt-2">📁 Fichiers & Dossiers</span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">cat</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;fichier&gt;</span> <span class="text-gray-400">- Affiche le contenu d\'un fichier.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">mkdir</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;dossier&gt;</span> <span class="text-gray-400">- Crée un dossier.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">touch</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;fichier&gt;</span> <span class="text-gray-400">- Crée un fichier vide.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">rm</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;fichier/dossier&gt;</span> <span class="text-gray-400">- Supprime un fichier ou dossier.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">edit</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;fichier&gt;</span> <span class="text-gray-400">- Édite un fichier avec un éditeur riche.</span></span>');
+
+            this.addOutput('<hr class="my-2 border-gray-700">');
 
             // Section: Utilitaires
-            this.addOutput('<span class="underline text-blue-300">Utilitaires :</span>');
-            this.addOutput('  echo <span class="bg-gray-700 text-gray-300 px-1 rounded">&lt;texte&gt;</span>          - Affiche le texte donné.');
-            this.addOutput('  clear                 - Efface la console.');
-            this.addOutput('  help                  - Affiche cette aide.');
-            this.addOutput('  about                 - Affiche des informations sur cette console.');
-            this.addOutput('  cconnect <span class="bg-gray-700 text-gray-300 px-1 rounded">&lt;username&gt;</span>   - Change de pseudo utilisateur.');
-            this.addOutput('  cdisconnect           - Déconnecte l\'utilisateur et réinitialise le pseudo.');
+            this.addOutput('<span class="underline text-blue-300 font-semibold mt-2">🛠️ Utilitaires</span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">echo</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;texte&gt;</span> <span class="text-gray-400">- Affiche le texte donné.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">clear</span> <span class="text-gray-400">- Efface la console.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">help</span> <span class="text-gray-400">- Affiche cette aide.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">about</span> <span class="text-gray-400">- À propos de la console.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">cconnect</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;username&gt;</span> <span class="text-gray-400">- Change de pseudo utilisateur.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">cdisconnect</span> <span class="text-gray-400">- Déconnecte l\'utilisateur.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">history</span> <span class="text-gray-400">- Affiche l\'historique des commandes.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">github</span> <span class="text-gray-400">- Lien vers le dépôt GitHub du projet.</span></span>');
+
+            this.addOutput('<hr class="my-2 border-gray-700">');
+
+            // Section: Gestion Caches
+            this.addOutput('<span class="underline text-blue-300 font-semibold mt-2">🧹 Gestion du cache</span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">save</span> <span class="text-gray-400">- Enregistre le système de fichiers.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">load</span> <span class="text-gray-400">- Charge le système de fichiers.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">clearHistory</span> <span class="text-gray-400">- Efface l\'historique des commandes.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">delAllCache</span> <span class="text-gray-400">- Efface tous les cookies, le cache et l\'historique.</span></span>');
         },
         mkdir(args) {
             if (!args || args.length === 0 || !args[0].trim()) {
@@ -383,37 +529,44 @@ const app = {
             return;
             }
             currentNode.children[dirName] = {
-            type: 'directory',
-            children: {}
+                type: 'directory',
+                children: {}
             };
+            this.saveFileSystemToCookie();
             this.addOutput(`Dossier '${dirName}' créé.`);
+            this.addToHistory(`mkdir ${dirName}`, `Dossier '${dirName}' créé.`, 'system');
         },
         rm(args) {
             if (!args || args.length === 0 || !args[0].trim()) {
-            this.addOutput('rm: manque un nom de fichier ou dossier', 'error');
-            return;
+                this.addOutput('rm: manque un nom de fichier ou dossier', 'error');
+                return;
             }
-            const targetName = args[0].trim();
+            // Retire le slash final éventuel
+            let targetName = args[0].trim();
+            if (targetName.endsWith('/')) {
+                targetName = targetName.slice(0, -1);
+            }
             if (targetName === '.' || targetName === '..') {
-            this.addOutput(`rm: suppression de '${targetName}' non autorisée`, 'error');
-            return;
+                this.addOutput(`rm: suppression de '${targetName}' non autorisée`, 'error');
+                return;
             }
             const currentNode = this.getPath(this.currentDir);
             if (!currentNode || currentNode.type !== 'directory') {
-            this.addOutput('rm: dossier courant invalide', 'error');
-            return;
+                this.addOutput('rm: dossier courant invalide', 'error');
+                return;
             }
             if (!currentNode.children[targetName]) {
-            this.addOutput(`rm: impossible de supprimer '${targetName}': Aucun fichier ou dossier de ce type`, 'error');
-            return;
+                this.addOutput(`rm: impossible de supprimer '${targetName}': Aucun fichier ou dossier de ce type`, 'error');
+                return;
             }
             // For directories, only allow if empty
             if (currentNode.children[targetName].type === 'directory' &&
-            Object.keys(currentNode.children[targetName].children).length > 0) {
-            this.addOutput(`rm: impossible de supprimer '${targetName}': Le dossier n'est pas vide`, 'error');
-            return;
+                Object.keys(currentNode.children[targetName].children).length > 0) {
+                this.addOutput(`rm: impossible de supprimer '${targetName}': Le dossier n'est pas vide`, 'error');
+                return;
             }
             delete currentNode.children[targetName];
+            this.saveFileSystemToCookie();
             this.addOutput(`'${targetName}' supprimé.`);
         },
         touch(args) {
@@ -440,6 +593,7 @@ const app = {
             type: 'file',
             content: ''
             };
+            this.saveFileSystemToCookie();
             this.addOutput(`Fichier '${fileName}' créé.`);
         },
         about() {
@@ -469,6 +623,174 @@ const app = {
             } else {
                 this.openHistoryModal();
             }
+        },
+        edit(args) {
+            if (!args || args.length === 0 || !args[0].trim()) {
+            this.addOutput('edit: manque un nom de fichier', 'error');
+            return;
+            }
+            const fileName = args[0].trim();
+            const targetPath = this.resolvePath(fileName);
+            const targetNode = this.getPath(targetPath);
+
+            if (!targetNode) {
+            this.addOutput(`edit: ${fileName}: Aucun fichier de ce type`, 'error');
+            return;
+            }
+            if (targetNode.type !== 'file') {
+            this.addOutput(`edit: ${fileName}: N'est pas un fichier`, 'error');
+            return;
+            }
+
+            // Crée le modal si pas déjà présent
+            let modal = document.getElementById('edit-modal');
+            if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'edit-modal';
+            modal.className = 'fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50';
+            modal.innerHTML = `
+                <div class="bg-gray-900 rounded-xl shadow-2xl p-8 w-full max-w-2xl relative border border-blue-700">
+                    <button id="edit-close-x" class="absolute top-3 right-4 text-gray-400 hover:text-white text-2xl font-bold transition-colors duration-150">&times;</button>
+                    <div class="mb-4 flex flex-wrap gap-2 items-center">
+                        <button type="button" id="edit-bold-btn" class="px-3 py-1 bg-blue-700 text-white rounded-lg shadow hover:bg-blue-600 transition">Gras</button>
+                        <button type="button" id="edit-italic-btn" class="px-3 py-1 bg-blue-700 text-white rounded-lg shadow hover:bg-blue-600 transition">Italique</button>
+                        <button type="button" id="edit-underline-btn" class="px-3 py-1 bg-blue-700 text-white rounded-lg shadow hover:bg-blue-600 transition">Souligné</button>
+                        <button type="button" id="edit-removeformat-btn" class="px-3 py-1 bg-gray-700 text-white rounded-lg shadow hover:bg-gray-600 transition">Effacer format</button>
+                        <input type="color" id="edit-color-picker" title="Couleur du texte" class="w-8 h-8 align-middle ml-3 border-2 border-blue-700 rounded-full shadow">
+                        <select id="edit-font-size-picker" class="ml-2 px-2 py-1 rounded-lg bg-gray-800 text-white border border-blue-700 shadow">
+                            <option value="2">Petit</option>
+                            <option value="3" selected>Moyen</option>
+                            <option value="4">Grand</option>
+                            <option value="5">Très grand</option>
+                        </select>
+                    </div>
+                    <div id="edit-rich-text-editor" contenteditable="true" class="bg-gray-950 text-white border border-blue-700 rounded-lg p-4 min-h-[140px] mb-6 focus:outline-none shadow-inner transition"></div>
+                    <div class="flex gap-3 justify-end">
+                        <button id="edit-save-btn" class="px-5 py-2 bg-gradient-to-r from-blue-600 to-blue-400 text-white rounded-lg shadow-lg hover:from-blue-700 hover:to-blue-500 font-semibold transition">💾 Enregistrer</button>
+                        <button id="edit-exit-btn" class="px-5 py-2 bg-gray-700 text-white rounded-lg shadow hover:bg-gray-600 font-semibold transition">Quitter</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            }
+            modal.classList.remove('hidden');
+
+            // Remplit l'éditeur avec le contenu du fichier
+            document.getElementById('edit-rich-text-editor').innerHTML = targetNode.content;
+
+            // Ajoute les fonctionnalités avancées
+            setTimeout(() => {
+            const editor = document.getElementById('edit-rich-text-editor');
+            const colorPicker = document.getElementById('edit-color-picker');
+            const fontSizePicker = document.getElementById('edit-font-size-picker');
+
+            document.getElementById('edit-bold-btn').onclick = (ev) => {
+                ev.preventDefault();
+                document.execCommand('bold', false, null);
+            };
+            document.getElementById('edit-italic-btn').onclick = (ev) => {
+                ev.preventDefault();
+                document.execCommand('italic', false, null);
+            };
+            document.getElementById('edit-underline-btn').onclick = (ev) => {
+                ev.preventDefault();
+                document.execCommand('underline', false, null);
+            };
+            document.getElementById('edit-removeformat-btn').onclick = (ev) => {
+                ev.preventDefault();
+                document.execCommand('removeFormat', false, null);
+            };
+
+            colorPicker.addEventListener('input', function() {
+                const color = this.value;
+                if (window.getSelection) {
+                const sel = window.getSelection();
+                if (sel.rangeCount) {
+                    const range = sel.getRangeAt(0);
+                    const span = document.createElement('span');
+                    span.style.color = color;
+                    span.appendChild(range.extractContents());
+                    range.insertNode(span);
+                }
+                }
+            });
+
+            fontSizePicker.addEventListener('change', function() {
+                const sizeMap = { '2': '12px', '3': '16px', '4': '20px', '5': '24px' };
+                const size = sizeMap[this.value] || '16px';
+                if (window.getSelection) {
+                const sel = window.getSelection();
+                if (sel.rangeCount) {
+                    const range = sel.getRangeAt(0);
+                    const span = document.createElement('span');
+                    span.style.fontSize = size;
+                    span.appendChild(range.extractContents());
+                    range.insertNode(span);
+                }
+                }
+            });
+
+            // Save
+            document.getElementById('edit-save-btn').onclick = () => {
+                targetNode.content = editor.innerHTML;
+                app.saveFileSystemToCookie();
+                modal.classList.add('hidden');
+                app.addOutput(`Fichier <span class="text-blue-400">${fileName}</span> enregistré.`, 'system');
+                app.updatePrompt();
+                app.commandInputElement.focus();
+            };
+            // Exit
+            const closeModal = () => {
+                modal.classList.add('hidden');
+                app.addOutput('Édition annulée.', 'system');
+                app.updatePrompt();
+                app.commandInputElement.focus();
+            };
+            document.getElementById('edit-exit-btn').onclick = closeModal;
+            document.getElementById('edit-close-x').onclick = closeModal;
+
+            editor.focus();
+            }, 0);
+        },
+    
+        commandeDev : function() {
+            this.enDev();
+        },
+        github : function() {
+            this.addOutput(
+                '<span class="font-bold text-blue-400">Projet open source !</span><br>' +
+                '<a href="https://github.com/Klaynight-dev/Web_linux_console" target="_blank" class="underline text-blue-300 hover:text-blue-500 transition-colors">' +
+                '<i class="fab fa-github"></i> Visitez notre dépôt GitHub</a> pour plus d\'informations.',
+                'system'
+            );
+        },
+        clearHistory: function() {
+            this.history = [];
+            this.saveHistoryToCookie();
+            this.addOutput('Historique des commandes effacé.', 'system');
+        },
+        delAllCache: function() {
+            // Supprime tous les cookies liés à l'app
+            document.cookie.split(";").forEach(cookie => {
+                const eqPos = cookie.indexOf("=");
+                const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+                document.cookie = name.trim() + "=;path=/;max-age=0";
+            });
+            // Réinitialise l'état localStorage et mémoire
+            this.clearConsole();
+            this.history = [];
+            this.saveHistoryToCookie();
+            this.fileSystem = { '/': { type: 'directory', children: {} } };
+            this.saveFileSystemToCookie();
+            this.addOutput('Tous les cookies, le cache et l\'historique ont été effacés.', 'system');
+        },
+        save: function() {
+            this.saveFileSystemToCookie();
+            this.addOutput('Système de fichiers enregistré dans le cookie.', 'system');
+        },
+        load: function() {
+            this.loadFileSystemFromCookie();
+            this.addOutput('Système de fichiers chargé depuis le cookie.', 'system');
         },
     },
 
@@ -689,21 +1011,148 @@ const app = {
     },
 
     saveHistoryToCookie() {
-        // On ne garde que les 50 dernières commandes
-        const toSave = this.history.slice(-50);
-        document.cookie = `history=${encodeURIComponent(JSON.stringify(toSave))};path=/;max-age=31536000`;
+        // Utilise localStorage pour un historique illimité
+        localStorage.setItem('history', JSON.stringify(this.history));
     },
     loadHistoryFromCookie() {
-        const match = document.cookie.match(/(?:^|;\s*)history=([^;]*)/);
-        if (match) {
+        const saved = localStorage.getItem('history');
+        if (saved) {
             try {
-                this.history = JSON.parse(decodeURIComponent(match[1]));
+                this.history = JSON.parse(saved);
             } catch {
                 this.history = [];
             }
         } else {
             this.history = [];
         }
+    },
+    addToHistory(cmd, output, type = 'command') {
+        const now = new Date();
+        const entry = {
+            cmd,
+            output,
+            type,
+            date: now.toLocaleDateString(),
+            time: now.toLocaleTimeString(),
+            timestamp: now.getTime()
+        };
+        this.history = [...this.history, entry]; // Plus de slice(-50)
+        this.saveHistoryToCookie();
+    },
+    showFullHistory() {
+        this.clearConsole();
+        if (this.history && this.history.length > 0) {
+            this.history.forEach(entry => {
+                if (entry.output) {
+                    this.addOutput(entry.output, entry.type || 'command');
+                }
+            });
+        } else {
+            this.addOutput(this.defaultMessage, 'system');
+        }
+    },
+    saveFileSystemToCookie() {
+        document.cookie = `filesystem=${encodeURIComponent(JSON.stringify(this.fileSystem))};path=/;max-age=31536000`;
+    },
+    loadFileSystemFromCookie() {
+        const match = document.cookie.match(/(?:^|;\s*)filesystem=([^;]*)/);
+        if (match) {
+            try {
+                this.fileSystem = JSON.parse(decodeURIComponent(match[1]));
+            } catch {
+                // Si erreur, on garde le système par défaut
+            }
+        }
+    },
+    // --- Dans app ---
+    applyTheme(theme) {
+        document.body.classList.remove('theme-dark', 'theme-light');
+        document.body.classList.add('theme-' + theme);
+        localStorage.setItem('console_theme', theme);
+    },
+    loadTheme() {
+        const saved = localStorage.getItem('console_theme') || 'dark';
+        this.applyTheme(saved);
+        const select = document.getElementById('theme-select');
+        if (select) select.value = saved;
+    },
+    applyFontFamily(font) {
+        document.getElementById('console-output').style.fontFamily = font;
+        localStorage.setItem('console_font', font);
+        document.cookie = `console_font=${encodeURIComponent(font)};path=/;max-age=31536000`; // 1 an
+    },
+    loadFontFamily() {
+        // Prend d'abord le cookie, sinon localStorage, sinon monospace
+        const cookieMatch = document.cookie.match(/(?:^|;\s*)console_font=([^;]*)/);
+        const saved = cookieMatch ? decodeURIComponent(cookieMatch[1]) : (localStorage.getItem('console_font') || 'monospace');
+        this.applyFontFamily(saved);
+        const select = document.getElementById('font-family-select');
+        if (select) select.value = saved;
+    },
+    applyFontSize(size) {
+        document.getElementById('console-output').style.fontSize = size + 'px';
+        localStorage.setItem('console_font_size', size);
+        document.cookie = `console_font_size=${encodeURIComponent(size)};path=/;max-age=31536000`; // 1 an
+    },
+    loadFontSize() {
+        // Prend d'abord le cookie, sinon localStorage, sinon 16
+        const cookieMatch = document.cookie.match(/(?:^|;\s*)console_font_size=([^;]*)/);
+        const saved = cookieMatch ? decodeURIComponent(cookieMatch[1]) : (localStorage.getItem('console_font_size') || '16');
+        this.applyFontSize(saved);
+        const range = document.getElementById('font-size-range');
+        if (range) range.value = saved;
+        const value = document.getElementById('font-size-value');
+        if (value) value.textContent = saved + 'px';
+    },
+    applyConsoleBackground(type, value) {
+        const el = document.getElementById('console-output');
+        if (type === 'color') {
+            el.style.backgroundImage = '';
+            el.style.backgroundColor = value;
+            // Stocke la couleur courante
+            document.cookie = `console_bg_type=color;path=/;max-age=31536000`;
+            document.cookie = `console_bg_value=${encodeURIComponent(value)};path=/;max-age=31536000`;
+            localStorage.setItem('console_bg_type', 'color');
+            localStorage.setItem('console_bg_value', value);
+            // Sauvegarde la dernière couleur utilisée
+            localStorage.setItem('console_bg_last_color', value);
+        } else if (type === 'image') {
+            el.style.backgroundColor = '';
+            el.style.backgroundImage = `url('${value}')`;
+            el.style.backgroundSize = 'cover';
+            el.style.backgroundPosition = 'center';
+            document.cookie = `console_bg_type=image;path=/;max-age=31536000`;
+            localStorage.setItem('console_bg_type', 'image');
+            localStorage.setItem('console_bg_value', value);
+            // Efface la valeur du cookie si besoin
+            document.cookie = `console_bg_value=;path=/;max-age=0`;
+            // Sauvegarde la dernière image utilisée
+            localStorage.setItem('console_bg_last_image', value);
+        }
+    },
+    loadConsoleBackground() {
+        const typeMatch = document.cookie.match(/(?:^|;\s*)console_bg_type=([^;]*)/);
+        const type = typeMatch ? decodeURIComponent(typeMatch[1]) : (localStorage.getItem('console_bg_type') || 'color');
+        let value;
+        if (type === 'color') {
+            const valueMatch = document.cookie.match(/(?:^|;\s*)console_bg_value=([^;]*)/);
+            value = valueMatch ? decodeURIComponent(valueMatch[1]) : (localStorage.getItem('console_bg_last_color') || '#18181b');
+        } else if (type === 'image') {
+            value = localStorage.getItem('console_bg_last_image') || '';
+        }
+        this.applyConsoleBackground(type, value);
+    
+        // Mets à jour les inputs du modal si besoin
+        const typeSelect = document.getElementById('console-bg-type');
+        const colorInput = document.getElementById('console-bg-color');
+        const urlInput = document.getElementById('console-bg-url');
+        const bgImageImportGroup = document.getElementById('console-bg-image-import-group');
+        if (typeSelect) typeSelect.value = type;
+        if (colorInput) colorInput.value = localStorage.getItem('console_bg_last_color') || '#18181b';
+        if (urlInput) urlInput.value = localStorage.getItem('console_bg_last_image') || '';
+        if (bgImageImportGroup) bgImageImportGroup.style.display = (type === 'image' ? 'block' : 'none');
+        if (colorInput) colorInput.style.display = (type === 'color' ? 'inline-block' : 'none');
+        if (urlInput) urlInput.style.display = (type === 'image' ? 'inline-block' : 'none');
     },
 };
 
