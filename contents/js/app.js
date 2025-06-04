@@ -79,8 +79,8 @@ const app = {
                 'etc': {
                     type: 'directory',
                     children: {
-                        'motd': { 
-                            type: 'file', 
+                        'motd': {
+                            type: 'file',
                             get content() {
                                 // Liste de messages du jour
                                 const mots = [
@@ -171,23 +171,17 @@ const app = {
         this.commandInputElement.focus();
         this.addOutput(this.defaultMessage, 'system');
 
-        document.getElementById('font-size-range').addEventListener('input', function() {
+        document.getElementById('font-size-range').addEventListener('input', function () {
             document.getElementById('font-size-value').textContent = this.value + 'px';
             document.getElementById('console-output').style.fontSize = this.value + 'px';
         });
 
         // Gestion du modal paramètres
-        document.getElementById('cancel-settings-modal').onclick = function() {
+        document.getElementById('cancel-settings-modal').onclick = function () {
             document.getElementById('settings-modal').classList.add('hidden');
-            app.clearConsole();
-            app.history.forEach(entry => {
-                if (entry.output) {
-                    app.addOutput(entry.output, entry.type || 'command');
-                }
-            });
         };
 
-        document.getElementById('save-settings-modal').onclick = function() {
+        document.getElementById('save-settings-modal').onclick = function () {
             document.getElementById('settings-modal').classList.add('hidden');
             // Ajoute ici la logique de sauvegarde des paramètres si besoin
         };
@@ -197,7 +191,7 @@ const app = {
         // Gestion du changement de thème
         const themeSelect = document.getElementById('theme-select');
         if (themeSelect) {
-            themeSelect.addEventListener('change', function() {
+            themeSelect.addEventListener('change', function () {
                 app.applyTheme(this.value);
             });
         }
@@ -205,7 +199,7 @@ const app = {
         // Gestion du changement de police
         const fontSelect = document.getElementById('font-family-select');
         if (fontSelect) {
-            fontSelect.addEventListener('change', function() {
+            fontSelect.addEventListener('change', function () {
                 app.applyFontFamily(this.value);
             });
         }
@@ -220,41 +214,41 @@ const app = {
         const bgUrl = document.getElementById('console-bg-url');
         const bgFile = document.getElementById('console-bg-file');
         const bgImageImportGroup = document.getElementById('console-bg-image-import-group');
-            if (bgType && bgColor && bgUrl && bgFile && bgImageImportGroup) {
-                bgType.addEventListener('change', function() {
-                    if (this.value === 'color') {
-                        bgColor.style.display = 'inline-block';
-                        bgUrl.style.display = 'none';
-                        bgImageImportGroup.style.display = 'none';
-                        // Restaure la dernière couleur utilisée
-                        const lastColor = localStorage.getItem('console_bg_last_color') || '#18181b';
-                        bgColor.value = lastColor;
-                        app.applyConsoleBackground('color', lastColor);
-                    } else {
-                        bgColor.style.display = 'none';
-                        bgUrl.style.display = 'inline-block';
-                        bgImageImportGroup.style.display = 'block';
-                        // Restaure la dernière image utilisée
-                        const lastImage = localStorage.getItem('console_bg_last_image') || '';
-                        bgUrl.value = lastImage;
-                        app.applyConsoleBackground('image', lastImage);
-                    }
+        if (bgType && bgColor && bgUrl && bgFile && bgImageImportGroup) {
+            bgType.addEventListener('change', function () {
+                if (this.value === 'color') {
+                    bgColor.style.display = 'inline-block';
+                    bgUrl.style.display = 'none';
+                    bgImageImportGroup.style.display = 'none';
+                    // Restaure la dernière couleur utilisée
+                    const lastColor = localStorage.getItem('console_bg_last_color') || '#1f2934';
+                    bgColor.value = lastColor;
+                    app.applyConsoleBackground('color', lastColor);
+                } else {
+                    bgColor.style.display = 'none';
+                    bgUrl.style.display = 'inline-block';
+                    bgImageImportGroup.style.display = 'block';
+                    // Restaure la dernière image utilisée
+                    const lastImage = localStorage.getItem('console_bg_last_image') || '';
+                    bgUrl.value = lastImage;
+                    app.applyConsoleBackground('image', lastImage);
+                }
             });
-            
-            bgColor.addEventListener('input', function() {
+
+            bgColor.addEventListener('input', function () {
                 if (bgType.value === 'color') {
                     app.applyConsoleBackground('color', this.value);
                 }
             });
-            bgUrl.addEventListener('input', function() {
+            bgUrl.addEventListener('input', function () {
                 if (bgType.value === 'image') {
                     app.applyConsoleBackground('image', this.value);
                 }
             });
-            bgFile.addEventListener('change', function() {
+            bgFile.addEventListener('change', function () {
                 if (bgType.value === 'image' && this.files && this.files[0]) {
                     const reader = new FileReader();
-                    reader.onload = function(e) {
+                    reader.onload = function (e) {
                         app.applyConsoleBackground('image', e.target.result);
                         // Met à jour l'input URL pour garder la cohérence
                         bgUrl.value = e.target.result;
@@ -266,7 +260,7 @@ const app = {
 
         const clearHistoryBtn = document.getElementById('clear-history-btn');
         if (clearHistoryBtn) {
-            clearHistoryBtn.onclick = function() {
+            clearHistoryBtn.onclick = function () {
                 app.history = [];
                 app.saveHistoryToCookie();
                 app.openHistoryModal(); // Rafraîchit la vue du modal
@@ -275,11 +269,7 @@ const app = {
 
         // Charger les informations de version
         this.loadVersionInfo();
-        
-        // Event listener pour le bouton changelog
-        document.getElementById('show-changelog').addEventListener('click', () => {
-            this.showChangelog();
-        });
+
     },
 
     // --- Output Management ---
@@ -424,10 +414,10 @@ const app = {
     parseOptions(args, optionMap) {
         const result = { _: [] };
         let i = 0;
-        
+
         while (i < args.length) {
             const arg = args[i];
-            
+
             if (arg.startsWith('-') && arg.length > 1) {
                 const option = arg.slice(1);
                 if (optionMap[option]) {
@@ -441,7 +431,7 @@ const app = {
             }
             i++;
         }
-        
+
         return result;
     },
 
@@ -512,48 +502,48 @@ const app = {
         },
         cat(args) {
             if (args.length === 0) {
-            this.addOutput('cat: manque un opérande', 'error');
-            this.addOutput('Utilisez "cat --help" pour plus d\'informations.');
-            return;
+                this.addOutput('cat: manque un opérande', 'error');
+                this.addOutput('Utilisez "cat --help" pour plus d\'informations.');
+                return;
             }
 
             // Handle --help option
             if (args[0] === '--help') {
-            this.addOutput('<span class="font-bold text-blue-400">cat - concaténer et afficher des fichiers</span>');
-            this.addOutput('');
-            this.addOutput('<span class="text-green-400">UTILISATION:</span>');
-            this.addOutput('    cat [OPTION]... [FICHIER]...');
-            this.addOutput('');
-            this.addOutput('<span class="text-green-400">DESCRIPTION:</span>');
-            this.addOutput('    Concatène et affiche le contenu des fichiers spécifiés.');
-            this.addOutput('    Si aucun fichier n\'est spécifié, lit depuis l\'entrée standard.');
-            this.addOutput('');
-            this.addOutput('<span class="text-green-400">OPTIONS:</span>');
-            this.addOutput('    --help     affiche cette aide et quitte');
-            this.addOutput('');
-            this.addOutput('<span class="text-green-400">EXEMPLES:</span>');
-            this.addOutput('    cat fichier.txt        affiche le contenu de fichier.txt');
-            this.addOutput('    cat file1 file2        affiche le contenu de file1 puis file2');
-            return;
+                this.addOutput('<span class="font-bold text-blue-400">cat - concaténer et afficher des fichiers</span>');
+                this.addOutput('');
+                this.addOutput('<span class="text-green-400">UTILISATION:</span>');
+                this.addOutput('    cat [OPTION]... [FICHIER]...');
+                this.addOutput('');
+                this.addOutput('<span class="text-green-400">DESCRIPTION:</span>');
+                this.addOutput('    Concatène et affiche le contenu des fichiers spécifiés.');
+                this.addOutput('    Si aucun fichier n\'est spécifié, lit depuis l\'entrée standard.');
+                this.addOutput('');
+                this.addOutput('<span class="text-green-400">OPTIONS:</span>');
+                this.addOutput('    --help     affiche cette aide et quitte');
+                this.addOutput('');
+                this.addOutput('<span class="text-green-400">EXEMPLES:</span>');
+                this.addOutput('    cat fichier.txt        affiche le contenu de fichier.txt');
+                this.addOutput('    cat file1 file2        affiche le contenu de file1 puis file2');
+                return;
             }
 
             const targetPath = this.resolvePath(args[0]);
             const targetNode = this.getPath(targetPath);
 
             if (!targetNode) {
-            this.addOutput(`cat: ${args[0]}: Aucun fichier ou dossier de ce type`, 'error');
-            return;
+                this.addOutput(`cat: ${args[0]}: Aucun fichier ou dossier de ce type`, 'error');
+                return;
             }
             if (targetNode.type === 'directory') {
-            this.addOutput(`cat: ${args[0]}: Est un dossier`, 'error');
-            return;
+                this.addOutput(`cat: ${args[0]}: Est un dossier`, 'error');
+                return;
             }
             // Display content as HTML (allows formatting from rich text editor)
             this.addOutput(targetNode.content);
         },
         help() {
             this.addOutput('<span class="font-bold text-purple-300 text-lg">Commandes disponibles :</span>');
-            
+
             // Section: Navigation
             this.addOutput('<span class="underline text-blue-300 font-semibold mt-2">🗂️ Navigation</span>');
             this.addOutput('<span class="ml-4"><span class="text-green-400">pwd</span> <span class="text-gray-400">- Affiche le dossier courant.</span></span>');
@@ -645,22 +635,22 @@ const app = {
         },
         mkdir(args) {
             if (!args || args.length === 0 || !args[0].trim()) {
-            this.addOutput('mkdir: manque un nom de dossier', 'error');
-            return;
+                this.addOutput('mkdir: manque un nom de dossier', 'error');
+                return;
             }
             const dirName = args[0].trim();
             if (dirName.includes('/')) {
-            this.addOutput('mkdir: le nom du dossier ne doit pas contenir de "/"', 'error');
-            return;
+                this.addOutput('mkdir: le nom du dossier ne doit pas contenir de "/"', 'error');
+                return;
             }
             const currentNode = this.getPath(this.currentDir);
             if (!currentNode || currentNode.type !== 'directory') {
-            this.addOutput('mkdir: dossier courant invalide', 'error');
-            return;
+                this.addOutput('mkdir: dossier courant invalide', 'error');
+                return;
             }
             if (currentNode.children[dirName]) {
-            this.addOutput(`mkdir: impossible de créer le dossier '${dirName}': Le fichier existe`, 'error');
-            return;
+                this.addOutput(`mkdir: impossible de créer le dossier '${dirName}': Le fichier existe`, 'error');
+                return;
             }
             currentNode.children[dirName] = {
                 type: 'directory',
@@ -705,27 +695,27 @@ const app = {
         },
         touch(args) {
             if (!args || args.length === 0 || !args[0].trim()) {
-            this.addOutput('touch: manque un nom de fichier', 'error');
-            return;
+                this.addOutput('touch: manque un nom de fichier', 'error');
+                return;
             }
             const fileName = args[0].trim();
             if (fileName.includes('/')) {
-            this.addOutput('touch: le nom du fichier ne doit pas contenir de "/"', 'error');
-            return;
+                this.addOutput('touch: le nom du fichier ne doit pas contenir de "/"', 'error');
+                return;
             }
             const currentNode = this.getPath(this.currentDir);
             if (!currentNode || currentNode.type !== 'directory') {
-            this.addOutput('touch: dossier courant invalide', 'error');
-            return;
+                this.addOutput('touch: dossier courant invalide', 'error');
+                return;
             }
             if (currentNode.children[fileName]) {
-            // Si le fichier existe déjà, ne rien faire (comportement touch standard)
-            this.addOutput(`Fichier '${fileName}' déjà existant.`);
-            return;
+                // Si le fichier existe déjà, ne rien faire (comportement touch standard)
+                this.addOutput(`Fichier '${fileName}' déjà existant.`);
+                return;
             }
             currentNode.children[fileName] = {
-            type: 'file',
-            content: ''
+                type: 'file',
+                content: ''
             };
             this.saveFileSystemToCookie();
             this.addOutput(`Fichier '${fileName}' créé.`);
@@ -734,7 +724,7 @@ const app = {
             this.openAboutModal();
         },
 
-        cconnect: async function(args) {
+        cconnect: async function (args) {
             if (!args || args.length === 0 || !args[0].trim()) {
                 this.addOutput('Erreur : veuillez fournir un pseudo. Utilisation : cconnect <username>', 'error');
                 return;
@@ -745,13 +735,13 @@ const app = {
             this.updatePrompt();
         },
 
-        cdisconnect: function() {
+        cdisconnect: function () {
             // Supprime le cookie pseudo
             document.cookie = "pseudo=;path=/;max-age=0";
             this.addOutput('Déconnecté. Le pseudo a été réinitialisé à "user".', "system");
             this.updatePrompt();
         },
-        history: function() {
+        history: function () {
             if (this.history.length === 0) {
                 this.addOutput('Aucune commande enregistrée.', 'system');
             } else {
@@ -760,29 +750,29 @@ const app = {
         },
         edit(args) {
             if (!args || args.length === 0 || !args[0].trim()) {
-            this.addOutput('edit: manque un nom de fichier', 'error');
-            return;
+                this.addOutput('edit: manque un nom de fichier', 'error');
+                return;
             }
             const fileName = args[0].trim();
             const targetPath = this.resolvePath(fileName);
             const targetNode = this.getPath(targetPath);
 
             if (!targetNode) {
-            this.addOutput(`edit: ${fileName}: Aucun fichier de ce type`, 'error');
-            return;
+                this.addOutput(`edit: ${fileName}: Aucun fichier de ce type`, 'error');
+                return;
             }
             if (targetNode.type !== 'file') {
-            this.addOutput(`edit: ${fileName}: N'est pas un fichier`, 'error');
-            return;
+                this.addOutput(`edit: ${fileName}: N'est pas un fichier`, 'error');
+                return;
             }
 
             // Crée le modal si pas déjà présent
             let modal = document.getElementById('edit-modal');
             if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'edit-modal';
-            modal.className = 'fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50';
-            modal.innerHTML = `
+                modal = document.createElement('div');
+                modal.id = 'edit-modal';
+                modal.className = 'fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50';
+                modal.innerHTML = `
             <div class="bg-gray-900 rounded-xl shadow-2xl p-8 w-full max-w-2xl relative border border-blue-700">
                 <button id="edit-close-x" class="absolute top-3 right-4 text-gray-400 hover:text-white text-2xl font-bold transition-colors duration-150">&times;</button>
                 <div class="mb-4 flex flex-wrap gap-2 items-center">
@@ -805,7 +795,7 @@ const app = {
                 </div>
             </div>
             `;
-            document.body.appendChild(modal);
+                document.body.appendChild(modal);
             }
             modal.classList.remove('hidden');
 
@@ -814,83 +804,83 @@ const app = {
 
             // Ajoute les fonctionnalités avancées
             setTimeout(() => {
-            const editor = document.getElementById('edit-rich-text-editor');
-            const colorPicker = document.getElementById('edit-color-picker');
-            const fontSizePicker = document.getElementById('edit-font-size-picker');
+                const editor = document.getElementById('edit-rich-text-editor');
+                const colorPicker = document.getElementById('edit-color-picker');
+                const fontSizePicker = document.getElementById('edit-font-size-picker');
 
-            document.getElementById('edit-bold-btn').onclick = (ev) => {
-            ev.preventDefault();
-            document.execCommand('bold', false, null);
-            };
-            document.getElementById('edit-italic-btn').onclick = (ev) => {
-            ev.preventDefault();
-            document.execCommand('italic', false, null);
-            };
-            document.getElementById('edit-underline-btn').onclick = (ev) => {
-            ev.preventDefault();
-            document.execCommand('underline', false, null);
-            };
-            document.getElementById('edit-removeformat-btn').onclick = (ev) => {
-            ev.preventDefault();
-            document.execCommand('removeFormat', false, null);
-            };
+                document.getElementById('edit-bold-btn').onclick = (ev) => {
+                    ev.preventDefault();
+                    document.execCommand('bold', false, null);
+                };
+                document.getElementById('edit-italic-btn').onclick = (ev) => {
+                    ev.preventDefault();
+                    document.execCommand('italic', false, null);
+                };
+                document.getElementById('edit-underline-btn').onclick = (ev) => {
+                    ev.preventDefault();
+                    document.execCommand('underline', false, null);
+                };
+                document.getElementById('edit-removeformat-btn').onclick = (ev) => {
+                    ev.preventDefault();
+                    document.execCommand('removeFormat', false, null);
+                };
 
-            colorPicker.addEventListener('input', function() {
-            const color = this.value;
-            if (window.getSelection) {
-            const sel = window.getSelection();
-            if (sel.rangeCount) {
-                const range = sel.getRangeAt(0);
-                const span = document.createElement('span');
-                span.style.color = color;
-                span.appendChild(range.extractContents());
-                range.insertNode(span);
-            }
-            }
-            });
+                colorPicker.addEventListener('input', function () {
+                    const color = this.value;
+                    if (window.getSelection) {
+                        const sel = window.getSelection();
+                        if (sel.rangeCount) {
+                            const range = sel.getRangeAt(0);
+                            const span = document.createElement('span');
+                            span.style.color = color;
+                            span.appendChild(range.extractContents());
+                            range.insertNode(span);
+                        }
+                    }
+                });
 
-            fontSizePicker.addEventListener('change', function() {
-            const sizeMap = { '2': '12px', '3': '16px', '4': '20px', '5': '24px' };
-            const size = sizeMap[this.value] || '16px';
-            if (window.getSelection) {
-            const sel = window.getSelection();
-            if (sel.rangeCount) {
-                const range = sel.getRangeAt(0);
-                const span = document.createElement('span');
-                span.style.fontSize = size;
-                span.appendChild(range.extractContents());
-                range.insertNode(span);
-            }
-            }
-            });
+                fontSizePicker.addEventListener('change', function () {
+                    const sizeMap = { '2': '12px', '3': '16px', '4': '20px', '5': '24px' };
+                    const size = sizeMap[this.value] || '16px';
+                    if (window.getSelection) {
+                        const sel = window.getSelection();
+                        if (sel.rangeCount) {
+                            const range = sel.getRangeAt(0);
+                            const span = document.createElement('span');
+                            span.style.fontSize = size;
+                            span.appendChild(range.extractContents());
+                            range.insertNode(span);
+                        }
+                    }
+                });
 
-            // Save
-            document.getElementById('edit-save-btn').onclick = () => {
-            targetNode.content = editor.innerHTML;
-            app.saveFileSystemToCookie();
-            modal.classList.add('hidden');
-            app.addOutput(`Fichier <span class="text-blue-400">${fileName}</span> enregistré.`, 'system');
-            app.updatePrompt();
-            app.commandInputElement.focus();
-            };
-            // Exit
-            const closeModal = () => {
-            modal.classList.add('hidden');
-            app.addOutput('Édition annulée.', 'system');
-            app.updatePrompt();
-            app.commandInputElement.focus();
-            };
-            document.getElementById('edit-exit-btn').onclick = closeModal;
-            document.getElementById('edit-close-x').onclick = closeModal;
+                // Save
+                document.getElementById('edit-save-btn').onclick = () => {
+                    targetNode.content = editor.innerHTML;
+                    app.saveFileSystemToCookie();
+                    modal.classList.add('hidden');
+                    app.addOutput(`Fichier <span class="text-blue-400">${fileName}</span> enregistré.`, 'system');
+                    app.updatePrompt();
+                    app.commandInputElement.focus();
+                };
+                // Exit
+                const closeModal = () => {
+                    modal.classList.add('hidden');
+                    app.addOutput('Édition annulée.', 'system');
+                    app.updatePrompt();
+                    app.commandInputElement.focus();
+                };
+                document.getElementById('edit-exit-btn').onclick = closeModal;
+                document.getElementById('edit-close-x').onclick = closeModal;
 
-            editor.focus();
+                editor.focus();
             }, 0);
         },
-    
-        commandeDev : function() {
+
+        commandeDev: function () {
             this.enDev();
         },
-        github : function() {
+        github: function () {
             this.addOutput(
                 '<span class="font-bold text-blue-400">Projet open source !</span><br>' +
                 '<a href="https://github.com/Klaynight-dev/Web_linux_console" target="_blank" class="underline text-blue-300 hover:text-blue-500 transition-colors">' +
@@ -898,12 +888,12 @@ const app = {
                 'system'
             );
         },
-        clearHistory: function() {
+        clearHistory: function () {
             this.history = [];
             this.saveHistoryToCookie();
             this.addOutput('Historique des commandes effacé.', 'system');
         },
-        delAllCache: function() {
+        delAllCache: function () {
             // Supprime tous les cookies liés à l'app
             document.cookie.split(";").forEach(cookie => {
                 const eqPos = cookie.indexOf("=");
@@ -918,15 +908,15 @@ const app = {
             this.saveFileSystemToCookie();
             this.addOutput('Tous les cookies, le cache et l\'historique ont été effacés.', 'system');
         },
-        save: function() {
+        save: function () {
             this.saveFileSystemToCookie();
             this.addOutput('Système de fichiers enregistré dans le cookie.', 'system');
         },
-        load: function() {
+        load: function () {
             this.loadFileSystemFromCookie();
             this.addOutput('Système de fichiers chargé depuis le cookie.', 'system');
         },
-        lshw: function() {
+        lshw: function () {
             // Utilise les APIs du navigateur pour obtenir le maximum d'infos accessibles
             const nav = window.navigator;
             const hwInfo = [];
@@ -998,7 +988,7 @@ const app = {
                         hwInfo.push(`<span class="text-green-400">WebGL Renderer :</span> ${gl.getParameter(gl.RENDERER)}<br>`);
                         hwInfo.push(`<span class="text-green-400">WebGL Shading Language :</span> ${gl.getParameter(gl.SHADING_LANGUAGE_VERSION)}<br>`);
                     }
-                } catch {}
+                } catch { }
             }
             // Battery API
             if (navigator.getBattery) {
@@ -1022,7 +1012,7 @@ const app = {
             this.addOutput(hwInfo.join('') + '<span class="text-gray-400">Note : Les informations sont limitées par le navigateur pour la confidentialité.</span>', 'system');
         },
 
-        ifconfig: function() {
+        ifconfig: function () {
             // Affiche les infos réseau accessibles via le navigateur
             const lines = [];
             lines.push('<span class="font-bold text-blue-400 text-lg">Configuration réseau (ifconfig):</span><br>');
@@ -1038,10 +1028,10 @@ const app = {
                     callback([]);
                     return;
                 }
-                const pc = new RTCPeerConnection({iceServers:[]});
+                const pc = new RTCPeerConnection({ iceServers: [] });
                 pc.createDataChannel('');
                 pc.createOffer().then(offer => pc.setLocalDescription(offer));
-                pc.onicecandidate = function(e) {
+                pc.onicecandidate = function (e) {
                     if (!e || !e.candidate) {
                         callback(ips);
                         return;
@@ -1091,594 +1081,595 @@ const app = {
                     });
                 });
         },
-            
-    
-                free(args) {
-                    const options = this.parseOptions(args, {
-                        'h': 'human-readable',
-                        'b': 'bytes',
-                        'm': 'mega',
-                        'g': 'giga'
-                    });
-        
-                    // Simulation des informations mémoire basée sur navigator.deviceMemory
-                    const totalMemGB = navigator.deviceMemory || 8; // Par défaut 8GB
-                    const totalMemMB = totalMemGB * 1024;
-                    const totalMemKB = totalMemMB * 1024;
-                    const totalMemB = totalMemKB * 1024;
-                    
-                    // Simulation d'utilisation (70% occupé)
-                    const usedPercent = 0.7;
-                    const usedMemB = Math.floor(totalMemB * usedPercent);
-                    const freeMemB = totalMemB - usedMemB;
-                    const availableMemB = Math.floor(freeMemB * 0.8);
-        
-                    let unit = 'KB';
-                    let divisor = 1024;
-                    let totalMem = totalMemKB;
-                    let usedMem = Math.floor(usedMemB / 1024);
-                    let freeMem = Math.floor(freeMemB / 1024);
-                    let availableMem = Math.floor(availableMemB / 1024);
-        
-                    if (options['human-readable']) {
-                        if (totalMemGB >= 1) {
-                            unit = 'G';
-                            divisor = 1024 * 1024 * 1024;
-                            totalMem = (totalMemB / divisor).toFixed(1);
-                            usedMem = (usedMemB / divisor).toFixed(1);
-                            freeMem = (freeMemB / divisor).toFixed(1);
-                            availableMem = (availableMemB / divisor).toFixed(1);
-                        } else {
-                            unit = 'M';
-                            divisor = 1024 * 1024;
-                            totalMem = Math.floor(totalMemB / divisor);
-                            usedMem = Math.floor(usedMemB / divisor);
-                            freeMem = Math.floor(freeMemB / divisor);
-                            availableMem = Math.floor(availableMemB / divisor);
-                        }
-                    } else if (options.bytes) {
-                        unit = 'B';
-                        totalMem = totalMemB;
-                        usedMem = usedMemB;
-                        freeMem = freeMemB;
-                        availableMem = availableMemB;
-                    } else if (options.mega) {
-                        unit = 'M';
-                        divisor = 1024 * 1024;
-                        totalMem = Math.floor(totalMemB / divisor);
-                        usedMem = Math.floor(usedMemB / divisor);
-                        freeMem = Math.floor(freeMemB / divisor);
-                        availableMem = Math.floor(availableMemB / divisor);
-                    } else if (options.giga) {
-                        unit = 'G';
-                        divisor = 1024 * 1024 * 1024;
-                        totalMem = (totalMemB / divisor).toFixed(1);
-                        usedMem = (usedMemB / divisor).toFixed(1);
-                        freeMem = (freeMemB / divisor).toFixed(1);
-                        availableMem = (availableMemB / divisor).toFixed(1);
-                    }
-        
-                    this.addOutput(`<span class="font-mono">
+
+
+        free(args) {
+            const options = this.parseOptions(args, {
+                'h': 'human-readable',
+                'b': 'bytes',
+                'm': 'mega',
+                'g': 'giga'
+            });
+
+            // Simulation des informations mémoire basée sur navigator.deviceMemory
+            const totalMemGB = navigator.deviceMemory || 8; // Par défaut 8GB
+            const totalMemMB = totalMemGB * 1024;
+            const totalMemKB = totalMemMB * 1024;
+            const totalMemB = totalMemKB * 1024;
+
+            // Simulation d'utilisation (70% occupé)
+            const usedPercent = 0.7;
+            const usedMemB = Math.floor(totalMemB * usedPercent);
+            const freeMemB = totalMemB - usedMemB;
+            const availableMemB = Math.floor(freeMemB * 0.8);
+
+            let unit = 'KB';
+            let divisor = 1024;
+            let totalMem = totalMemKB;
+            let usedMem = Math.floor(usedMemB / 1024);
+            let freeMem = Math.floor(freeMemB / 1024);
+            let availableMem = Math.floor(availableMemB / 1024);
+
+            if (options['human-readable']) {
+                if (totalMemGB >= 1) {
+                    unit = 'G';
+                    divisor = 1024 * 1024 * 1024;
+                    totalMem = (totalMemB / divisor).toFixed(1);
+                    usedMem = (usedMemB / divisor).toFixed(1);
+                    freeMem = (freeMemB / divisor).toFixed(1);
+                    availableMem = (availableMemB / divisor).toFixed(1);
+                } else {
+                    unit = 'M';
+                    divisor = 1024 * 1024;
+                    totalMem = Math.floor(totalMemB / divisor);
+                    usedMem = Math.floor(usedMemB / divisor);
+                    freeMem = Math.floor(freeMemB / divisor);
+                    availableMem = Math.floor(availableMemB / divisor);
+                }
+            } else if (options.bytes) {
+                unit = 'B';
+                totalMem = totalMemB;
+                usedMem = usedMemB;
+                freeMem = freeMemB;
+                availableMem = availableMemB;
+            } else if (options.mega) {
+                unit = 'M';
+                divisor = 1024 * 1024;
+                totalMem = Math.floor(totalMemB / divisor);
+                usedMem = Math.floor(usedMemB / divisor);
+                freeMem = Math.floor(freeMemB / divisor);
+                availableMem = Math.floor(availableMemB / divisor);
+            } else if (options.giga) {
+                unit = 'G';
+                divisor = 1024 * 1024 * 1024;
+                totalMem = (totalMemB / divisor).toFixed(1);
+                usedMem = (usedMemB / divisor).toFixed(1);
+                freeMem = (freeMemB / divisor).toFixed(1);
+                availableMem = (availableMemB / divisor).toFixed(1);
+            }
+
+            this.addOutput(`<span class="font-mono">
                         total        used        free      shared  buff/cache   available
         Mem:     ${String(totalMem).padStart(7)}${unit}   ${String(usedMem).padStart(7)}${unit}   ${String(freeMem).padStart(7)}${unit}        0${unit}        0${unit}   ${String(availableMem).padStart(7)}${unit}
         Swap:           0${unit}        0${unit}        0${unit}
         </span>`);
-                },
-    
-            df(args) {
-                const options = this.parseOptions(args, {
-                    'h': 'human-readable',
-                    'T': 'print-type',
-                    'a': 'all'
-                });
-    
-                // Simulation d'informations de système de fichiers
-                const filesystems = [
-                    { filesystem: '/dev/root', type: 'ext4', size: 20971520, used: 8388608, avail: 11534336, usePercent: 41, mountedOn: '/' },
-                    { filesystem: '/dev/tmpfs', type: 'tmpfs', size: 2097152, used: 0, avail: 2097152, usePercent: 0, mountedOn: '/tmp' },
-                    { filesystem: '/dev/home', type: 'ext4', size: 104857600, used: 52428800, avail: 47185920, usePercent: 53, mountedOn: '/home' }
-                ];
-    
-                let header = options['print-type'] ? 
-                    'Filesystem     Type      Size  Used Avail Use% Mounted on' :
-                    'Filesystem      Size  Used Avail Use% Mounted on';
-    
-                this.addOutput(`<span class="font-mono">${header}</span>`);
-    
-                filesystems.forEach(fs => {
-                    let size, used, avail;
-                    if (options['human-readable']) {
-                        size = this.formatBytes(fs.size * 1024);
-                        used = this.formatBytes(fs.used * 1024);
-                        avail = this.formatBytes(fs.avail * 1024);
-                    } else {
-                        size = fs.size.toString();
-                        used = fs.used.toString();
-                        avail = fs.avail.toString();
+        },
+
+        df(args) {
+            const options = this.parseOptions(args, {
+                'h': 'human-readable',
+                'T': 'print-type',
+                'a': 'all'
+            });
+
+            // Simulation d'informations de système de fichiers
+            const filesystems = [
+                { filesystem: '/dev/root', type: 'ext4', size: 20971520, used: 8388608, avail: 11534336, usePercent: 41, mountedOn: '/' },
+                { filesystem: '/dev/tmpfs', type: 'tmpfs', size: 2097152, used: 0, avail: 2097152, usePercent: 0, mountedOn: '/tmp' },
+                { filesystem: '/dev/home', type: 'ext4', size: 104857600, used: 52428800, avail: 47185920, usePercent: 53, mountedOn: '/home' }
+            ];
+
+            let header = options['print-type'] ?
+                'Filesystem     Type      Size  Used Avail Use% Mounted on' :
+                'Filesystem      Size  Used Avail Use% Mounted on';
+
+            this.addOutput(`<span class="font-mono">${header}</span>`);
+
+            filesystems.forEach(fs => {
+                let size, used, avail;
+                if (options['human-readable']) {
+                    size = this.formatBytes(fs.size * 1024);
+                    used = this.formatBytes(fs.used * 1024);
+                    avail = this.formatBytes(fs.avail * 1024);
+                } else {
+                    size = fs.size.toString();
+                    used = fs.used.toString();
+                    avail = fs.avail.toString();
+                }
+
+                let line = options['print-type'] ?
+                    `${fs.filesystem.padEnd(14)} ${fs.type.padEnd(9)} ${size.padStart(4)} ${used.padStart(4)} ${avail.padStart(5)} ${fs.usePercent.toString().padStart(3)}% ${fs.mountedOn}` :
+                    `${fs.filesystem.padEnd(15)} ${size.padStart(4)} ${used.padStart(4)} ${avail.padStart(5)} ${fs.usePercent.toString().padStart(3)}% ${fs.mountedOn}`;
+
+                this.addOutput(`<span class="font-mono">${line}</span>`);
+            });
+        },
+
+        tree(args) {
+            // Simple option parsing for tree command
+            const parseTreeOptions = (args) => {
+                const result = { _: [] };
+                let i = 0;
+
+                while (i < args.length) {
+                    const arg = args[i];
+
+                    if (arg === '-a') {
+                        result.all = true;
+                    } else if (arg === '-d') {
+                        result['dirs-only'] = true;
+                    } else if (arg === '-L' && i + 1 < args.length) {
+                        result.level = parseInt(args[i + 1]);
+                        i++; // Skip next argument as it's the level value
+                    } else if (!arg.startsWith('-')) {
+                        result._.push(arg);
                     }
-    
-                    let line = options['print-type'] ?
-                        `${fs.filesystem.padEnd(14)} ${fs.type.padEnd(9)} ${size.padStart(4)} ${used.padStart(4)} ${avail.padStart(5)} ${fs.usePercent.toString().padStart(3)}% ${fs.mountedOn}` :
-                        `${fs.filesystem.padEnd(15)} ${size.padStart(4)} ${used.padStart(4)} ${avail.padStart(5)} ${fs.usePercent.toString().padStart(3)}% ${fs.mountedOn}`;
-                    
-                    this.addOutput(`<span class="font-mono">${line}</span>`);
-                });
-            },
-    
-            tree(args) {
-                // Simple option parsing for tree command
-                const parseTreeOptions = (args) => {
-                    const result = { _: [] };
-                    let i = 0;
-                    
-                    while (i < args.length) {
-                        const arg = args[i];
-                        
-                        if (arg === '-a') {
-                            result.all = true;
-                        } else if (arg === '-d') {
-                            result['dirs-only'] = true;
-                        } else if (arg === '-L' && i + 1 < args.length) {
-                            result.level = parseInt(args[i + 1]);
-                            i++; // Skip next argument as it's the level value
-                        } else if (!arg.startsWith('-')) {
-                            result._.push(arg);
+                    i++;
+                }
+
+                return result;
+            };
+
+            const options = parseTreeOptions(args);
+
+            const maxLevel = options.level || 10;
+            const targetPath = options._[0] || '.';
+            const resolvedPath = this.resolvePath(targetPath);
+            const targetNode = this.getPath(resolvedPath);
+
+            if (!targetNode) {
+                this.addOutput(`tree: ${targetPath}: Aucun fichier ou dossier de ce type`, 'error');
+                return;
+            }
+
+            this.addOutput(`<span class="text-blue-400">${resolvedPath}</span>`);
+
+            const treeLines = [];
+            const buildTree = (node, prefix = '', level = 0) => {
+                if (level >= maxLevel) return;
+
+                if (node.type === 'directory') {
+                    const children = Object.keys(node.children).sort();
+                    const filteredChildren = options['dirs-only'] ?
+                        children.filter(name => node.children[name].type === 'directory') :
+                        children.filter(name => options.all || !name.startsWith('.'));
+
+                    filteredChildren.forEach((childName, index) => {
+                        const child = node.children[childName];
+                        const isLastChild = index === filteredChildren.length - 1;
+                        const currentPrefix = prefix + (isLastChild ? '└── ' : '├── ');
+                        const nextPrefix = prefix + (isLastChild ? '    ' : '│   ');
+
+                        const displayName = child.type === 'directory' ?
+                            `<span class="text-blue-400">${childName}</span>` : childName;
+
+                        treeLines.push(`${currentPrefix}${displayName}`);
+
+                        if (child.type === 'directory') {
+                            buildTree(child, nextPrefix, level + 1);
                         }
-                        i++;
-                    }
-                    
-                    return result;
-                };
-    
-                const options = parseTreeOptions(args);
-    
-                const maxLevel = options.level || 10;
-                const targetPath = options._[0] || '.';
-                const resolvedPath = this.resolvePath(targetPath);
-                const targetNode = this.getPath(resolvedPath);
-    
-                if (!targetNode) {
-                    this.addOutput(`tree: ${targetPath}: Aucun fichier ou dossier de ce type`, 'error');
-                    return;
+                    });
                 }
-    
-                this.addOutput(`<span class="text-blue-400">${resolvedPath}</span>`);
-                
-                const treeLines = [];
-                const buildTree = (node, prefix = '', level = 0) => {
-                    if (level >= maxLevel) return;
-                    
-                    if (node.type === 'directory') {
-                        const children = Object.keys(node.children).sort();
-                        const filteredChildren = options['dirs-only'] ? 
-                            children.filter(name => node.children[name].type === 'directory') :
-                            children.filter(name => options.all || !name.startsWith('.'));
+            };
 
-                        filteredChildren.forEach((childName, index) => {
-                            const child = node.children[childName];
-                            const isLastChild = index === filteredChildren.length - 1;
-                            const currentPrefix = prefix + (isLastChild ? '└── ' : '├── ');
-                            const nextPrefix = prefix + (isLastChild ? '    ' : '│   ');
-    
-                            const displayName = child.type === 'directory' ? 
-                                `<span class="text-blue-400">${childName}</span>` : childName;
-                            
-                            treeLines.push(`${currentPrefix}${displayName}`);
-                            
-                            if (child.type === 'directory') {
-                                buildTree(child, nextPrefix, level + 1);
-                            }
-                        });
-                    }
-                };
-    
-                buildTree(targetNode);
-                treeLines.forEach(line => this.addOutput(`<span class="font-mono">${line}</span>`));
-                
-                const dirCount = treeLines.filter(line => line.includes('text-blue-400')).length;
-                const fileCount = treeLines.length - dirCount;
-                this.addOutput(`\n${dirCount} directories, ${fileCount} files`);
-            },
-    
-            find(args) {
-                const options = this.parseOptions(args, {
-                    'name': 'name',
-                    'type': 'type',
-                    'maxdepth': 'maxdepth'
-                });
-    
-                const startPath = options._.find(arg => !arg.startsWith('-') && !arg.match(/^(f|d)$/)) || '.';
-                const resolvedPath = this.resolvePath(startPath);
-                const startNode = this.getPath(resolvedPath);
-    
-                if (!startNode) {
-                    this.addOutput(`find: '${startPath}': Aucun fichier ou dossier de ce type`, 'error');
-                    return;
-                }
-    
-                const namePattern = options.name;
-                const typeFilter = options.type;
-                const maxDepth = options.maxdepth ? parseInt(options.maxdepth) : 50;
-    
-                const results = [];
-                const search = (node, currentPath, depth = 0) => {
-                    if (depth > maxDepth) return;
-    
-                    // Vérifie si le nœud correspond aux critères
-                    let matches = true;
-                    if (typeFilter) {
-                        matches = matches && ((typeFilter === 'f' && node.type === 'file') || 
-                                            (typeFilter === 'd' && node.type === 'directory'));
-                    }
-                    if (namePattern) {
-                        const fileName = currentPath.split('/').pop();
-                        const regex = new RegExp(namePattern.replace(/\*/g, '.*').replace(/\?/g, '.'), 'i');
-                        matches = matches && regex.test(fileName);
-                    }
-    
-                    if (matches) {
-                        results.push(currentPath);
-                    }
-    
-                    // Recherche récursive dans les répertoires
-                    if (node.type === 'directory') {
-                        Object.keys(node.children).forEach(childName => {
-                            const childPath = currentPath === '/' ? `/${childName}` : `${currentPath}/${childName}`;
-                            search(node.children[childName], childPath, depth + 1);
-                        });
-                    }
-                };
-    
-                search(startNode, resolvedPath);
-                results.forEach(result => this.addOutput(result));
-            },
-    
-            grep(args) {
-                const options = this.parseOptions(args, {
-                    'i': 'ignore-case',
-                    'n': 'line-number',
-                    'v': 'invert-match',
-                    'c': 'count'
-                });
-    
-                if (options._.length < 2) {
-                    this.addOutput('grep: utilisation: grep [options] pattern fichier', 'error');
-                    return;
-                }
-    
-                const pattern = options._[0];
-                const fileName = options._[1];
-                const targetPath = this.resolvePath(fileName);
-                const targetNode = this.getPath(targetPath);
-    
-                   
-                if (!targetNode) {
-                    this.addOutput(`grep: ${fileName}: Aucun fichier ou dossier de ce type`, 'error');
-                    return;
-                }
-    
-                if (targetNode.type !== 'file') {
-                    this.addOutput(`grep: ${fileName}: N'est pas un fichier`, 'error');
-                    return;
-                }
-    
-                const content = targetNode.content;
-                const lines = content.split('\n');
-                const flags = options['ignore-case'] ? 'gi' : 'g';
-                const regex = new RegExp(pattern, flags);
-    
-                let matchingLines = [];
-                lines.forEach((line, index) => {
-                    const matches = regex.test(line);
-                    if (options['invert-match'] ? !matches : matches) {
-                        matchingLines.push({
-                            number: index + 1,
-                            content: line,
-                            highlighted: line.replace(new RegExp(pattern, flags), `<span class="bg-yellow-400 text-black">$&</span>`)
-                        });
-                    }
-                });
-    
-                if (options.count) {
-                    this.addOutput(matchingLines.length.toString());
-                } else {
-                    matchingLines.forEach(line => {
-                        const output = options['line-number'] ? 
-                            `<span class="text-green-400">${line.number}:</span>${line.highlighted}` :
-                            line.highlighted;
-                        this.addOutput(output);
-                    });
-                }
-            },
-    
-            wc(args) {
-                const options = this.parseOptions(args, {
-                    'l': 'lines',
-                    'w': 'words',
-                    'c': 'bytes',
-                    'm': 'chars'
-                });
-    
-                if (options._.length === 0) {
-                    this.addOutput('wc: manque un nom de fichier', 'error');
-                    return;
-                }
-    
-                const fileName = options._[0];
-                const targetPath = this.resolvePath(fileName);
-                const targetNode = this.getPath(targetPath);
-    
-                if (!targetNode) {
-                    this.addOutput(`wc: ${fileName}: Aucun fichier ou dossier de ce type`, 'error');
-                    return;
-                }
-    
-                if (targetNode.type !== 'file') {
-                    this.addOutput(`wc: ${fileName}: Est un dossier`, 'error');
-                    return;
-                }
-    
-                const content = targetNode.content;
-                const lines = content.split('\n').length;
-                const words = content.split(/\s+/).filter(w => w.length > 0).length;
-                const bytes = new Blob([content]).size;
-                const chars = content.length;
-    
-                let output = [];
-                
-                if (!options.lines && !options.words && !options.bytes && !options.chars) {
-                    // Par défaut, affiche tout
-                    output = [lines.toString().padStart(7), words.toString().padStart(7), bytes.toString().padStart(7)];
-                } else {
-                    if (options.lines) output.push(lines.toString().padStart(7));
-                    if (options.words) output.push(words.toString().padStart(7));
-                    if (options.bytes) output.push(bytes.toString().padStart(7));
-                    if (options.chars) output.push(chars.toString().padStart(7));
-                }
-    
-                this.addOutput(`<span class="font-mono">${output.join('')} ${fileName}</span>`);
-            },
-    
-            ps(args) {
-                const options = this.parseOptions(args, {
-                    'a': 'all',
-                    'u': 'user',
-                    'x': 'no-tty',
-                    'f': 'full'
-                });
-    
-                // Simulation de processus
-                const processes = [
-                    { pid: 1, ppid: 0, user: 'root', cpu: 0.0, mem: 0.1, vsz: 168, rss: 8, tty: '?', stat: 'S', start: '00:00', time: '00:00:01', command: '/sbin/init' },
-                    { pid: 2, ppid: 0, user: 'root', cpu: 0.0, mem: 0.0, vsz: 0, rss: 0, tty: '?', stat: 'S', start: '00:00', time: '00:00:00', command: '[kthreadd]' },
-                    { pid: 1234, ppid: 1, user: this.getPseudoFromCookie() || 'user', cpu: 1.2, mem: 2.5, vsz: 4096, rss: 256, tty: 'pts/0', stat: 'S', start: '09:30', time: '00:00:15', command: '/bin/bash' },
-                    { pid: 5678, ppid: 1234, user: this.getPseudoFromCookie() || 'user', cpu: 0.5, mem: 1.0, vsz: 2048, rss: 128, tty: 'pts/0', stat: 'R+', start: '10:45', time: '00:00:02', command: 'webconsole' }
-                ];
-    
-                if (options.full) {
-                    this.addOutput(`<span class="font-mono">UID        PID  PPID  C STIME TTY          TIME CMD</span>`);
-                    processes.forEach(proc => {
-                        this.addOutput(`<span class="font-mono">${proc.user.padEnd(8)} ${proc.pid.toString().padStart(5)} ${proc.ppid.toString().padStart(5)} ${proc.cpu.toFixed(1).padStart(3)} ${proc.start.padStart(5)} ${proc.tty.padEnd(12)} ${proc.time.padStart(8)} ${proc.command}</span>`);
-                    });
-                } else if ( options.user) {
-                    this.addOutput(`<span class="font-mono">USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND</span>`);
-                    processes.forEach(proc => {
+            buildTree(targetNode);
+            treeLines.forEach(line => this.addOutput(`<span class="font-mono">${line}</span>`));
 
-                        this.addOutput(`<span class="font-mono">${proc.user.padEnd(8)} ${proc.pid.toString().padStart(5)} ${proc.cpu.toFixed(1).padStart(4)} ${proc.mem.toFixed(1).padStart(4)} ${proc.vsz.toString().padStart(6)} ${proc.rss.toString().padStart(5)} ${proc.tty.padEnd(8)} ${proc.stat.padEnd(4)} ${proc.start.padStart(5)} ${proc.time.padStart(7)} ${proc.command}</span>`);
+            const dirCount = treeLines.filter(line => line.includes('text-blue-400')).length;
+            const fileCount = treeLines.length - dirCount;
+            this.addOutput(`\n${dirCount} directories, ${fileCount} files`);
+        },
+
+        find(args) {
+            const options = this.parseOptions(args, {
+                'name': 'name',
+                'type': 'type',
+                'maxdepth': 'maxdepth'
+            });
+
+            const startPath = options._.find(arg => !arg.startsWith('-') && !arg.match(/^(f|d)$/)) || '.';
+            const resolvedPath = this.resolvePath(startPath);
+            const startNode = this.getPath(resolvedPath);
+
+            if (!startNode) {
+                this.addOutput(`find: '${startPath}': Aucun fichier ou dossier de ce type`, 'error');
+                return;
+            }
+
+            const namePattern = options.name;
+            const typeFilter = options.type;
+            const maxDepth = options.maxdepth ? parseInt(options.maxdepth) : 50;
+
+            const results = [];
+            const search = (node, currentPath, depth = 0) => {
+                if (depth > maxDepth) return;
+
+                // Vérifie si le nœud correspond aux critères
+                let matches = true;
+                if (typeFilter) {
+                    matches = matches && ((typeFilter === 'f' && node.type === 'file') ||
+                        (typeFilter === 'd' && node.type === 'directory'));
+                }
+                if (namePattern) {
+                    const fileName = currentPath.split('/').pop();
+                    const regex = new RegExp(namePattern.replace(/\*/g, '.*').replace(/\?/g, '.'), 'i');
+                    matches = matches && regex.test(fileName);
+                }
+
+
+                if (matches) {
+                    results.push(currentPath);
+                }
+
+                // Recherche récursive dans les répertoires
+                if (node.type === 'directory') {
+                    Object.keys(node.children).forEach(childName => {
+                        const childPath = currentPath === '/' ? `/${childName}` : `${currentPath}/${childName}`;
+                        search(node.children[childName], childPath, depth + 1);
                     });
-                } else {
-                    this.addOutput(`<span class="font-mono">  PID TTY          TIME CMD</span>`);
-                    processes.filter(proc => proc.tty !== '?').forEach(proc => {
-                        this.addOutput(`<span class="font-mono">${proc.pid.toString().padStart(5)} ${proc.tty.padEnd(12)} ${proc.time.padStart(8)} ${proc.command}</span>`);
+                }
+            };
+
+            search(startNode, resolvedPath);
+            results.forEach(result => this.addOutput(result));
+        },
+
+        grep(args) {
+            const options = this.parseOptions(args, {
+                'i': 'ignore-case',
+                'n': 'line-number',
+                'v': 'invert-match',
+                'c': 'count'
+            });
+
+            if (options._.length < 2) {
+                this.addOutput('grep: utilisation: grep [options] pattern fichier', 'error');
+                return;
+            }
+
+            const pattern = options._[0];
+            const fileName = options._[1];
+            const targetPath = this.resolvePath(fileName);
+            const targetNode = this.getPath(targetPath);
+
+
+            if (!targetNode) {
+                this.addOutput(`grep: ${fileName}: Aucun fichier ou dossier de ce type`, 'error');
+                return;
+            }
+
+            if (targetNode.type !== 'file') {
+                this.addOutput(`grep: ${fileName}: N'est pas un fichier`, 'error');
+                return;
+            }
+
+            const content = targetNode.content;
+            const lines = content.split('\n');
+            const flags = options['ignore-case'] ? 'gi' : 'g';
+            const regex = new RegExp(pattern, flags);
+
+            let matchingLines = [];
+            lines.forEach((line, index) => {
+                const matches = regex.test(line);
+                if (options['invert-match'] ? !matches : matches) {
+                    matchingLines.push({
+                        number: index + 1,
+                        content: line,
+                        highlighted: line.replace(new RegExp(pattern, flags), `<span class="bg-yellow-400 text-black">$&</span>`)
                     });
                 }
-            },
-    
-            top(args) {
-                this.addOutput(`<span class="text-green-400">top - ${new Date().toLocaleTimeString()} up 1 day, 2:30, 1 user, load average: 0.15, 0.10, 0.05</span>`);
-                this.addOutput(`Tasks: 4 total, 1 running, 3 sleeping, 0 stopped, 0 zombie`);
-                this.addOutput(`%Cpu(s): 2.5 us, 1.2 sy, 0.0 ni, 96.0 id, 0.3 wa, 0.0 hi, 0.0 si, 0.0 st`);
-                this.addOutput(`MiB Mem: ${(navigator.deviceMemory || 8) * 1024} total, ${Math.floor((navigator.deviceMemory || 8) * 1024 * 0.3)} free, ${Math.floor((navigator.deviceMemory || 8) * 1024 * 0.7)} used, ${Math.floor((navigator.deviceMemory || 8) * 1024 * 0.2)} buff/cache`);
-                this.addOutput(`MiB Swap: 0 total, 0 free, 0 used. ${Math.floor((navigator.deviceMemory || 8) * 1024 * 0.8)} avail Mem\n`);
-                
-                this.addOutput(`<span class="font-mono">  PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND</span>`);
-                this.addOutput(`<span class="font-mono"> 1234 ${(this.getPseudoFromCookie() || 'user').padEnd(8)} 20   0    4096    256      0 S   1.2   2.5   0:00.15 bash</span>`);
-                this.addOutput(`<span class="font-mono"> 5678 ${(this.getPseudoFromCookie() || 'user').padEnd(8)} 20   0    2048    128      0 R   0.5   1.0   0:00.02 webconsole</span>`);
-                this.addOutput(`<span class="font-mono">    1 root      20   0     168      8      0 S   0.0   0.1   0:00.01 init</span>`);
-                this.addOutput(`<span class="font-mono">    2 root      20   0       0      0      0 S   0.0   0.0   0:00.00 kthreadd</span>`);
-                
-                this.addOutput(`\n<span class="text-yellow-400">Note: Appuyez sur 'q' pour quitter top (simulation)</span>`);
-            },
-    
-            date(args) {
-                const options = this.parseOptions(args, {
-                    'u': 'utc',
-                    'R': 'rfc-2822',
-                    'I': 'iso-8601'
-                });
-    
-                const now = new Date();
-                
-                if (options.utc) {
-                    this.addOutput(now.toUTCString());
-                } else if (options['rfc-2822']) {
-                    this.addOutput(now.toUTCString());
-                } else if (options['iso-8601']) {
-                    this.addOutput(now.toISOString());
-                } else if (options._.length > 0 && options._[0].startsWith('+')) {
-                    // Format personnalisé (simplifié)
-                    const format = options._[0].substring(1);
-                    let result = format
-                        .replace(/%Y/g, now.getFullYear())
-                        .replace(/%m/g, String(now.getMonth() + 1).padStart(2, '0'))
-                        .replace(/%d/g, String(now.getDate()).padStart(2, '0'))
-                        .replace(/%H/g, String(now.getHours()).padStart(2, '0'))
-                        .replace(/%M/g, String(now.getMinutes()).padStart(2, '0'))
-                        .replace(/%S/g, String(now.getSeconds()).padStart(2, '0'));
-                    this.addOutput(result);
-                } else {
-                    this.addOutput(now.toString());
-                }
-            },
-    
-            sudo(args) {
-                if (args.length === 0) {
-                    this.addOutput('sudo: une commande doit être spécifiée', 'error');
-                    return;
-                }
-    
-                const command = args[0];
-                const commandArgs = args.slice(1);
-    
-                this.addOutput(`<span class="text-yellow-400">[sudo]</span> Exécution de la commande avec privilèges administrateur...`);
-                
-                // Vérifie si la commande existe
-                if (this.commands[command]) {
-                    try {
-                        this.commands[command].call(this, commandArgs);
-                    } catch (error) {
-                        this.addOutput(`sudo: erreur lors de l'exécution de ${command}: ${error.message}`, 'error');
-                    }
-                } else {
-                    this.addOutput(`sudo: ${command}: commande introuvable`, 'error');
-                }
-            },
-    
-            man: function(args) {
-                const command = args && args[0] ? args[0].toLowerCase() : '';
-                
-                const manPages = {
-                    'ls': {
-                        name: 'ls',
-                        synopsis: 'ls [OPTION]... [FILE]...',
-                        description: 'Liste le contenu des répertoires',
-                        options: [
-                            '-l : format de liste détaillée',
-                            '-a : affiche tous les fichiers (y compris cachés)',
-                            '-h : tailles lisibles par l\'homme'
-                        ]
-                    },
-                    'cd': {
-                        name: 'cd',
-                        synopsis: 'cd [DIRECTORY]',
-                        description: 'Change le répertoire de travail courant',
-                        options: [
-                            'cd .. : remonte d\'un niveau',
-                            'cd ~ : va au répertoire home',
-                            'cd - : retourne au répertoire précédent'
-                        ]
-                    },
-                    'pwd': {
-                        name: 'pwd',
-                        synopsis: 'pwd',
-                        description: 'Affiche le chemin du répertoire courant',
-                        options: []
-                    },
-                    'mkdir': {
-                        name: 'mkdir',
-                        synopsis: 'mkdir [OPTION] DIRECTORY...',
-                        description: 'Crée des répertoires',
-                        options: [
-                            '-p : crée les répertoires parents si nécessaire'
-                        ]
-                    },
-                    'touch': {
-                        name: 'touch',
-                        synopsis: 'touch FILE...',
-                        description: 'Crée des fichiers vides ou met à jour leur timestamp',
-                        options: []
-                    },
-                    'rm': {
-                        name: 'rm',
-                        synopsis: 'rm [OPTION] FILE...',
-                        description: 'Supprime des fichiers et répertoires',
-                        options: [
-                            '-r : suppression récursive',
-                            '-f : force la suppression'
-                        ]
-                    },
-                    'cp': {
-                        name: 'cp',
-                        synopsis: 'cp [OPTION] SOURCE DEST',
-                        description: 'Copie des fichiers ou répertoires',
-                        options: [
-                            '-r : copie récursive'
-                        ]
-                    },
-                    'mv': {
-                        name: 'mv',
-                        synopsis: 'mv SOURCE DEST',
-                        description: 'Déplace/renomme des fichiers ou répertoires',
-                        options: []
-                    },
-                    'cat': {
-                        name: 'cat',
-                        synopsis: 'cat [FILE]...',
-                        description: 'Affiche le contenu d\'un fichier',
-                        options: []
-                    },
-                    'echo': {
-                        name: 'echo',
-                        synopsis: 'echo [STRING]...',
-                        description: 'Affiche du texte',
-                        options: []
-                    },
-                    'clear': {
-                        name: 'clear',
-                        synopsis: 'clear',
-                        description: 'Efface l\'écran du terminal',
-                        options: []
-                    },
-                    'help': {
-                        name: 'help',
-                        synopsis: 'help',
-                        description: 'Affiche la liste des commandes disponibles',
-                        options: []
-                    },
-                    'history': {
-                        name: 'history',
-                        synopsis: 'history',
-                        description: 'Affiche l\'historique des commandes',
-                        options: []
-                    },
-                    'man': {
-                        name: 'man',
-                        synopsis: 'man [COMMAND]',
-                        description: 'Affiche le manuel d\'une commande',
-                        options: [
-                            'man : affiche la liste des manuels disponibles',
-                            'man [commande] : affiche le manuel de la commande'
-                        ]
-                    }
-                };
-            
-                if (!command) {
-                    // Affiche la liste des manuels disponibles
-                    this.addOutput(`<div class="text-blue-300 font-bold mb-2">MANUELS DISPONIBLES</div>`);
-                    this.addOutput(`<div class="text-gray-300 mb-2">Utilisez 'man [commande]' pour afficher le manuel d'une commande spécifique.</div>`);
-                    this.addOutput(`<div class="text-yellow-300 mb-2">Commandes disponibles :</div>`);
-                    
-                    const commands = Object.keys(manPages).sort();
-                    const columns = Math.ceil(commands.length / 4);
-                    let output = '<div class="grid grid-cols-4 gap-4 text-sm">';
-                    
-                    for (let i = 0; i < commands.length; i++) {
-                        output += `<div class="text-green-400">${commands[i]}</div>`;
-                    }
-                    output += '</div>';
-                    
+            });
+
+            if (options.count) {
+                this.addOutput(matchingLines.length.toString());
+            } else {
+                matchingLines.forEach(line => {
+                    const output = options['line-number'] ?
+                        `<span class="text-green-400">${line.number}:</span>${line.highlighted}` :
+                        line.highlighted;
                     this.addOutput(output);
-                    return;
+                });
+            }
+        },
+
+        wc(args) {
+            const options = this.parseOptions(args, {
+                'l': 'lines',
+                'w': 'words',
+                'c': 'bytes',
+                'm': 'chars'
+            });
+
+            if (options._.length === 0) {
+                this.addOutput('wc: manque un nom de fichier', 'error');
+                return;
+            }
+
+            const fileName = options._[0];
+            const targetPath = this.resolvePath(fileName);
+            const targetNode = this.getPath(targetPath);
+
+            if (!targetNode) {
+                this.addOutput(`wc: ${fileName}: Aucun fichier ou dossier de ce type`, 'error');
+                return;
+            }
+
+            if (targetNode.type !== 'file') {
+                this.addOutput(`wc: ${fileName}: Est un dossier`, 'error');
+                return;
+            }
+
+            const content = targetNode.content;
+            const lines = content.split('\n').length;
+            const words = content.split(/\s+/).filter(w => w.length > 0).length;
+            const bytes = new Blob([content]).size;
+            const chars = content.length;
+
+            let output = [];
+
+            if (!options.lines && !options.words && !options.bytes && !options.chars) {
+                // Par défaut, affiche tout
+                output = [lines.toString().padStart(7), words.toString().padStart(7), bytes.toString().padStart(7)];
+            } else {
+                if (options.lines) output.push(lines.toString().padStart(7));
+                if (options.words) output.push(words.toString().padStart(7));
+                if (options.bytes) output.push(bytes.toString().padStart(7));
+                if (options.chars) output.push(chars.toString().padStart(7));
+            }
+
+            this.addOutput(`<span class="font-mono">${output.join('')} ${fileName}</span>`);
+        },
+
+        ps(args) {
+            const options = this.parseOptions(args, {
+                'a': 'all',
+                'u': 'user',
+                'x': 'no-tty',
+                'f': 'full'
+            });
+
+            // Simulation de processus
+            const processes = [
+                { pid: 1, ppid: 0, user: 'root', cpu: 0.0, mem: 0.1, vsz: 168, rss: 8, tty: '?', stat: 'S', start: '00:00', time: '00:00:01', command: '/sbin/init' },
+                { pid: 2, ppid: 0, user: 'root', cpu: 0.0, mem: 0.0, vsz: 0, rss: 0, tty: '?', stat: 'S', start: '00:00', time: '00:00:00', command: '[kthreadd]' },
+                { pid: 1234, ppid: 1, user: this.getPseudoFromCookie() || 'user', cpu: 1.2, mem: 2.5, vsz: 4096, rss: 256, tty: 'pts/0', stat: 'S', start: '09:30', time: '00:00:15', command: '/bin/bash' },
+                { pid: 5678, ppid: 1234, user: this.getPseudoFromCookie() || 'user', cpu: 0.5, mem: 1.0, vsz: 2048, rss: 128, tty: 'pts/0', stat: 'R+', start: '10:45', time: '00:00:02', command: 'webconsole' }
+            ];
+
+            if (options.full) {
+                this.addOutput(`<span class="font-mono">UID        PID  PPID  C STIME TTY          TIME CMD</span>`);
+                processes.forEach(proc => {
+                    this.addOutput(`<span class="font-mono">${proc.user.padEnd(8)} ${proc.pid.toString().padStart(5)} ${proc.ppid.toString().padStart(5)} ${proc.cpu.toFixed(1).padStart(3)} ${proc.start.padStart(5)} ${proc.tty.padEnd(12)} ${proc.time.padStart(8)} ${proc.command}</span>`);
+                });
+            } else if (options.user) {
+                this.addOutput(`<span class="font-mono">USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND</span>`);
+                processes.forEach(proc => {
+
+                    this.addOutput(`<span class="font-mono">${proc.user.padEnd(8)} ${proc.pid.toString().padStart(5)} ${proc.cpu.toFixed(1).padStart(4)} ${proc.mem.toFixed(1).padStart(4)} ${proc.vsz.toString().padStart(6)} ${proc.rss.toString().padStart(5)} ${proc.tty.padEnd(8)} ${proc.stat.padEnd(4)} ${proc.start.padStart(5)} ${proc.time.padStart(7)} ${proc.command}</span>`);
+                });
+            } else {
+                this.addOutput(`<span class="font-mono">  PID TTY          TIME CMD</span>`);
+                processes.filter(proc => proc.tty !== '?').forEach(proc => {
+                    this.addOutput(`<span class="font-mono">${proc.pid.toString().padStart(5)} ${proc.tty.padEnd(12)} ${proc.time.padStart(8)} ${proc.command}</span>`);
+                });
+            }
+        },
+
+        top(args) {
+            this.addOutput(`<span class="text-green-400">top - ${new Date().toLocaleTimeString()} up 1 day, 2:30, 1 user, load average: 0.15, 0.10, 0.05</span>`);
+            this.addOutput(`Tasks: 4 total, 1 running, 3 sleeping, 0 stopped, 0 zombie`);
+            this.addOutput(`%Cpu(s): 2.5 us, 1.2 sy, 0.0 ni, 96.0 id, 0.3 wa, 0.0 hi, 0.0 si, 0.0 st`);
+            this.addOutput(`MiB Mem: ${(navigator.deviceMemory || 8) * 1024} total, ${Math.floor((navigator.deviceMemory || 8) * 1024 * 0.3)} free, ${Math.floor((navigator.deviceMemory || 8) * 1024 * 0.7)} used, ${Math.floor((navigator.deviceMemory || 8) * 1024 * 0.2)} buff/cache`);
+            this.addOutput(`MiB Swap: 0 total, 0 free, 0 used. ${Math.floor((navigator.deviceMemory || 8) * 1024 * 0.8)} avail Mem\n`);
+
+            this.addOutput(`<span class="font-mono">  PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND</span>`);
+            this.addOutput(`<span class="font-mono"> 1234 ${(this.getPseudoFromCookie() || 'user').padEnd(8)} 20   0    4096    256      0 S   1.2   2.5   0:00.15 bash</span>`);
+            this.addOutput(`<span class="font-mono"> 5678 ${(this.getPseudoFromCookie() || 'user').padEnd(8)} 20   0    2048    128      0 R   0.5   1.0   0:00.02 webconsole</span>`);
+            this.addOutput(`<span class="font-mono">    1 root      20   0     168      8      0 S   0.0   0.1   0:00.01 init</span>`);
+            this.addOutput(`<span class="font-mono">    2 root      20   0       0      0      0 S   0.0   0.0   0:00.00 kthreadd</span>`);
+
+            this.addOutput(`\n<span class="text-yellow-400">Note: Appuyez sur 'q' pour quitter top (simulation)</span>`);
+        },
+
+        date(args) {
+            const options = this.parseOptions(args, {
+                'u': 'utc',
+                'R': 'rfc-2822',
+                'I': 'iso-8601'
+            });
+
+            const now = new Date();
+
+            if (options.utc) {
+                this.addOutput(now.toUTCString());
+            } else if (options['rfc-2822']) {
+                this.addOutput(now.toUTCString());
+            } else if (options['iso-8601']) {
+                this.addOutput(now.toISOString());
+            } else if (options._.length > 0 && options._[0].startsWith('+')) {
+                // Format personnalisé (simplifié)
+                const format = options._[0].substring(1);
+                let result = format
+                    .replace(/%Y/g, now.getFullYear())
+                    .replace(/%m/g, String(now.getMonth() + 1).padStart(2, '0'))
+                    .replace(/%d/g, String(now.getDate()).padStart(2, '0'))
+                    .replace(/%H/g, String(now.getHours()).padStart(2, '0'))
+                    .replace(/%M/g, String(now.getMinutes()).padStart(2, '0'))
+                    .replace(/%S/g, String(now.getSeconds()).padStart(2, '0'));
+                this.addOutput(result);
+            } else {
+                this.addOutput(now.toString());
+            }
+        },
+
+        sudo(args) {
+            if (args.length === 0) {
+                this.addOutput('sudo: une commande doit être spécifiée', 'error');
+                return;
+            }
+
+            const command = args[0];
+            const commandArgs = args.slice(1);
+
+            this.addOutput(`<span class="text-yellow-400">[sudo]</span> Exécution de la commande avec privilèges administrateur...`);
+
+            // Vérifie si la commande existe
+            if (this.commands[command]) {
+                try {
+                    this.commands[command].call(this, commandArgs);
+                } catch (error) {
+                    this.addOutput(`sudo: erreur lors de l'exécution de ${command}: ${error.message}`, 'error');
                 }
-            
-                const manPage = manPages[command];
-                if (!manPage) {
-                    this.addOutput(`<div class="text-red-400">man: aucune entrée de manuel pour ${command}</div>`);
-                    return;
+            } else {
+                this.addOutput(`sudo: ${command}: commande introuvable`, 'error');
+            }
+        },
+
+        man: function (args) {
+            const command = args && args[0] ? args[0].toLowerCase() : '';
+
+            const manPages = {
+                'ls': {
+                    name: 'ls',
+                    synopsis: 'ls [OPTION]... [FILE]...',
+                    description: 'Liste le contenu des répertoires',
+                    options: [
+                        '-l : format de liste détaillée',
+                        '-a : affiche tous les fichiers (y compris cachés)',
+                        '-h : tailles lisibles par l\'homme'
+                    ]
+                },
+                'cd': {
+                    name: 'cd',
+                    synopsis: 'cd [DIRECTORY]',
+                    description: 'Change le répertoire de travail courant',
+                    options: [
+                        'cd .. : remonte d\'un niveau',
+                        'cd ~ : va au répertoire home',
+                        'cd - : retourne au répertoire précédent'
+                    ]
+                },
+                'pwd': {
+                    name: 'pwd',
+                    synopsis: 'pwd',
+                    description: 'Affiche le chemin du répertoire courant',
+                    options: []
+                },
+                'mkdir': {
+                    name: 'mkdir',
+                    synopsis: 'mkdir [OPTION] DIRECTORY...',
+                    description: 'Crée des répertoires',
+                    options: [
+                        '-p : crée les répertoires parents si nécessaire'
+                    ]
+                },
+                'touch': {
+                    name: 'touch',
+                    synopsis: 'touch FILE...',
+                    description: 'Crée des fichiers vides ou met à jour leur timestamp',
+                    options: []
+                },
+                'rm': {
+                    name: 'rm',
+                    synopsis: 'rm [OPTION] FILE...',
+                    description: 'Supprime des fichiers et répertoires',
+                    options: [
+                        '-r : suppression récursive',
+                        '-f : force la suppression'
+                    ]
+                },
+                'cp': {
+                    name: 'cp',
+                    synopsis: 'cp [OPTION] SOURCE DEST',
+                    description: 'Copie des fichiers ou répertoires',
+                    options: [
+                        '-r : copie récursive'
+                    ]
+                },
+                'mv': {
+                    name: 'mv',
+                    synopsis: 'mv SOURCE DEST',
+                    description: 'Déplace/renomme des fichiers ou répertoires',
+                    options: []
+                },
+                'cat': {
+                    name: 'cat',
+                    synopsis: 'cat [FILE]...',
+                    description: 'Affiche le contenu d\'un fichier',
+                    options: []
+                },
+                'echo': {
+                    name: 'echo',
+                    synopsis: 'echo [STRING]...',
+                    description: 'Affiche du texte',
+                    options: []
+                },
+                'clear': {
+                    name: 'clear',
+                    synopsis: 'clear',
+                    description: 'Efface l\'écran du terminal',
+                    options: []
+                },
+                'help': {
+                    name: 'help',
+                    synopsis: 'help',
+                    description: 'Affiche la liste des commandes disponibles',
+                    options: []
+                },
+                'history': {
+                    name: 'history',
+                    synopsis: 'history',
+                    description: 'Affiche l\'historique des commandes',
+                    options: []
+                },
+                'man': {
+                    name: 'man',
+                    synopsis: 'man [COMMAND]',
+                    description: 'Affiche le manuel d\'une commande',
+                    options: [
+                        'man : affiche la liste des manuels disponibles',
+                        'man [commande] : affiche le manuel de la commande'
+                    ]
                 }
-            
-                // Affiche le manuel de la commande
-                let output = `
+            };
+
+            if (!command) {
+                // Affiche la liste des manuels disponibles
+                this.addOutput(`<div class="text-blue-300 font-bold mb-2">MANUELS DISPONIBLES</div>`);
+                this.addOutput(`<div class="text-gray-300 mb-2">Utilisez 'man [commande]' pour afficher le manuel d'une commande spécifique.</div>`);
+                this.addOutput(`<div class="text-yellow-300 mb-2">Commandes disponibles :</div>`);
+
+                const commands = Object.keys(manPages).sort();
+                const columns = Math.ceil(commands.length / 4);
+                let output = '<div class="grid grid-cols-4 gap-4 text-sm">';
+
+                for (let i = 0; i < commands.length; i++) {
+                    output += `<div class="text-green-400">${commands[i]}</div>`;
+                }
+                output += '</div>';
+
+                this.addOutput(output);
+                return;
+            }
+
+            const manPage = manPages[command];
+            if (!manPage) {
+                this.addOutput(`<div class="text-red-400">man: aucune entrée de manuel pour ${command}</div>`);
+                return;
+            }
+
+            // Affiche le manuel de la commande
+            let output = `
                     <div class="man-page">
                         <div class="text-blue-300 font-bold text-lg mb-2">${manPage.name.toUpperCase()}(1)</div>
                         <div class="mb-4">
@@ -1694,33 +1685,33 @@ const app = {
                             <div class="ml-4 text-gray-300">${manPage.description}</div>
                         </div>
                 `;
-            
-                if (manPage.options && manPage.options.length > 0) {
-                    output += `
+
+            if (manPage.options && manPage.options.length > 0) {
+                output += `
                         <div class="mb-4">
                             <div class="text-yellow-300 font-bold mb-1">OPTIONS</div>
                             <div class="ml-4">
                     `;
-                    
-                    manPage.options.forEach(option => {
-                        output += `<div class="text-gray-300 mb-1">${option}</div>`;
-                    });
-                    
-                    output += `
+
+                manPage.options.forEach(option => {
+                    output += `<div class="text-gray-300 mb-1">${option}</div>`;
+                });
+
+                output += `
                             </div>
                         </div>
                     `;
-                }
-            
-                output += `
+            }
+
+            output += `
                         <div class="mt-4 text-xs text-gray-500">
                             WebConsole Manual - Tapez 'man' pour voir tous les manuels disponibles
                         </div>
                     </div>
                 `;
-            
-                this.addOutput(output);
-            },
+
+            this.addOutput(output);
+        },
 
         // Ajouter ces commandes dans l'objet commands:
 
@@ -1828,16 +1819,16 @@ const app = {
             const now = new Date();
             const loadTime = window.performance.timing.navigationStart;
             const uptimeMs = now.getTime() - loadTime;
-            
+
             const days = Math.floor(uptimeMs / (1000 * 60 * 60 * 24));
             const hours = Math.floor((uptimeMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
             const minutes = Math.floor((uptimeMs % (1000 * 60 * 60)) / (1000 * 60));
-            
+
             let uptimeStr = '';
             if (days > 0) uptimeStr += `${days} jour${days > 1 ? 's' : ''}, `;
             if (hours > 0) uptimeStr += `${hours} heure${hours > 1 ? 's' : ''}, `;
             uptimeStr += `${minutes} minute${minutes > 1 ? 's' : ''}`;
-            
+
             const loadAvg = (Math.random() * 2).toFixed(2);
             this.addOutput(`${now.toLocaleTimeString()} up ${uptimeStr}, 1 utilisateur, charge moyenne: ${loadAvg}`);
         },
@@ -1875,7 +1866,7 @@ const app = {
 
             const processName = args[0];
             const knownProcesses = ['bash', 'webconsole', 'init', 'kthreadd'];
-            
+
             if (knownProcesses.includes(processName)) {
                 if (processName === 'init') {
                     this.addOutput('killall: init: Operation non permise', 'error');
@@ -1895,14 +1886,14 @@ const app = {
 
             const address = args[0];
             this.addOutput(`PING ${address} (simulation):`);
-            
+
             // Simuler quelques pings
             let pingCount = 0;
             const pingInterval = setInterval(() => {
                 pingCount++;
                 const time = (Math.random() * 50 + 10).toFixed(1);
                 this.addOutput(`64 bytes from ${address}: icmp_seq=${pingCount} time=${time}ms`);
-                
+
                 if (pingCount >= 4) {
                     clearInterval(pingInterval);
                     this.addOutput(`\n--- ${address} statistiques ping ---`);
@@ -1922,7 +1913,7 @@ const app = {
             this.addOutput('Résolution de l\'hôte... fait.');
             this.addOutput('Connexion à l\'hôte... connecté.');
             this.addOutput('Requête HTTP envoyée, en attente de la réponse...');
-            
+
             // Simuler le téléchargement
             setTimeout(() => {
                 const fileName = url.split('/').pop() || 'index.html';
@@ -1969,7 +1960,7 @@ const app = {
             const messageLength = message.length;
             const topBorder = ' ' + '_'.repeat(messageLength + 2);
             const bottomBorder = ' ' + '-'.repeat(messageLength + 2);
-            
+
             this.addOutput(`<pre>
 ${topBorder}
 < ${message} >
@@ -2040,51 +2031,157 @@ ${bottomBorder}
                 "Il est plus facile d'optimiser du code correct que de corriger du code optimisé.",
                 "Un développeur sans café est comme un ordinateur sans électricité."
             ];
-            
+
             const randomFortune = fortunes[Math.floor(Math.random() * fortunes.length)];
             this.addOutput(`<span class="text-yellow-300">${randomFortune}</span>`);
         },
 
         cmatrix() {
             this.addOutput('<span class="text-green-400">Lancement de la simulation Matrix...</span>');
-            this.addOutput('<span class="text-green-300">Appuyez sur Ctrl+C pour arrêter (simulation)</span>');
+            this.addOutput('<span class="text-yellow-300">Appuyez sur "q" pour quitter</span>');
+
+            // Créer un overlay pour le canvas Matrix dans console-output
+            const matrixOverlay = document.createElement('div');
+            matrixOverlay.id = 'matrix-overlay';
+            matrixOverlay.className = 'absolute inset-0 z-50 bg-black';
+            matrixOverlay.innerHTML = `
+            <canvas id="matrix-canvas" class="w-full h-full"></canvas>
+            <div class="absolute bottom-4 left-4 bg-black/50 backdrop-blur-sm rounded-lg p-3 border border-green-500/30">
+            <div class="text-green-400 text-sm font-mono mb-1">🔴 MATRIX SIMULATION</div>
+            <div class="text-green-300 text-xs font-mono opacity-80">Appuyez sur "q" pour quitter</div>
+            </div>
+            <button id="matrix-fullscreen-btn" class="absolute bottom-4 right-4 bg-black/50 backdrop-blur-sm rounded-lg p-3 border border-green-500/30 hover:bg-green-500/20 transition-colors duration-200">
+            <div class="text-green-400 text-sm font-mono">⛶ Plein écran</div>
+            </button>
+            `;
             
-            let matrixInterval;
-            let lineCount = 0;
-            
-            const matrixChars = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-            
-            const generateMatrixLine = () => {
-                let line = '<span class="text-green-400">';
-                for (let i = 0; i < 80; i++) {
-                    if (Math.random() > 0.7) {
-                        const char = matrixChars[Math.floor(Math.random() * matrixChars.length)];
-                        line += char;
-                    } else {
-                        line += ' ';
+            // Assurer que console-output a une position relative pour l'overlay
+            this.outputElement.style.position = 'relative';
+            this.outputElement.appendChild(matrixOverlay);
+
+            // Effet Matrix intégré
+            const canvas = document.getElementById('matrix-canvas');
+            const ctx = canvas.getContext('2d');
+
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            // Caractères Matrix (katakana, hiragana, chiffres)
+            const matrixChars = "田由甲申甴电甶男甸甹町画甼甽甾甿畀畁畂畃畄畅畆畇畈畉畊畋界畍畎畏畐畑アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+            const fontSize = 16;
+            const columns = canvas.width / fontSize;
+            const drops = [];
+
+            const speed = 0.5; // Vitesse de chute des gouttes
+
+            // Initialiser les gouttes
+            for (let x = 0; x < columns; x++) {
+                drops[x] = 1;
+            }
+
+            let animationId;
+            let frameCount = 0;
+            const draw = () => {
+                frameCount++;
+
+                // Fond noir semi-transparent pour l'effet de traînée
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Utiliser speed pour contrôler la fréquence de mise à jour
+                if (frameCount % (speed + 1) === 0) {
+                    ctx.fillStyle = '#0F0'; // Vert Matrix
+                    ctx.font = fontSize + 'px monospace';
+
+                    for (let i = 0; i < drops.length; i++) {
+                        // Caractère aléatoire
+                        const text = matrixChars[Math.floor(Math.random() * matrixChars.length)];
+                        
+                        // Position X et Y
+                        const x = i * fontSize;
+                        const y = drops[i] * fontSize;
+
+                        ctx.fillText(text, x, y);
+
+                        // Redémarrer la goutte aléatoirement ou quand elle sort de l'écran
+                        if (y > canvas.height && Math.random() > 0.975) {
+                            drops[i] = 0;
+                        }
+                        drops[i] += 1;
                     }
                 }
-                line += '</span>';
-                return line;
+
+                // Continue the animation loop
+                animationId = requestAnimationFrame(draw);
+            }
+
+        animationId = requestAnimationFrame(draw);
+
+    // Démarrer l'animation
+    draw();
+
+    // Bouton plein écran
+    document.getElementById('matrix-fullscreen-btn').addEventListener('click', () => {
+        if (!document.fullscreenElement) {
+            matrixOverlay.requestFullscreen().then(() => {
+                canvas.width = screen.width;
+                canvas.height = screen.height;
+                document.getElementById('matrix-fullscreen-btn').innerHTML = '<div class="text-green-400 text-sm font-mono flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>Quitter</div>';
+            }).catch(err => {
+                console.error('Erreur plein écran:', err);
+            });
+        } else {
+            document.exitFullscreen().then(() => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                document.getElementById('matrix-fullscreen-btn').innerHTML = '<div class="text-green-400 text-sm font-mono"> Plein écran</div>';
+            });
+        }
+    });
+
+    // Gestionnaire pour les changements de plein écran
+    const handleFullscreenChange = () => {
+        if (document.fullscreenElement) {
+            canvas.width = screen.width;
+            canvas.height = screen.height;
+        } else {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+
+    // Gestionnaire d'événements pour quitter avec "q"
+    const handleKeyPress = (e) => {
+            if (e.key.toLowerCase() === 'q') {
+            // Arrêter l'animation
+            if (animationId) {
+            cancelAnimationFrame(animationId);
+            }
+            
+            // Nettoyer l'overlay (supprimer du DOM)
+            if (matrixOverlay && matrixOverlay.parentNode) {
+            matrixOverlay.parentNode.removeChild(matrixOverlay);
+            }
+            
+            // Retirer l'écouteur d'événements
+            document.removeEventListener('keypress', handleKeyPress);
+            window.removeEventListener('resize', handleResize);
+            
+            // Nettoyer la console et afficher le message de sortie
+            this.addOutput('<span class="text-red-400">Matrix simulation terminée</span>');
+            this.commandInputElement.focus();
+            }
             };
-            
-            matrixInterval = setInterval(() => {
-                this.addOutput(generateMatrixLine());
-                lineCount++;
-                
-                if (lineCount > 20) {
-                    clearInterval(matrixInterval);
-                    this.addOutput('<span class="text-red-400">Matrix simulation terminée</span>');
-                }
-            }, 100);
-            
-            // Arrêter après 3 secondes max
-            setTimeout(() => {
-                if (matrixInterval) {
-                    clearInterval(matrixInterval);
-                    this.addOutput('<span class="text-red-400">Matrix simulation interrompue</span>');
-                }
-            }, 3000);
+
+            // Gestionnaire pour redimensionner le canvas
+            const handleResize = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            };
+
+            document.addEventListener('keypress', handleKeyPress);
+            window.addEventListener('resize', handleResize);
         },
 
     },
@@ -2134,9 +2231,9 @@ ${bottomBorder}
         } else { // Completing a file/directory path
             const dirNode = this.getPath(this.currentDir);
             if (dirNode && dirNode.type === 'directory') {
-                    suggestions = Object.keys(dirNode.children).filter(childName => childName.startsWith(currentWord));
-                    // Add trailing slash for directories
-                    suggestions = suggestions.map(s => dirNode.children[s].type === 'directory' ? s + '/' : s);
+                suggestions = Object.keys(dirNode.children).filter(childName => childName.startsWith(currentWord));
+                // Add trailing slash for directories
+                suggestions = suggestions.map(s => dirNode.children[s].type === 'directory' ? s + '/' : s);
             }
         }
 
@@ -2207,47 +2304,57 @@ ${bottomBorder}
             this.closeCodeImportModal();
             return;
         }
-    
+
         // Importer les commandes
         const success = this.importCommands(codeToImport);
         if (success) {
             this.addOutput('✅ Commandes importées avec succès!', 'system');
             this.addOutput('Tapez "listCommands" pour voir les nouvelles commandes disponibles.', 'system');
         }
-        
+
         this.closeCodeImportModal();
     },
-    
+
     openAboutModal() {
         this.aboutModal.classList.remove('hidden');
         this.closeAllMenus();
-        
+
         // Load version info from version.json
-        fetch("/contents/js/version.json")
-            .then(response => response.json())
+        fetch("./version.json")
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
             .then(versionData => {
                 // Update modal content with version info
                 const versionElement = document.getElementById('app-version');
                 const dateElement = document.getElementById('build-date');
-                
+                if (!versionData || typeof versionData !== 'object') {
+                    throw new Error('Invalid version data format');
+                }
                 if (versionElement) {
                     versionElement.textContent = versionData.version || 'N/A';
                 }
                 if (dateElement) {
                     dateElement.textContent = versionData.buildDate || 'N/A';
                 }
+
+                // Display changelog
+                this.showChangelog(versionData);
             })
             .catch(error => {
                 console.error('Error loading version info:', error);
                 // Fallback values if version.json can't be loaded
-                const versionElement = document.getElementById('about-version');
-                const dateElement = document.getElementById('about-date');
-                
+                const versionElement = document.getElementById('app-version');
+                const dateElement = document.getElementById('build-date');
+
                 if (versionElement) {
-                    versionElement.textContent = 'Unknown';
+                    versionElement.textContent = 'Version indisponible';
                 }
                 if (dateElement) {
-                    dateElement.textContent = 'Unknown';
+                    dateElement.textContent = 'Date indisponible';
                 }
             });
     },
@@ -2466,7 +2573,7 @@ ${bottomBorder}
             value = localStorage.getItem('console_bg_last_image') || '';
         }
         this.applyConsoleBackground(type, value);
-    
+
         // Mets à jour les inputs du modal si besoin
         const typeSelect = document.getElementById('console-bg-type');
         const colorInput = document.getElementById('console-bg-color');
@@ -2479,85 +2586,27 @@ ${bottomBorder}
         if (colorInput) colorInput.style.display = (type === 'color' ? 'inline-block' : 'none');
         if (urlInput) urlInput.style.display = (type === 'image' ? 'inline-block' : 'none');
     },
-    loadVersionInfo: function() {
-        // Charger les informations de version depuis version.json
-        fetch('/version.json')
-            .then(response => response.json())
-            .then(data => {
-                // Mettre à jour les éléments du modal
-                document.getElementById('app-version').textContent = data.version;
-                document.getElementById('build-date').textContent = data.buildDate;
-                
-                // Stocker les données pour les patch notes
-                this.versionData = data;
-            })
-            .catch(error => {
-                console.error('Erreur lors du chargement des informations de version:', error);
-                // Valeurs par défaut
-                document.getElementById('app-version').textContent = '1.3.0';
-                document.getElementById('build-date').textContent = '2025-06-04';
-            });
-    },
+    loadVersionInfo: async function () {
+        try {
+            const response = await fetch('./version.json');
+            const versionData = await response.json();
 
-    showChangelog: function() {
-        const changelogContent = document.getElementById('changelog-content');
-        const showChangelogBtn = document.getElementById('show-changelog');
-        
-        if (changelogContent.classList.contains('hidden')) {
-            // Générer le contenu du changelog
-            let changelogHtml = '';
-            
-            if (this.versionData && this.versionData.history) {
-                this.versionData.history.forEach(version => {
-                    const typeColor = version.type === 'major' ? 'text-red-400' : 
-                                    version.type === 'minor' ? 'text-yellow-400' : 'text-green-400';
-                    const typeLabel = version.type === 'major' ? 'MAJEURE' : 
-                                    version.type === 'minor' ? 'MINEURE' : 'CORRECTION';
-                    
-                    changelogHtml += `
-                        <div class="mb-3 pb-2 border-b border-gray-700 last:border-b-0">
-                            <div class="flex items-center justify-between mb-1">
-                                <span class="font-bold text-blue-300">v${version.version}</span>
-                                <span class="${typeColor} text-xs font-semibold">${typeLabel}</span>
-                            </div>
-                            <div class="text-xs text-gray-400 mb-1">${version.date}</div>
-                            <div class="text-sm text-gray-200">${version.description}</div>
-                        </div>
-                    `;
-                });
+            // Mettre à jour les éléments de version dans la modal about
+            const versionElement = document.getElementById('app-version');
+            const buildDateElement = document.getElementById('build-date');
+
+            if (versionElement) {
+                versionElement.textContent = versionData.version;
             }
-            
-            // Ajouter le changelog classique s'il existe
-            if (this.versionData && this.versionData.changelog) {
-                changelogHtml += '<div class="mt-4 pt-2 border-t border-gray-600"><div class="text-xs font-bold text-gray-400 mb-2">HISTORIQUE DÉTAILLÉ:</div>';
-                
-                Object.entries(this.versionData.changelog).forEach(([version, changes]) => {
-                    changelogHtml += `
-                        <div class="mb-2">
-                            <div class="font-bold text-blue-300 text-sm">v${version}</div>
-                            <ul class="text-xs text-gray-300 ml-2">
-                    `;
-                    changes.forEach(change => {
-                        changelogHtml += `<li class="mb-1">• ${change}</li>`;
-                    });
-                    changelogHtml += '</ul></div>';
-                });
-                changelogHtml += '</div>';
+
+            if (buildDateElement) {
+                buildDateElement.textContent = versionData.buildDate;
             }
-            
-            if (!changelogHtml) {
-                changelogHtml = '<div class="text-gray-400 text-sm">Aucun historique de version disponible.</div>';
-            }
-            
-            changelogContent.innerHTML = changelogHtml;
-            changelogContent.classList.remove('hidden');
-            showChangelogBtn.textContent = 'Masquer les nouveautés';
-        } else {
-            changelogContent.classList.add('hidden');
-            showChangelogBtn.textContent = 'Voir les nouveautés';
+
+        } catch (error) {
+            console.error('Erreur lors du chargement des informations de version:', error);
         }
     },
-    
     // --- Command Import System ---
     importCommands(jsCode) {
         try {
@@ -2582,7 +2631,7 @@ ${bottomBorder}
                     enDev: this.enDev.bind(this)
                 }
             };
-    
+
             // Fonction pour enregistrer de nouvelles commandes
             const registerCommand = (name, func) => {
                 if (typeof name !== 'string' || typeof func !== 'function') {
@@ -2594,18 +2643,18 @@ ${bottomBorder}
                 this.commands[name] = func.bind(this);
                 return true;
             };
-    
+
             // Créer une fonction d'évaluation sécurisée
             const evalInContext = new Function(
-                'context', 
+                'context',
                 'registerCommand',
                 'console',
                 jsCode
             );
-    
+
             // Exécuter le code avec le contexte
             evalInContext(commandContext, registerCommand, console);
-            
+
             return true;
         } catch (error) {
             this.addOutput(`Erreur lors de l'importation des commandes: ${error.message}`, 'error');
@@ -2618,6 +2667,7 @@ ${bottomBorder}
 
 
 // --- Initialize the App ---
-document.addEventListener('DOMContentLoaded', () => {
+
+document.addEventListener('DOMContentLoaded', function () {
     app.init();
 });
