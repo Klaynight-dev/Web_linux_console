@@ -54,7 +54,14 @@ const app = {
                         'about': { type: 'file', content: 'Affiche des informations sur cette console.' },
                         'cconnect': { type: 'file', content: 'Change le pseudo utilisateur.' },
                         'cdisconnect': { type: 'file', content: 'Déconnecte l\'utilisateur et réinitialise le pseudo.' },
-                        'history': { type: 'file', content: 'Affiche l\'historique des commandes.' }
+                        'history': { type: 'file', content: 'Affiche l\'historique des commandes.' },
+                        'edit': { type: 'file', content: 'Édite un fichier avec un éditeur riche.' },
+                        'github': { type: 'file', content: 'Lien vers le dépôt GitHub du projet.' },
+                        'clearHistory': { type: 'file', content: 'Efface l\'historique des commandes.' },
+                        'delAllCache': { type: 'file', content: 'Efface tous les cookies, le cache et l\'historique.' },
+                        'save': { type: 'file', content: 'Enregistre le système de fichiers.' },
+                        'load': { type: 'file', content: 'Charge le système de fichiers.' },
+                        'commandeDev': { type: 'file', content: 'Commande en développement.' }
                     }
                 },
                 'home': {
@@ -114,9 +121,22 @@ const app = {
     history: [],
     historyIndex: -1,
     isLoadingLLM: false,
-    currentOpenMenu: null, // 'file', 'tools', 'help', ou null
+    // 'file', 'tools', 'help', ou null
     awaitingPseudo: false,
-    defaultMessage: "Console initialisée. Tapez \"help\" pour une liste de commandes.",
+    defaultMessage: `
+<pre class="font-mono leading-none text-xs text-purple-400">
+╔═══════════════════════════════════════╗
+║      █████╗ ██╗     ██╗  ██╗          ║
+║     ██╔══██╗██║     ██║ ██╔╝          ║
+║     ██║  ╚═╝██║     █████╔╝           ║
+║     ██║  ██╗██║     ██╔═██╗           ║
+║     ╚█████╔╝███████╗██║  ██╗          ║
+║      ╚════╝ ╚══════╝╚═╝  ╚═╝          ║
+║            CONSOLE                    ║
+╚═══════════════════════════════════════╝
+</pre>
+<span class="text-orange-400">⚡ CLK Terminal Ready</span>
+<span class="text-gray-300">Tapez "help" pour démarrer votre aventure.</span>`,
 
     // --- Initialization ---
     init() {
@@ -486,6 +506,7 @@ const app = {
             this.addOutput('<span class="ml-4"><span class="text-green-400">touch</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;fichier&gt;</span> <span class="text-gray-400">- Crée un fichier vide.</span></span>');
             this.addOutput('<span class="ml-4"><span class="text-green-400">rm</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;fichier/dossier&gt;</span> <span class="text-gray-400">- Supprime un fichier ou dossier.</span></span>');
             this.addOutput('<span class="ml-4"><span class="text-green-400">edit</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;fichier&gt;</span> <span class="text-gray-400">- Édite un fichier avec un éditeur riche.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">find</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options] &lt;chemin&gt;</span> <span class="text-gray-400">- Recherche des fichiers et dossiers.</span></span>');
 
             this.addOutput('<hr class="my-2 border-gray-700">');
 
@@ -499,6 +520,27 @@ const app = {
             this.addOutput('<span class="ml-4"><span class="text-green-400">cdisconnect</span> <span class="text-gray-400">- Déconnecte l\'utilisateur.</span></span>');
             this.addOutput('<span class="ml-4"><span class="text-green-400">history</span> <span class="text-gray-400">- Affiche l\'historique des commandes.</span></span>');
             this.addOutput('<span class="ml-4"><span class="text-green-400">github</span> <span class="text-gray-400">- Lien vers le dépôt GitHub du projet.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">tree</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options] [chemin]</span> <span class="text-gray-400">- Affiche l\'arborescence des dossiers.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">grep</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options] &lt;motif&gt; &lt;fichier&gt;</span> <span class="text-gray-400">- Recherche un motif dans un fichier.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">wc</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options] &lt;fichier&gt;</span> <span class="text-gray-400">- Compte les lignes, mots et caractères.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">date</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options]</span> <span class="text-gray-400">- Affiche la date et l\'heure.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">sudo</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;commande&gt;</span> <span class="text-gray-400">- Exécute une commande avec privilèges admin.</span></span>');
+
+            this.addOutput('<hr class="my-2 border-gray-700">');
+
+            // Section: Système & Processus
+            this.addOutput('<span class="underline text-blue-300 font-semibold mt-2">⚙️ Système & Processus</span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">ps</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options]</span> <span class="text-gray-400">- Affiche les processus en cours.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">top</span> <span class="text-gray-400">- Affiche les processus actifs en temps réel.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">free</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options]</span> <span class="text-gray-400">- Affiche l\'utilisation de la mémoire.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">df</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options]</span> <span class="text-gray-400">- Affiche l\'espace disque disponible.</span></span>');
+
+            this.addOutput('<hr class="my-2 border-gray-700">');
+
+            // Section: Gestion Internet
+            this.addOutput('<span class="underline text-blue-300 font-semibold mt-2">🌐 Gestion Internet</span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">lshw</span> <span class="text-gray-400">- Affiche des informations matérielles sur le navigateur.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400">ifconfig</span> <span class="text-gray-400">- Affiche la configuration réseau accessible.</span></span>');
 
             this.addOutput('<hr class="my-2 border-gray-700">');
 
@@ -508,6 +550,8 @@ const app = {
             this.addOutput('<span class="ml-4"><span class="text-green-400">load</span> <span class="text-gray-400">- Charge le système de fichiers.</span></span>');
             this.addOutput('<span class="ml-4"><span class="text-green-400">clearHistory</span> <span class="text-gray-400">- Efface l\'historique des commandes.</span></span>');
             this.addOutput('<span class="ml-4"><span class="text-green-400">delAllCache</span> <span class="text-gray-400">- Efface tous les cookies, le cache et l\'historique.</span></span>');
+
+            this.addOutput('<hr class="my-2 border-gray-700">');
         },
         mkdir(args) {
             if (!args || args.length === 0 || !args[0].trim()) {
@@ -792,6 +836,687 @@ const app = {
             this.loadFileSystemFromCookie();
             this.addOutput('Système de fichiers chargé depuis le cookie.', 'system');
         },
+        lshw: function() {
+            // Utilise les APIs du navigateur pour obtenir le maximum d'infos accessibles
+            const nav = window.navigator;
+            const hwInfo = [];
+
+            hwInfo.push('<span class="font-bold text-blue-400 text-lg">Résumé matériel navigateur :</span><br>');
+            hwInfo.push(`<span class="text-green-400">User-Agent :</span> ${nav.userAgent}<br>`);
+            hwInfo.push(`<span class="text-green-400">Plateforme :</span> ${nav.platform || 'Inconnu'}<br>`);
+            hwInfo.push(`<span class="text-green-400">Langue :</span> ${nav.language || 'Inconnu'}<br>`);
+            hwInfo.push(`<span class="text-green-400">Langues acceptées :</span> ${(nav.languages || []).join(', ')}<br>`);
+            hwInfo.push(`<span class="text-green-400">En ligne :</span> ${navigator.onLine ? 'Oui' : 'Non'}<br>`);
+            if (nav.hardwareConcurrency) {
+                hwInfo.push(`<span class="text-green-400">Cœurs CPU :</span> ${nav.hardwareConcurrency}<br>`);
+            }
+            if (nav.deviceMemory) {
+                hwInfo.push(`<span class="text-green-400">Mémoire RAM estimée :</span> ${nav.deviceMemory} Go<br>`);
+            }
+            if (window.screen) {
+                hwInfo.push(`<span class="text-green-400">Écran :</span> ${window.screen.width}x${window.screen.height} px (${window.screen.colorDepth} bits)<br>`);
+                hwInfo.push(`<span class="text-green-400">Orientation :</span> ${window.screen.orientation ? window.screen.orientation.type : 'Inconnu'}<br>`);
+            }
+            if (window.devicePixelRatio) {
+                hwInfo.push(`<span class="text-green-400">Device Pixel Ratio :</span> ${window.devicePixelRatio}<br>`);
+            }
+            if (window.innerWidth && window.innerHeight) {
+                hwInfo.push(`<span class="text-green-400">Fenêtre visible :</span> ${window.innerWidth}x${window.innerHeight} px<br>`);
+            }
+            if (nav.maxTouchPoints !== undefined) {
+                hwInfo.push(`<span class="text-green-400">Points tactiles max :</span> ${nav.maxTouchPoints}<br>`);
+            }
+            if (nav.vendor) {
+                hwInfo.push(`<span class="text-green-400">Vendor navigateur :</span> ${nav.vendor}<br>`);
+            }
+            if (nav.product) {
+                hwInfo.push(`<span class="text-green-400">Produit navigateur :</span> ${nav.product}<br>`);
+            }
+            if (nav.webdriver !== undefined) {
+                hwInfo.push(`<span class="text-green-400">Webdriver :</span> ${nav.webdriver ? 'Oui' : 'Non'}<br>`);
+            }
+            if (nav.cookieEnabled !== undefined) {
+                hwInfo.push(`<span class="text-green-400">Cookies activés :</span> ${nav.cookieEnabled ? 'Oui' : 'Non'}<br>`);
+            }
+            if (nav.doNotTrack !== undefined) {
+                hwInfo.push(`<span class="text-green-400">Do Not Track :</span> ${nav.doNotTrack}<br>`);
+            }
+            if (nav.connection) {
+                const c = nav.connection;
+                hwInfo.push(`<span class="text-green-400">Type de connexion :</span> ${c.effectiveType || c.type || 'Inconnu'}<br>`);
+                if (c.downlink) hwInfo.push(`<span class="text-green-400">Débit descendant estimé :</span> ${c.downlink} Mbps<br>`);
+                if (c.rtt) hwInfo.push(`<span class="text-green-400">Latence estimée :</span> ${c.rtt} ms<br>`);
+                if (c.saveData !== undefined) hwInfo.push(`<span class="text-green-400">Mode économie de données :</span> ${c.saveData ? 'Oui' : 'Non'}<br>`);
+            }
+            if (window.GPU && window.GPU.getPreferredCanvasFormat) {
+                // WebGPU (rarement dispo)
+                hwInfo.push(`<span class="text-green-400">GPU (WebGPU):</span> ${window.GPU.getPreferredCanvasFormat()}<br>`);
+            } else if (window.WebGLRenderingContext) {
+                // WebGL info
+                try {
+                    const canvas = document.createElement('canvas');
+                    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                    if (gl) {
+                        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                        if (debugInfo) {
+                            const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
+                            const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                            hwInfo.push(`<span class="text-green-400">Carte graphique :</span> ${vendor} ${renderer}<br>`);
+                        }
+                        hwInfo.push(`<span class="text-green-400">WebGL Version :</span> ${gl.getParameter(gl.VERSION)}<br>`);
+                        hwInfo.push(`<span class="text-green-400">WebGL Vendor :</span> ${gl.getParameter(gl.VENDOR)}<br>`);
+                        hwInfo.push(`<span class="text-green-400">WebGL Renderer :</span> ${gl.getParameter(gl.RENDERER)}<br>`);
+                        hwInfo.push(`<span class="text-green-400">WebGL Shading Language :</span> ${gl.getParameter(gl.SHADING_LANGUAGE_VERSION)}<br>`);
+                    }
+                } catch {}
+            }
+            // Battery API
+            if (navigator.getBattery) {
+                navigator.getBattery().then(battery => {
+                    hwInfo.push(`<span class="text-green-400">Batterie :</span> ${Math.round(battery.level * 100)}% ${battery.charging ? '(en charge)' : ''}<br>`);
+                    this.addOutput(hwInfo.join('') + '<span class="text-gray-400">Note : Les informations sont limitées par le navigateur pour la confidentialité.</span>', 'system');
+                });
+                return;
+            }
+            // Media devices
+            if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+                navigator.mediaDevices.enumerateDevices().then(devices => {
+                    const audioInputs = devices.filter(d => d.kind === 'audioinput').length;
+                    const videoInputs = devices.filter(d => d.kind === 'videoinput').length;
+                    hwInfo.push(`<span class="text-green-400">Microphones détectés :</span> ${audioInputs}<br>`);
+                    hwInfo.push(`<span class="text-green-400">Caméras détectées :</span> ${videoInputs}<br>`);
+                    this.addOutput(hwInfo.join('') + '<span class="text-gray-400">Note : Les informations sont limitées par le navigateur pour la confidentialité.</span>', 'system');
+                });
+                return;
+            }
+            this.addOutput(hwInfo.join('') + '<span class="text-gray-400">Note : Les informations sont limitées par le navigateur pour la confidentialité.</span>', 'system');
+        },
+
+        ifconfig: function() {
+            // Affiche les infos réseau accessibles via le navigateur
+            const lines = [];
+            lines.push('<span class="font-bold text-blue-400 text-lg">Configuration réseau (ifconfig):</span><br>');
+
+            // Adresse MAC (non accessible côté navigateur pour des raisons de sécurité)
+            lines.push('<span class="text-green-400">Adresse MAC :</span> <span class="text-gray-400">Non accessible (limitation navigateur)</span><br>');
+
+            // Adresse IP locale (WebRTC)
+            function getLocalIPs(callback) {
+                const ips = [];
+                const RTCPeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection;
+                if (!RTCPeerConnection) {
+                    callback([]);
+                    return;
+                }
+                const pc = new RTCPeerConnection({iceServers:[]});
+                pc.createDataChannel('');
+                pc.createOffer().then(offer => pc.setLocalDescription(offer));
+                pc.onicecandidate = function(e) {
+                    if (!e || !e.candidate) {
+                        callback(ips);
+                        return;
+                    }
+                    const parts = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(e.candidate.candidate);
+                    if (parts && parts[1] && !ips.includes(parts[1])) {
+                        ips.push(parts[1]);
+                    }
+                };
+            }
+
+            // Type de connexion
+            if (navigator.connection) {
+                const c = navigator.connection;
+                lines.push(`<span class="text-green-400">Type de connexion :</span> ${c.effectiveType || c.type || 'Inconnu'}<br>`);
+                if (c.downlink) lines.push(`<span class="text-green-400">Débit descendant estimé :</span> ${c.downlink} Mbps<br>`);
+                if (c.rtt) lines.push(`<span class="text-green-400">Latence estimée :</span> ${c.rtt} ms<br>`);
+                if (c.saveData !== undefined) lines.push(`<span class="text-green-400">Mode économie de données :</span> ${c.saveData ? 'Oui' : 'Non'}<br>`);
+            }
+
+            // Adresse IP publique (via service externe)
+            fetch('https://api.ipify.org?format=json')
+                .then(resp => resp.json())
+                .then(data => {
+                    lines.push(`<span class="text-green-400">Adresse IP publique :</span> ${data.ip}<br>`);
+                    // Adresse IP locale (WebRTC)
+                    getLocalIPs(localIps => {
+                        if (localIps.length > 0) {
+                            lines.push(`<span class="text-green-400">Adresse(s) IP locale(s) :</span> ${localIps.join(', ')}<br>`);
+                        } else {
+                            lines.push(`<span class="text-green-400">Adresse IP locale :</span> <span class="text-gray-400">Non accessible (limitation navigateur)</span><br>`);
+                        }
+                        lines.push('<span class="text-gray-400">Note : Les informations réseau sont limitées pour la confidentialité.</span>');
+                        this.addOutput(lines.join(''), 'system');
+                    });
+                })
+                .catch(() => {
+                    lines.push(`<span class="text-green-400">Adresse IP publique :</span> <span class="text-gray-400">Non accessible</span><br>`);
+                    getLocalIPs(localIps => {
+                        if (localIps.length > 0) {
+                            lines.push(`<span class="text-green-400">Adresse(s) IP locale(s) :</span> ${localIps.join(', ')}<br>`);
+                        } else {
+                            lines.push(`<span class="text-green-400">Adresse IP locale :</span> <span class="text-gray-400">Non accessible (limitation navigateur)</span><br>`);
+                        }
+                        lines.push('<span class="text-gray-400">Note : Les informations réseau sont limitées pour la confidentialité.</span>');
+                        this.addOutput(lines.join(''), 'system');
+                    });
+                });
+        },
+            
+    
+            free(args) {
+                const options = this.parseOptions(args, {
+                    'h': 'human-readable',
+                    'b': 'bytes',
+                    'm': 'mega',
+                    'g': 'giga'
+                });
+    
+                // Simulation des informations mémoire basée sur navigator.deviceMemory
+                const totalMemGB = navigator.deviceMemory || 8; // Par défaut 8GB
+                const totalMemMB = totalMemGB * 1024;
+                const totalMemKB = totalMemMB * 1024;
+                const totalMemB = totalMemKB * 1024;
+                
+                // Simulation d'utilisation (70% occupé)
+                const usedPercent = 0.7;
+                const usedMemB = Math.floor(totalMemB * usedPercent);
+                const freeMemB = totalMemB - usedMemB;
+                const availableMemB = Math.floor(freeMemB * 0.8);
+    
+                let unit = 'KB';
+                let divisor = 1024;
+                let totalMem = totalMemKB;
+                let usedMem = Math.floor(usedMemB / 1024);
+                let freeMem = Math.floor(freeMemB / 1024);
+                let availableMem = Math.floor(availableMemB / 1024);
+    
+                if (options['human-readable']) {
+                    if (totalMemGB >= 1) {
+                        unit = 'G';
+                        divisor = 1024 * 1024 * 1024;
+                        totalMem = (totalMemB / divisor).toFixed(1);
+                        usedMem = (usedMemB / divisor).toFixed(1);
+                        freeMem = (freeMemB / divisor).toFixed(1);
+                        availableMem = (availableMemB / divisor).toFixed(1);
+                    } else {
+                        unit = 'M';
+                        divisor = 1024 * 1024;
+                        totalMem = Math.floor(totalMemB / divisor);
+                        usedMem = Math.floor(usedMemB / divisor);
+                        freeMem = Math.floor(freeMemB / divisor);
+                        availableMem = Math.floor(availableMemB / divisor);
+                    }
+                } else if (options.bytes) {
+                    unit = 'B';
+                    totalMem = totalMemB;
+                    usedMem = usedMemB;
+                    freeMem = freeMemB;
+                    availableMem = availableMemB;
+                } else if (options.mega) {
+                    unit = 'M';
+                    divisor = 1024 * 1024;
+                    totalMem = Math.floor(totalMemB / divisor);
+                    usedMem = Math.floor(usedMemB / divisor);
+                    freeMem = Math.floor(freeMemB / divisor);
+                    availableMem = Math.floor(availableMemB / divisor);
+                } else if (options.giga) {
+                    unit = 'G';
+                    divisor = 1024 * 1024 * 1024;
+                    totalMem = (totalMemB / divisor).toFixed(1);
+                    usedMem = (usedMemB / divisor).toFixed(1);
+                    freeMem = (freeMemB / divisor).toFixed(1);
+                    availableMem = (availableMemB / divisor).toFixed(1);
+                }
+    
+                this.addOutput(`<span class="font-mono">
+                    total        used        free      shared  buff/cache   available
+    Mem:     ${String(totalMem).padStart(7)}${unit}   ${String(usedMem).padStart(7)}${unit}   ${String(freeMem).padStart(7)}${unit}        0${unit}        0${unit}   ${String(availableMem).padStart(7)}${unit}
+    Swap:           0${unit}        0${unit}        0${unit}
+    </span>`);
+            },
+    
+            df(args) {
+                const options = this.parseOptions(args, {
+                    'h': 'human-readable',
+                    'T': 'print-type',
+                    'a': 'all'
+                });
+    
+                // Simulation d'informations de système de fichiers
+                const filesystems = [
+                    { filesystem: '/dev/root', type: 'ext4', size: 20971520, used: 8388608, avail: 11534336, usePercent: 41, mountedOn: '/' },
+                    { filesystem: '/dev/tmpfs', type: 'tmpfs', size: 2097152, used: 0, avail: 2097152, usePercent: 0, mountedOn: '/tmp' },
+                    { filesystem: '/dev/home', type: 'ext4', size: 104857600, used: 52428800, avail: 47185920, usePercent: 53, mountedOn: '/home' }
+                ];
+    
+                let header = options['print-type'] ? 
+                    'Filesystem     Type      Size  Used Avail Use% Mounted on' :
+                    'Filesystem      Size  Used Avail Use% Mounted on';
+    
+                this.addOutput(`<span class="font-mono">${header}</span>`);
+    
+                filesystems.forEach(fs => {
+                    let size, used, avail;
+                    if (options['human-readable']) {
+                        size = this.formatBytes(fs.size * 1024);
+                        used = this.formatBytes(fs.used * 1024);
+                        avail = this.formatBytes(fs.avail * 1024);
+                    } else {
+                        size = fs.size.toString();
+                        used = fs.used.toString();
+                        avail = fs.avail.toString();
+                    }
+    
+                    let line = options['print-type'] ?
+                        `${fs.filesystem.padEnd(14)} ${fs.type.padEnd(9)} ${size.padStart(4)} ${used.padStart(4)} ${avail.padStart(5)} ${fs.usePercent.toString().padStart(3)}% ${fs.mountedOn}` :
+                        `${fs.filesystem.padEnd(15)} ${size.padStart(4)} ${used.padStart(4)} ${avail.padStart(5)} ${fs.usePercent.toString().padStart(3)}% ${fs.mountedOn}`;
+                    
+                    this.addOutput(`<span class="font-mono">${line}</span>`);
+                });
+            },
+    
+            tree(args) {
+                // Simple option parsing for tree command
+                const parseTreeOptions = (args) => {
+                    const result = { _: [] };
+                    let i = 0;
+                    
+                    while (i < args.length) {
+                        const arg = args[i];
+                        
+                        if (arg === '-a') {
+                            result.all = true;
+                        } else if (arg === '-d') {
+                            result['dirs-only'] = true;
+                        } else if (arg === '-L' && i + 1 < args.length) {
+                            result.level = parseInt(args[i + 1]);
+                            i++; // Skip next argument as it's the level value
+                        } else if (!arg.startsWith('-')) {
+                            result._.push(arg);
+                        }
+                        i++;
+                    }
+                    
+                    return result;
+                };
+    
+                const options = parseTreeOptions(args);
+    
+                const maxLevel = options.level || 10;
+                const targetPath = options._[0] || '.';
+                const resolvedPath = this.resolvePath(targetPath);
+                const targetNode = this.getPath(resolvedPath);
+    
+                if (!targetNode) {
+                    this.addOutput(`tree: ${targetPath}: Aucun fichier ou dossier de ce type`, 'error');
+                    return;
+                }
+    
+                this.addOutput(`<span class="text-blue-400">${resolvedPath}</span>`);
+                
+                const treeLines = [];
+                const buildTree = (node, prefix = '', level = 0) => {
+                    if (level >= maxLevel) return;
+                    
+                    if (node.type === 'directory') {
+                        const children = Object.keys(node.children).sort();
+                        const filteredChildren = options['dirs-only'] ? 
+                            children.filter(name => node.children[name].type === 'directory') :
+                            children.filter(name => options.all || !name.startsWith('.'));
+    
+                        filteredChildren.forEach((childName, index) => {
+                            const child = node.children[childName];
+                            const isLastChild = index === filteredChildren.length - 1;
+                            const currentPrefix = prefix + (isLastChild ? '└── ' : '├── ');
+                            const nextPrefix = prefix + (isLastChild ? '    ' : '│   ');
+    
+                            const displayName = child.type === 'directory' ? 
+                                `<span class="text-blue-400">${childName}</span>` : childName;
+                            
+                            treeLines.push(`${currentPrefix}${displayName}`);
+                            
+                            if (child.type === 'directory') {
+                                buildTree(child, nextPrefix, level + 1);
+                            }
+                        });
+                    }
+                };
+    
+                buildTree(targetNode);
+                treeLines.forEach(line => this.addOutput(`<span class="font-mono">${line}</span>`));
+                
+                const dirCount = treeLines.filter(line => line.includes('text-blue-400')).length;
+                const fileCount = treeLines.length - dirCount;
+                this.addOutput(`\n${dirCount} directories, ${fileCount} files`);
+            },
+    
+            find(args) {
+                const options = this.parseOptions(args, {
+                    'name': 'name',
+                    'type': 'type',
+                    'maxdepth': 'maxdepth'
+                });
+    
+                const startPath = options._.find(arg => !arg.startsWith('-') && !arg.match(/^(f|d)$/)) || '.';
+                const resolvedPath = this.resolvePath(startPath);
+                const startNode = this.getPath(resolvedPath);
+    
+                if (!startNode) {
+                    this.addOutput(`find: '${startPath}': Aucun fichier ou dossier de ce type`, 'error');
+                    return;
+                }
+    
+                const namePattern = options.name;
+                const typeFilter = options.type;
+                const maxDepth = options.maxdepth ? parseInt(options.maxdepth) : 50;
+    
+                const results = [];
+                const search = (node, currentPath, depth = 0) => {
+                    if (depth > maxDepth) return;
+    
+                    // Vérifie si le nœud correspond aux critères
+                    let matches = true;
+                    if (typeFilter) {
+                        matches = matches && ((typeFilter === 'f' && node.type === 'file') || 
+                                            (typeFilter === 'd' && node.type === 'directory'));
+                    }
+                    if (namePattern) {
+                        const fileName = currentPath.split('/').pop();
+                        const regex = new RegExp(namePattern.replace(/\*/g, '.*').replace(/\?/g, '.'), 'i');
+                        matches = matches && regex.test(fileName);
+                    }
+    
+                    if (matches) {
+                        results.push(currentPath);
+                    }
+    
+                    // Recherche récursive dans les répertoires
+                    if (node.type === 'directory') {
+                        Object.keys(node.children).forEach(childName => {
+                            const childPath = currentPath === '/' ? `/${childName}` : `${currentPath}/${childName}`;
+                            search(node.children[childName], childPath, depth + 1);
+                        });
+                    }
+                };
+    
+                search(startNode, resolvedPath);
+                results.forEach(result => this.addOutput(result));
+            },
+    
+            grep(args) {
+                const options = this.parseOptions(args, {
+                    'i': 'ignore-case',
+                    'n': 'line-number',
+                    'v': 'invert-match',
+                    'c': 'count'
+                });
+    
+                if (options._.length < 2) {
+                    this.addOutput('grep: utilisation: grep [options] pattern fichier', 'error');
+                    return;
+                }
+    
+                const pattern = options._[0];
+                const fileName = options._[1];
+                const targetPath = this.resolvePath(fileName);
+                const targetNode = this.getPath(targetPath);
+    
+                if (!targetNode) {
+                    this.addOutput(`grep: ${fileName}: Aucun fichier ou dossier de ce type`, 'error');
+                    return;
+                }
+    
+                if (targetNode.type !== 'file') {
+                    this.addOutput(`grep: ${fileName}: Est un dossier`, 'error');
+                    return;
+                }
+    
+                const content = targetNode.content;
+                const lines = content.split('\n');
+                const flags = options['ignore-case'] ? 'gi' : 'g';
+                const regex = new RegExp(pattern, flags);
+    
+                let matchingLines = [];
+                lines.forEach((line, index) => {
+                    const matches = regex.test(line);
+                    if (options['invert-match'] ? !matches : matches) {
+                        matchingLines.push({
+                            number: index + 1,
+                            content: line,
+                            highlighted: line.replace(new RegExp(pattern, flags), `<span class="bg-yellow-400 text-black">$&</span>`)
+                        });
+                    }
+                });
+    
+                if (options.count) {
+                    this.addOutput(matchingLines.length.toString());
+                } else {
+                    matchingLines.forEach(line => {
+                        const output = options['line-number'] ? 
+                            `<span class="text-green-400">${line.number}:</span>${line.highlighted}` :
+                            line.highlighted;
+                        this.addOutput(output);
+                    });
+                }
+            },
+    
+            wc(args) {
+                const options = this.parseOptions(args, {
+                    'l': 'lines',
+                    'w': 'words',
+                    'c': 'bytes',
+                    'm': 'chars'
+                });
+    
+                if (options._.length === 0) {
+                    this.addOutput('wc: manque un nom de fichier', 'error');
+                    return;
+                }
+    
+                const fileName = options._[0];
+                const targetPath = this.resolvePath(fileName);
+                const targetNode = this.getPath(targetPath);
+    
+                if (!targetNode) {
+                    this.addOutput(`wc: ${fileName}: Aucun fichier ou dossier de ce type`, 'error');
+                    return;
+                }
+    
+                if (targetNode.type !== 'file') {
+                    this.addOutput(`wc: ${fileName}: Est un dossier`, 'error');
+                    return;
+                }
+    
+                const content = targetNode.content;
+                const lines = content.split('\n').length;
+                const words = content.split(/\s+/).filter(w => w.length > 0).length;
+                const bytes = new Blob([content]).size;
+                const chars = content.length;
+    
+                let output = [];
+                
+                if (!options.lines && !options.words && !options.bytes && !options.chars) {
+                    // Par défaut, affiche tout
+                    output = [lines.toString().padStart(7), words.toString().padStart(7), bytes.toString().padStart(7)];
+                } else {
+                    if (options.lines) output.push(lines.toString().padStart(7));
+                    if (options.words) output.push(words.toString().padStart(7));
+                    if (options.bytes) output.push(bytes.toString().padStart(7));
+                    if (options.chars) output.push(chars.toString().padStart(7));
+                }
+    
+                this.addOutput(`<span class="font-mono">${output.join('')} ${fileName}</span>`);
+            },
+    
+            ps(args) {
+                const options = this.parseOptions(args, {
+                    'a': 'all',
+                    'u': 'user',
+                    'x': 'no-tty',
+                    'f': 'full'
+                });
+    
+                // Simulation de processus
+                const processes = [
+                    { pid: 1, ppid: 0, user: 'root', cpu: 0.0, mem: 0.1, vsz: 168, rss: 8, tty: '?', stat: 'S', start: '00:00', time: '00:00:01', command: '/sbin/init' },
+                    { pid: 2, ppid: 0, user: 'root', cpu: 0.0, mem: 0.0, vsz: 0, rss: 0, tty: '?', stat: 'S', start: '00:00', time: '00:00:00', command: '[kthreadd]' },
+                    { pid: 1234, ppid: 1, user: this.getPseudoFromCookie() || 'user', cpu: 1.2, mem: 2.5, vsz: 4096, rss: 256, tty: 'pts/0', stat: 'S', start: '09:30', time: '00:00:15', command: '/bin/bash' },
+                    { pid: 5678, ppid: 1234, user: this.getPseudoFromCookie() || 'user', cpu: 0.5, mem: 1.0, vsz: 2048, rss: 128, tty: 'pts/0', stat: 'R+', start: '10:45', time: '00:00:02', command: 'webconsole' }
+                ];
+    
+                if (options.full) {
+                    this.addOutput(`<span class="font-mono">UID        PID  PPID  C STIME TTY          TIME CMD</span>`);
+                    processes.forEach(proc => {
+                        this.addOutput(`<span class="font-mono">${proc.user.padEnd(8)} ${proc.pid.toString().padStart(5)} ${proc.ppid.toString().padStart(5)} ${proc.cpu.toFixed(1).padStart(3)} ${proc.start.padStart(5)} ${proc.tty.padEnd(12)} ${proc.time.padStart(8)} ${proc.command}</span>`);
+                    });
+                } else if (options.user) {
+                    this.addOutput(`<span class="font-mono">USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND</span>`);
+                    processes.forEach(proc => {
+                        this.addOutput(`<span class="font-mono">${proc.user.padEnd(8)} ${proc.pid.toString().padStart(5)} ${proc.cpu.toFixed(1).padStart(4)} ${proc.mem.toFixed(1).padStart(4)} ${proc.vsz.toString().padStart(6)} ${proc.rss.toString().padStart(5)} ${proc.tty.padEnd(8)} ${proc.stat.padEnd(4)} ${proc.start.padStart(5)} ${proc.time.padStart(7)} ${proc.command}</span>`);
+                    });
+                } else {
+                    this.addOutput(`<span class="font-mono">  PID TTY          TIME CMD</span>`);
+                    processes.filter(proc => proc.tty !== '?').forEach(proc => {
+                        this.addOutput(`<span class="font-mono">${proc.pid.toString().padStart(5)} ${proc.tty.padEnd(12)} ${proc.time.padStart(8)} ${proc.command}</span>`);
+                    });
+                }
+            },
+    
+            top(args) {
+                this.addOutput(`<span class="text-green-400">top - ${new Date().toLocaleTimeString()} up 1 day, 2:30, 1 user, load average: 0.15, 0.10, 0.05</span>`);
+                this.addOutput(`Tasks: 4 total, 1 running, 3 sleeping, 0 stopped, 0 zombie`);
+                this.addOutput(`%Cpu(s): 2.5 us, 1.2 sy, 0.0 ni, 96.0 id, 0.3 wa, 0.0 hi, 0.0 si, 0.0 st`);
+                this.addOutput(`MiB Mem: ${(navigator.deviceMemory || 8) * 1024} total, ${Math.floor((navigator.deviceMemory || 8) * 1024 * 0.3)} free, ${Math.floor((navigator.deviceMemory || 8) * 1024 * 0.7)} used, ${Math.floor((navigator.deviceMemory || 8) * 1024 * 0.2)} buff/cache`);
+                this.addOutput(`MiB Swap: 0 total, 0 free, 0 used. ${Math.floor((navigator.deviceMemory || 8) * 1024 * 0.8)} avail Mem\n`);
+                
+                this.addOutput(`<span class="font-mono">  PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND</span>`);
+                this.addOutput(`<span class="font-mono"> 1234 ${(this.getPseudoFromCookie() || 'user').padEnd(8)} 20   0    4096    256      0 S   1.2   2.5   0:00.15 bash</span>`);
+                this.addOutput(`<span class="font-mono"> 5678 ${(this.getPseudoFromCookie() || 'user').padEnd(8)} 20   0    2048    128      0 R   0.5   1.0   0:00.02 webconsole</span>`);
+                this.addOutput(`<span class="font-mono">    1 root      20   0     168      8      0 S   0.0   0.1   0:00.01 init</span>`);
+                this.addOutput(`<span class="font-mono">    2 root      20   0       0      0      0 S   0.0   0.0   0:00.00 kthreadd</span>`);
+                
+                this.addOutput(`\n<span class="text-yellow-400">Note: Appuyez sur 'q' pour quitter top (simulation)</span>`);
+            },
+    
+            date(args) {
+                const options = this.parseOptions(args, {
+                    'u': 'utc',
+                    'R': 'rfc-2822',
+                    'I': 'iso-8601'
+                });
+    
+                const now = new Date();
+                
+                if (options.utc) {
+                    this.addOutput(now.toUTCString());
+                } else if (options['rfc-2822']) {
+                    this.addOutput(now.toUTCString());
+                } else if (options['iso-8601']) {
+                    this.addOutput(now.toISOString());
+                } else if (options._.length > 0 && options._[0].startsWith('+')) {
+                    // Format personnalisé (simplifié)
+                    const format = options._[0].substring(1);
+                    let result = format
+                        .replace(/%Y/g, now.getFullYear())
+                        .replace(/%m/g, String(now.getMonth() + 1).padStart(2, '0'))
+                        .replace(/%d/g, String(now.getDate()).padStart(2, '0'))
+                        .replace(/%H/g, String(now.getHours()).padStart(2, '0'))
+                        .replace(/%M/g, String(now.getMinutes()).padStart(2, '0'))
+                        .replace(/%S/g, String(now.getSeconds()).padStart(2, '0'));
+                    this.addOutput(result);
+                } else {
+                    this.addOutput(now.toString());
+                }
+            },
+    
+            sudo(args) {
+                if (args.length === 0) {
+                    this.addOutput('sudo: une commande doit être spécifiée', 'error');
+                    return;
+                }
+    
+                const command = args[0];
+                const commandArgs = args.slice(1);
+    
+                this.addOutput(`<span class="text-yellow-400">[sudo]</span> Exécution de la commande avec privilèges administrateur...`);
+                
+                // Vérifie si la commande existe
+                if (this.commands[command]) {
+                    try {
+                        this.commands[command].call(this, commandArgs);
+                    } catch (error) {
+                        this.addOutput(`sudo: erreur lors de l'exécution de ${command}: ${error.message}`, 'error');
+                    }
+                } else {
+                    this.addOutput(`sudo: ${command}: commande introuvable`, 'error');
+                }
+            },
+    
+            // Fonction utilitaire pour parser les options
+            parseOptions(args, optionMap = {}) {
+                const result = { _: [] };
+                let i = 0;
+                
+                while (i < args.length) {
+                    const arg = args[i];
+                    
+                    if (arg.startsWith('--')) {
+                        // Option longue
+                        const longOpt = arg.substring(2);
+                        if (longOpt.includes('=')) {
+                            const [key, value] = longOpt.split('=', 2);
+                            result[key] = value;
+                        } else {
+                            result[longOpt] = true;
+                            // Vérifie si l'option suivante est une valeur
+                            if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
+                                if (['level', 'maxdepth', 'name', 'type'].includes(longOpt)) {
+                                    result[longOpt] = args[i + 1];
+                                    i++;
+                                }
+                            }
+                        }
+                    } else if (arg.startsWith('-') && arg.length > 1) {
+                        // Options courtes
+                        const shortOpts = arg.substring(1);
+                        for (let j = 0; j < shortOpts.length; j++) {
+                            const shortOpt = shortOpts[j];
+                            const longOpt = optionMap[shortOpt];
+                            if (longOpt) {
+                                result[longOpt] = true;
+                                result[shortOpt] = true;
+                            } else {
+                                result[shortOpt] = true;
+                            }
+                            
+                            // Gestion des options avec valeurs
+                            if (['L', 'name', 'type'].includes(shortOpt) && j === shortOpts.length - 1) {
+                                if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
+                                    result[shortOpt] = args[i + 1];
+                                    if (longOpt) result[longOpt] = args[i + 1];
+                                    i++;
+                                }
+                            }
+                        }
+                    } else {
+                        // Argument normal
+                        result._.push(arg);
+                    }
+                    i++;
+                }
+                
+                return result;
+            },
+    
+            // Fonction utilitaire pour formatter les bytes
+            formatBytes(bytes) {
+                const sizes = ['B', 'K', 'M', 'G', 'T'];
+                if (bytes === 0) return '0B';
+                const i = Math.floor(Math.log(bytes) / Math.log(1024));
+                const size = (bytes / Math.pow(1024, i)).toFixed(1);
+                return size + sizes[i];
+            },
+
     },
 
     // --- Event Handlers ---

@@ -69,24 +69,27 @@
             <span class="text-xs sm:text-sm text-gray-400 mr-3 select-none">Console Linux Web</span>
         </nav>
 
-        <div id="console-output" class="flex-grow bg-gray-800 p-3 overflow-y-auto custom-scrollbar rounded-b-lg">
-            <div id="loading-llm-indicator" class="text-yellow-400 hidden">Génération en cours...</div>
+        <div id="console-output" class="flex-grow bg-gray-800 p-4 overflow-y-auto custom-scrollbar rounded-b-lg border border-gray-700 shadow-inner min-h-[400px] max-h-[600px]">
+            <div id="loading-llm-indicator" class="text-yellow-400 hidden animate-pulse">
+                <span class="inline-block mr-2">⚡</span>Génération en cours...
+            </div>
             <div id="console-end-ref"></div>
         </div>
 
-        <form id="command-form" class="flex mt-2 flex-shrink-0">
-            <label for="command-input" id="prompt-label" class="flex-shrink-0 text-green-400 mr-1 flex items-center select-none">
+        <form id="command-form" class="flex mt-3 flex-shrink-0 bg-gray-800 p-2 rounded-lg border border-gray-700">
+            <label for="command-input" id="prompt-label" class="flex-shrink-0 text-green-400 mr-2 flex items-center select-none font-bold">
                 <span class="select-none">
-                @webconsole:<span class="text-blue-400">/home/user</span>$
+                    <span class="text-cyan-400">@webconsole</span><span class="text-white">:</span><span class="text-blue-400">/home/user</span><span class="text-green-400">$</span>
                 </span>
             </label>
             <input
                 id="command-input"
                 type="text"
-                class="flex-grow bg-gray-700 text-white border-none focus:outline-none px-2 py-1 rounded-md"
+                class="flex-grow bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 rounded-md transition-all duration-200 placeholder-gray-400"
                 autocomplete="off"
                 autocapitalize="off"
                 spellcheck="false"
+                placeholder="Tapez votre commande..."
             />
         </form>
 
