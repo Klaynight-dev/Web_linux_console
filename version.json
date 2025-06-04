@@ -1,0 +1,43 @@
+{
+  "version": "1.2.4",
+  "buildDate": "2025-06-04",
+  "changelog": "ajout de man",
+  "history": [
+    {
+      "version": "1.2.4",
+      "date": "2025-06-04",
+      "changelog": "ajout de man",
+      "type": "patch"
+    },
+    {
+      "version": "1.2.3",
+      "date": "2025-06-04",
+      "changelog": "ajout de nouvelles commandes",
+      "type": "patch"
+    },
+    {
+      "version": "1.2.2",
+      "date": "2025-06-04",
+      "changelog": "ajout de certain gestion des options - et --",
+      "type": "patch"
+    },
+    {
+      "version": "1.2.1",
+      "date": "2025-06-04",
+      "changelog": "ajout de certain gestion des options - et --",
+      "type": "patch"
+    },
+    {
+      "version": "1.2.0",
+      "date": "2025-06-04",
+      "changelog": "add more cmd + change ui, file management, parameters, modal management, better help, history cmd & cookie pseudo management",
+      "type": "minor"
+    },
+    {
+      "version": "1.1.1",
+      "date": "2025-06-04",
+      "changelog": "ajout du versionning + modul de modif json",
+      "type": "patch"
+    }
+  ]
+}

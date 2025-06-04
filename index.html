@@ -120,20 +120,44 @@
 
         <!-- Modal About -->
         <div id="about-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden">
-            <div class="bg-gray-800 rounded-lg p-6 shadow-lg max-w-md w-full text-gray-100">
-                <h2 class="text-xl font-bold mb-2">À propos</h2>
+            <div class="bg-gray-800 rounded-lg p-6 shadow-lg max-w-lg w-full text-gray-100">
+                <h2 class="text-xl font-bold mb-2 flex items-center">
+                    <span class="mr-2">ℹ️</span>À propos
+                </h2>
                 <div id="about-modal-content" class="mb-4">
-                    WebConsole - Console Linux Web<br>
-                    Version: 1.0.1<br>
-                    Développé par: Klaynight<br>
-                    Licence: MIT<br>
-                    Source: <a href="https://github.com/Klaynight-dev/web_linux_console" class="text-blue-400 underline" target="_blank">GitHub</a>
+                    <div class="bg-gray-900 p-3 rounded mb-3">
+                        <div class="font-bold text-lg text-blue-300 mb-1">WebConsole - Console Linux Web</div>
+                        <div class="text-sm text-gray-300 space-y-1">
+                            <div>Version: <span id="app-version" class="text-green-400 font-mono">1.3.0</span></div>
+                            <div>Build: <span id="build-date" class="text-yellow-400 font-mono">2025-06-04</span></div>
+                            <div>Développé par: <span class="text-purple-400">Klaynight</span></div>
+                            <div>Licence: <span class="text-blue-400">MIT</span></div>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <a href="https://github.com/Klaynight-dev/web_linux_console" 
+                           class="inline-flex items-center text-blue-400 hover:text-blue-300 underline transition-colors" 
+                           target="_blank">
+                            <span class="mr-1">🔗</span>Voir sur GitHub
+                        </a>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <button id="show-changelog" class="w-full text-center bg-gray-700 hover:bg-gray-600 text-blue-400 py-2 px-4 rounded transition-colors">
+                        📋 Voir les nouveautés
+                    </button>
+                    <div id="changelog-content" class="hidden mt-3 text-xs text-gray-300 bg-gray-900 p-3 rounded max-h-48 overflow-y-auto border border-gray-700">
+                        <!-- Contenu du changelog généré dynamiquement -->
+                    </div>
                 </div>
                 <div class="flex justify-end">
-                    <button id="close-about-modal" class="mt-2 px-4 py-2 bg-blue-600 rounded hover:bg-blue-700">Fermer</button>
+                    <button id="close-about-modal" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors">
+                        Fermer
+                    </button>
                 </div>
             </div>
         </div>
+
 
         <!-- Modal Historique des commandes -->
 <div id="history-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
