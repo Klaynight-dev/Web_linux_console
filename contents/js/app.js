@@ -126,13 +126,13 @@ const app = {
     defaultMessage: `
 <pre class="font-mono leading-none text-xs text-purple-400">
 ╔═══════════════════════════════════════╗
-║      █████╗ ██╗     ██╗  ██╗          ║
-║     ██╔══██╗██║     ██║ ██╔╝          ║
-║     ██║  ╚═╝██║     █████╔╝           ║
-║     ██║  ██╗██║     ██╔═██╗           ║
-║     ╚█████╔╝███████╗██║  ██╗          ║
-║      ╚════╝ ╚══════╝╚═╝  ╚═╝          ║
-║            CONSOLE                    ║
+║        █████╗ ██╗     ██╗  ██╗        ║
+║       ██╔══██╗██║     ██║ ██╔╝        ║
+║       ██║  ╚═╝██║     █████╔╝         ║
+║       ██║  ██╗██║     ██╔═██╗         ║
+║       ╚█████╔╝███████╗██║  ██╗        ║
+║        ╚════╝ ╚══════╝╚═╝  ╚═╝        ║
+║        CONSOLE LINUX KLAYNIGHT        ║
 ╚═══════════════════════════════════════╝
 </pre>
 <span class="text-orange-400">⚡ CLK Terminal Ready</span>
@@ -2481,7 +2481,7 @@ ${bottomBorder}
     },
     loadVersionInfo: function() {
         // Charger les informations de version depuis version.json
-        fetch('./contents/js/version.json')
+        fetch('/version.json')
             .then(response => response.json())
             .then(data => {
                 // Mettre à jour les éléments du modal
