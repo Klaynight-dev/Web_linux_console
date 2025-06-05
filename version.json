@@ -1,8 +1,14 @@
 {
-  "version": "1.2.12",
+  "version": "1.2.13",
   "buildDate": "2025-06-05",
-  "changelog": "fix heigh console + responsive",
+  "changelog": "test fix all ui bug",
   "history": [
+    {
+      "version": "1.2.13",
+      "date": "2025-06-05",
+      "changelog": "test fix all ui bug",
+      "type": "patch"
+    },
     {
       "version": "1.2.12",
       "date": "2025-06-05",
