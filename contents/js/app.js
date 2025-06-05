@@ -546,92 +546,95 @@ const app = {
 
             // Section: Navigation
             this.addOutput('<span class="underline text-blue-300 font-semibold mt-2">🗂️ Navigation</span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">pwd</span> <span class="text-gray-400">- Affiche le dossier courant.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">cd</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;dossier&gt;</span> <span class="text-gray-400">- Change le dossier courant.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">ls</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[dossier]</span> <span class="text-gray-400">- Liste le contenu du dossier.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="pwd">pwd</span> <span class="text-gray-400">- Affiche le dossier courant.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="cd ">cd</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;dossier&gt;</span> <span class="text-gray-400">- Change le dossier courant.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="ls ">ls</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[dossier]</span> <span class="text-gray-400">- Liste le contenu du dossier.</span></span>');
 
             this.addOutput('<hr class="my-2 border-gray-700">');
 
             // Section: Fichiers & Dossiers
             this.addOutput('<span class="underline text-blue-300 font-semibold mt-2">📁 Fichiers & Dossiers</span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">cat</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;fichier&gt;</span> <span class="text-gray-400">- Affiche le contenu d\'un fichier.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">mkdir</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;dossier&gt;</span> <span class="text-gray-400">- Crée un dossier.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">touch</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;fichier&gt;</span> <span class="text-gray-400">- Crée un fichier vide.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">rm</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;fichier/dossier&gt;</span> <span class="text-gray-400">- Supprime un fichier ou dossier.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">edit</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;fichier&gt;</span> <span class="text-gray-400">- Édite un fichier avec un éditeur riche.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">find</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options] &lt;chemin&gt;</span> <span class="text-gray-400">- Recherche des fichiers et dossiers.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">cp</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;source&gt; &lt;dest&gt;</span> <span class="text-gray-400">- Copie un fichier ou dossier.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">mv</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;source&gt; &lt;dest&gt;</span> <span class="text-gray-400">- Déplace/renomme un fichier ou dossier.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="cat ">cat</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;fichier&gt;</span> <span class="text-gray-400">- Affiche le contenu d\'un fichier.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="mkdir ">mkdir</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;dossier&gt;</span> <span class="text-gray-400">- Crée un dossier.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="touch ">touch</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;fichier&gt;</span> <span class="text-gray-400">- Crée un fichier vide.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="rm ">rm</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;fichier/dossier&gt;</span> <span class="text-gray-400">- Supprime un fichier ou dossier.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="edit ">edit</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;fichier&gt;</span> <span class="text-gray-400">- Édite un fichier avec un éditeur riche.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="find ">find</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options] &lt;chemin&gt;</span> <span class="text-gray-400">- Recherche des fichiers et dossiers.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="cp ">cp</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;source&gt; &lt;dest&gt;</span> <span class="text-gray-400">- Copie un fichier ou dossier.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="mv ">mv</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;source&gt; &lt;dest&gt;</span> <span class="text-gray-400">- Déplace/renomme un fichier ou dossier.</span></span>');
 
             this.addOutput('<hr class="my-2 border-gray-700">');
 
             // Section: Utilitaires
             this.addOutput('<span class="underline text-blue-300 font-semibold mt-2">🛠️ Utilitaires</span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">echo</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;texte&gt;</span> <span class="text-gray-400">- Affiche le texte donné.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">clear</span> <span class="text-gray-400">- Efface la console.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">help</span> <span class="text-gray-400">- Affiche cette aide.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">about</span> <span class="text-gray-400">- À propos de la console.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">cconnect</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;username&gt;</span> <span class="text-gray-400">- Change de pseudo utilisateur.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">cdisconnect</span> <span class="text-gray-400">- Déconnecte l\'utilisateur.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">history</span> <span class="text-gray-400">- Affiche l\'historique des commandes.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">github</span> <span class="text-gray-400">- Lien vers le dépôt GitHub du projet.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">tree</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options] [chemin]</span> <span class="text-gray-400">- Affiche l\'arborescence des dossiers.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">grep</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options] &lt;motif&gt; &lt;fichier&gt;</span> <span class="text-gray-400">- Recherche un motif dans un fichier.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">wc</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options] &lt;fichier&gt;</span> <span class="text-gray-400">- Compte les lignes, mots et caractères.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">date</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options]</span> <span class="text-gray-400">- Affiche la date et l\'heure.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">sudo</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;commande&gt;</span> <span class="text-gray-400">- Exécute une commande avec privilèges admin.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">man</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[commande]</span> <span class="text-gray-400">- Affiche le manuel d\'une commande.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">whoami</span> <span class="text-gray-400">- Affiche l\'utilisateur actuel.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">uptime</span> <span class="text-gray-400">- Affiche le temps de fonctionnement du système.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="echo ">echo</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;texte&gt;</span> <span class="text-gray-400">- Affiche le texte donné.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="clear">clear</span> <span class="text-gray-400">- Efface la console.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="help">help</span> <span class="text-gray-400">- Affiche cette aide.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="about">about</span> <span class="text-gray-400">- À propos de la console.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="cconnect ">cconnect</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;username&gt;</span> <span class="text-gray-400">- Change de pseudo utilisateur.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="cdisconnect">cdisconnect</span> <span class="text-gray-400">- Déconnecte l\'utilisateur.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="history">history</span> <span class="text-gray-400">- Affiche l\'historique des commandes.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="github">github</span> <span class="text-gray-400">- Lien vers le dépôt GitHub du projet.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="tree ">tree</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options] [chemin]</span> <span class="text-gray-400">- Affiche l\'arborescence des dossiers.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="grep ">grep</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options] &lt;motif&gt; &lt;fichier&gt;</span> <span class="text-gray-400">- Recherche un motif dans un fichier.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="wc ">wc</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options] &lt;fichier&gt;</span> <span class="text-gray-400">- Compte les lignes, mots et caractères.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="date">date</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options]</span> <span class="text-gray-400">- Affiche la date et l\'heure.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="sudo ">sudo</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;commande&gt;</span> <span class="text-gray-400">- Exécute une commande avec privilèges admin.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="man ">man</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[commande]</span> <span class="text-gray-400">- Affiche le manuel d\'une commande.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="whoami">whoami</span> <span class="text-gray-400">- Affiche l\'utilisateur actuel.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="uptime">uptime</span> <span class="text-gray-400">- Affiche le temps de fonctionnement du système.</span></span>');
 
             this.addOutput('<hr class="my-2 border-gray-700">');
 
             // Section: Système & Processus
             this.addOutput('<span class="underline text-blue-300 font-semibold mt-2">⚙️ Système & Processus</span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">ps</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options]</span> <span class="text-gray-400">- Affiche les processus en cours.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">top</span> <span class="text-gray-400">- Affiche les processus actifs en temps réel.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">free</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options]</span> <span class="text-gray-400">- Affiche l\'utilisation de la mémoire.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">df</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options]</span> <span class="text-gray-400">- Affiche l\'espace disque disponible.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">kill</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;pid&gt;</span> <span class="text-gray-400">- Termine un processus par son PID.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">killall</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;nom&gt;</span> <span class="text-gray-400">- Termine tous les processus par nom.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="ps ">ps</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options]</span> <span class="text-gray-400">- Affiche les processus en cours.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="top">top</span> <span class="text-gray-400">- Affiche les processus actifs en temps réel.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="free ">free</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options]</span> <span class="text-gray-400">- Affiche l\'utilisation de la mémoire.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="df ">df</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options]</span> <span class="text-gray-400">- Affiche l\'espace disque disponible.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="kill ">kill</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;pid&gt;</span> <span class="text-gray-400">- Termine un processus par son PID.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="killall ">killall</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;nom&gt;</span> <span class="text-gray-400">- Termine tous les processus par nom.</span></span>');
 
             this.addOutput('<hr class="my-2 border-gray-700">');
 
             // Section: Gestion Internet
             this.addOutput('<span class="underline text-blue-300 font-semibold mt-2">🌐 Gestion Internet</span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">lshw</span> <span class="text-gray-400">- Affiche des informations matérielles sur le navigateur.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">ifconfig</span> <span class="text-gray-400">- Affiche la configuration réseau accessible.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">ping</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;adresse&gt;</span> <span class="text-gray-400">- Teste la connectivité réseau.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">wget</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;url&gt;</span> <span class="text-gray-400">- Télécharge un fichier depuis une URL.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">curl</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options] &lt;url&gt;</span> <span class="text-gray-400">- Transfère des données depuis/vers un serveur.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="lshw">lshw</span> <span class="text-gray-400">- Affiche des informations matérielles sur le navigateur.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="ifconfig">ifconfig</span> <span class="text-gray-400">- Affiche la configuration réseau accessible.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="ping ">ping</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;adresse&gt;</span> <span class="text-gray-400">- Teste la connectivité réseau.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="wget ">wget</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;url&gt;</span> <span class="text-gray-400">- Télécharge un fichier depuis une URL.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="curl ">curl</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">[options] &lt;url&gt;</span> <span class="text-gray-400">- Transfère des données depuis/vers un serveur.</span></span>');
 
             this.addOutput('<hr class="my-2 border-gray-700">');
 
             // Section: Importation de commandes
             this.addOutput('<span class="underline text-blue-300 font-semibold mt-2">📦 Importation de commandes</span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">import</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;fichier.js&gt; | --url &lt;url&gt;</span> <span class="text-gray-400">- Importe des commandes depuis un fichier ou une URL.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">listCommands</span> <span class="text-gray-400">- Liste toutes les commandes disponibles.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">createCommandFile</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;fichier.js&gt;</span> <span class="text-gray-400">- Crée un fichier de commandes avec modèle.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="import ">import</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;fichier.js&gt; | --url &lt;url&gt;</span> <span class="text-gray-400">- Importe des commandes depuis un fichier ou une URL.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="listCommands">listCommands</span> <span class="text-gray-400">- Liste toutes les commandes disponibles.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="createCommandFile ">createCommandFile</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;fichier.js&gt;</span> <span class="text-gray-400">- Crée un fichier de commandes avec modèle.</span></span>');
 
             this.addOutput('<hr class="my-2 border-gray-700">');
 
             // Section: Gestion Caches
             this.addOutput('<span class="underline text-blue-300 font-semibold mt-2">🧹 Gestion du cache</span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">save</span> <span class="text-gray-400">- Enregistre le système de fichiers.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">load</span> <span class="text-gray-400">- Charge le système de fichiers.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">clearHistory</span> <span class="text-gray-400">- Efface l\'historique des commandes.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">delAllCache</span> <span class="text-gray-400">- Efface tous les cookies, le cache et l\'historique.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="save">save</span> <span class="text-gray-400">- Enregistre le système de fichiers.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="load">load</span> <span class="text-gray-400">- Charge le système de fichiers.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="clearHistory">clearHistory</span> <span class="text-gray-400">- Efface l\'historique des commandes.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="delAllCache">delAllCache</span> <span class="text-gray-400">- Efface tous les cookies, le cache et l\'historique.</span></span>');
 
             this.addOutput('<hr class="my-2 border-gray-700">');
 
             // Section: Divertissement & Jeux
             this.addOutput('<span class="underline text-blue-300 font-semibold mt-2">🎮 Divertissement & Jeux</span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">cowsay</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;message&gt;</span> <span class="text-gray-400">- Affiche un message avec une vache ASCII.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">figlet</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;texte&gt;</span> <span class="text-gray-400">- Génère du texte ASCII art.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">fortune</span> <span class="text-gray-400">- Affiche une citation aléatoire.</span></span>');
-            this.addOutput('<span class="ml-4"><span class="text-green-400">cmatrix</span> <span class="text-gray-400">- Simulation de Matrix dans le terminal.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="cowsay ">cowsay</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;message&gt;</span> <span class="text-gray-400">- Affiche un message avec une vache ASCII.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="figlet ">figlet</span> <span class="bg-gray-700 text-gray-200 px-1 rounded">&lt;texte&gt;</span> <span class="text-gray-400">- Génère du texte ASCII art.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="fortune">fortune</span> <span class="text-gray-400">- Affiche une citation aléatoire.</span></span>');
+            this.addOutput('<span class="ml-4"><span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="cmatrix">cmatrix</span> <span class="text-gray-400">- Simulation de Matrix dans le terminal.</span></span>');
 
             this.addOutput('<hr class="my-2 border-gray-700">');
+
+            // Ajouter l'event listener pour les commandes cliquables après avoir ajouté tout le contenu
+            this.setupClickableCommands();
         },
         mkdir(args) {
             if (!args || args.length === 0 || !args[0].trim()) {
@@ -1646,25 +1649,27 @@ const app = {
             if (!command) {
                 // Affiche la liste des manuels disponibles
                 this.addOutput(`<div class="text-blue-300 font-bold mb-2">MANUELS DISPONIBLES</div>`);
-                this.addOutput(`<div class="text-gray-300 mb-2">Utilisez 'man [commande]' pour afficher le manuel d'une commande spécifique.</div>`);
+                this.addOutput(`<div class="text-gray-300 mb-2">Utilisez '<span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="man ">man [commande]</span>' pour afficher le manuel d'une commande spécifique.</div>`);
                 this.addOutput(`<div class="text-yellow-300 mb-2">Commandes disponibles :</div>`);
 
                 const commands = Object.keys(manPages).sort();
-                const columns = Math.ceil(commands.length / 4);
                 let output = '<div class="grid grid-cols-4 gap-4 text-sm">';
 
                 for (let i = 0; i < commands.length; i++) {
-                    output += `<div class="text-green-400">${commands[i]}</div>`;
+                    output += `<div class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="man ${commands[i]}">${commands[i]}</div>`;
                 }
                 output += '</div>';
 
                 this.addOutput(output);
+                this.setupClickableCommands();
                 return;
             }
 
             const manPage = manPages[command];
             if (!manPage) {
                 this.addOutput(`<div class="text-red-400">man: aucune entrée de manuel pour ${command}</div>`);
+                this.addOutput(`<div class="text-gray-300">Essayez '<span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="man ${command}">man ${command}</span>' pour voir si cette commande est disponible.</div>`);
+                this.setupClickableCommands();
                 return;
             }
 
@@ -1678,7 +1683,7 @@ const app = {
                         </div>
                         <div class="mb-4">
                             <div class="text-yellow-300 font-bold mb-1">SYNOPSIS</div>
-                            <div class="ml-4 text-green-400 font-mono">${manPage.synopsis}</div>
+                            <div class="ml-4 text-green-400 font-mono cursor-pointer hover:text-green-300 clickable-command" data-command="${manPage.synopsis.split('[')[0].trim()}">${manPage.synopsis}</div>
                         </div>
                         <div class="mb-4">
                             <div class="text-yellow-300 font-bold mb-1">DESCRIPTION</div>
@@ -1705,12 +1710,13 @@ const app = {
 
             output += `
                         <div class="mt-4 text-xs text-gray-500">
-                            WebConsole Manual - Tapez 'man' pour voir tous les manuels disponibles
+                            WebConsole Manual - Tapez '<span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="man">man</span>' pour voir tous les manuels disponibles
                         </div>
                     </div>
                 `;
 
             this.addOutput(output);
+            this.setupClickableCommands();
         },
 
         // Ajouter ces commandes dans l'objet commands:
@@ -2666,8 +2672,63 @@ ${bottomBorder}
 };
 
 
+function updatePromptDisplay() {
+        const promptLabel = document.getElementById('prompt-label');
+        const consoleName = document.getElementById('console-name');
+        const appContainer = document.getElementById('app-container');
+
+        if (window.innerWidth <= 520) {
+            promptLabel.style.display = 'none';
+        } else {
+            promptLabel.style.display = 'flex';
+        }
+
+        if (window.innerWidth <= 365) {
+            consoleName.style.display = 'none';
+        } else {
+            consoleName.style.display = 'flex';
+        }
+
+        if (window.innerWidth <= 330) {
+            appContainer.style.display = 'none';
+            // Créer ou afficher le message d'écran trop petit
+            let smallScreenMessage = document.getElementById('small-screen-message');
+            if (!smallScreenMessage) {
+                smallScreenMessage = document.createElement('div');
+                smallScreenMessage.id = 'small-screen-message';
+                smallScreenMessage.className = 'fixed inset-0 bg-gray-900 flex items-center justify-center p-4 z-50';
+                smallScreenMessage.innerHTML = `
+                    <div class="bg-gray-800 rounded-lg p-6 text-center max-w-sm border border-gray-700">
+                        <div class="text-red-400 text-4xl mb-4">⚠️</div>
+                        <h2 class="text-xl font-bold text-white mb-3">Écran trop petit</h2>
+                        <p class="text-gray-300 text-sm leading-relaxed">
+                            Votre écran est trop petit, par conséquent la console n'est pas supportée. 
+                            Veuillez utiliser un écran plus large ou tourner votre appareil.
+                        </p>
+                    </div>
+                `;
+                document.body.appendChild(smallScreenMessage);
+            } else {
+                smallScreenMessage.style.display = 'flex';
+            }
+        } else {
+            appContainer.style.display = 'block';
+            // Masquer le message si l'écran est assez grand
+            const smallScreenMessage = document.getElementById('small-screen-message');
+            if (smallScreenMessage) {
+                smallScreenMessage.style.display = 'none';
+            }
+        }
+           
+    }
+
 // --- Initialize the App ---
 
 document.addEventListener('DOMContentLoaded', function () {
     app.init();
+    // Appel initial
+    updatePromptDisplay();
+
+    // Écoute du redimensionnement
+    window.addEventListener('resize', updatePromptDisplay);
 });

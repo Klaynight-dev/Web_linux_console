@@ -40,9 +40,6 @@
                                 onclick="document.getElementById('settings-modal').classList.remove('hidden'); app.closeAllMenus();">
                                 Paramètres
                             </button>
-                            <button class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-sm sm:text-base" onclick="app.addOutput('Fonctionnalité \"Déboguer\" en cours de développement.'); app.closeAllMenus">
-                                Déboguer
-                            </button>
                             <button class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-sm sm:text-base" onclick="(function(){ app.commands.clear.call(app); app.closeAllMenus(); })();">
                                 Vider la console (Ctrl+L)
                             </button>
@@ -57,7 +54,7 @@
                             Aide
                         </button>
                         <div id="help-menu-dropdown" class="hidden absolute top-full left-0 mt-1 w-48 bg-gray-700 rounded-md shadow-lg py-1 z-20">
-                            <button class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-sm sm:text-base" onclick="app.commands.help(); app.closeAllMenus();">
+                            <button class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-sm sm:text-base" onclick="app.commands.help.call(app); app.closeAllMenus();">
                                 Commandes
                             </button>
                             <button class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-sm sm:text-base" onclick="document.getElementById('about-modal').classList.remove('hidden'); app.closeAllMenus();">
