@@ -1,8 +1,86 @@
 {
-  "version": "1.2.15",
-  "buildDate": "2025-06-05",
-  "changelog": "Ajout de clickable help et man",
+  "version": "2.0.0",
+  "date": "2025-06-05",
+  "changelog": "Structure and Better UI Update",
   "history": [
+    {
+      "version": "2.0.0",
+      "date": "2025-06-05",
+      "changelog": "Structure and Better UI Update",
+      "type": "Major"
+    },
+    {
+      "version": "1.2.27",
+      "date": "2025-06-05",
+      "changelog": "Better tree ui",
+      "type": "patch"
+    },
+    {
+      "version": "1.2.26",
+      "date": "2025-06-05",
+      "changelog": "Add Cookies for all informations about it",
+      "type": "patch"
+    },
+    {
+      "version": "1.2.25",
+      "date": "2025-06-05",
+      "changelog": "Better lshw ui",
+      "type": "patch"
+    },
+    {
+      "version": "1.2.24",
+      "date": "2025-06-05",
+      "changelog": "Better ifconfig ui",
+      "type": "patch"
+    },
+    {
+      "version": "1.2.23",
+      "date": "2025-06-05",
+      "changelog": "Better date cmd",
+      "type": "patch"
+    },
+    {
+      "version": "1.2.22",
+      "date": "2025-06-05",
+      "changelog": "Better Bin/ cmd load with populateBinDirectory and generateBinCommands",
+      "type": "patch"
+    },
+    {
+      "version": "1.2.21",
+      "date": "2025-06-05",
+      "changelog": "Better man load",
+      "type": "patch"
+    },
+    {
+      "version": "1.2.20",
+      "date": "2025-06-05",
+      "changelog": "Better help load",
+      "type": "patch"
+    },
+    {
+      "version": "1.2.19",
+      "date": "2025-06-05",
+      "changelog": "New stockage for cmd data",
+      "type": "patch"
+    },
+    {
+      "version": "1.2.18",
+      "date": "2025-06-05",
+      "changelog": "Ajout listCommands",
+      "type": "patch"
+    },
+    {
+      "version": "1.2.17",
+      "date": "2025-06-05",
+      "changelog": "better delAllCahches -> resetAllCaches",
+      "type": "patch"
+    },
+    {
+      "version": "1.2.16",
+      "date": "2025-06-05",
+      "changelog": "Ajout better ping",
+      "type": "patch"
+    },
     {
       "version": "1.2.15",
       "date": "2025-06-05",
@@ -105,5 +183,6 @@
       "changelog": "ajout du versionning + modul de modif json",
       "type": "patch"
     }
-  ]
+  ],
+  "buildDate": "2025-06-05"
 }

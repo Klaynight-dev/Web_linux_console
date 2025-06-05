@@ -16,8 +16,8 @@ function updateVersion(type = 'patch', changelog) {
     const versionData = JSON.parse(fs.readFileSync(versionFile, 'utf8'));
     const [major, minor, patch] = versionData.version.split('.').map(Number);
     
-    let newVersion;
-    switch(type) {
+    const normalizedType = type.toLowerCase();
+    switch(normalizedType) {
         case 'major':
             newVersion = `${major + 1}.0.0`;
             break;
