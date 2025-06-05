@@ -69,84 +69,26 @@
             <span id="console-name" class="text-xs sm:text-sm text-gray-400 mr-3 select-none">Console Linux Web</span>
         </nav>
 
-        <div class="flex flex-col flex-grow">
-            <div id="console-output" class="flex-grow bg-gray-800 p-4 overflow-y-auto custom-scrollbar rounded-b-lg border border-gray-700 shadow-inner">
-                <div id="loading-llm-indicator" class="text-yellow-400 hidden animate-pulse">
-                    <span class="inline-block mr-2">⚡</span>Génération en cours...
-                </div>
-                <div id="console-end-ref"></div>
+        <div class="flex flex-col h-screen">
+            <div id="console-output" class="flex-grow bg-gray-800 p-4 overflow-y-auto custom-scrollbar rounded-b-lg border border-gray-700 shadow-inner min-h-0 ">
+            <div id="loading-llm-indicator" class="text-yellow-400 hidden animate-pulse">
+                <span class="inline-block mr-2">⚡</span>Génération en cours...
+            </div>
+            <div id="console-end-ref"></div>
             </div>
 
             <form id="command-form" class="flex mt-3 flex-shrink-0 bg-gray-800 p-2 rounded-lg border border-gray-700">
-                <label for="command-input" id="prompt-label" class="flex-shrink-0 text-green-400 mr-2 flex items-center select-none font-bold"></label>
-                </label>
-                <input
-                    id="command-input"
-                    type="text"
-                    class="flex-grow bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 rounded-md transition-all duration-200 placeholder-gray-400"
-                    autocomplete="off"
-                    autocapitalize="off"
-                    spellcheck="false"
-                    placeholder="Tapez votre commande..."
-                />
+            <label for="command-input" id="prompt-label" class="flex-shrink-0 text-green-400 mr-2 flex items-center select-none font-bold"></label>
+            <input
+                id="command-input"
+                type="text"
+                class="flex-grow bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 rounded-md transition-all duration-200 placeholder-gray-400"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+                placeholder="Tapez votre commande..."
+            />
             </form>
-
-            <script>
-                function updatePromptDisplay() {
-                    const promptLabel = document.getElementById('prompt-label');
-                    const consoleName = document.getElementById('console-name');
-                    const appContainer = document.getElementById('app-container');
-
-                    if (window.innerWidth <= 520) {
-                        promptLabel.style.display = 'none';
-                    } else {
-                        promptLabel.style.display = 'flex';
-                    }
-
-                    if (window.innerWidth <= 365) {
-                        consoleName.style.display = 'none';
-                    } else {
-                        consoleName.style.display = 'flex';
-                    }
-
-                    if (window.innerWidth <= 330) {
-                        appContainer.style.display = 'none';
-                        // Créer ou afficher le message d'écran trop petit
-                        let smallScreenMessage = document.getElementById('small-screen-message');
-                        if (!smallScreenMessage) {
-                            smallScreenMessage = document.createElement('div');
-                            smallScreenMessage.id = 'small-screen-message';
-                            smallScreenMessage.className = 'fixed inset-0 bg-gray-900 flex items-center justify-center p-4 z-50';
-                            smallScreenMessage.innerHTML = `
-                                <div class="bg-gray-800 rounded-lg p-6 text-center max-w-sm border border-gray-700">
-                                    <div class="text-red-400 text-4xl mb-4">⚠️</div>
-                                    <h2 class="text-xl font-bold text-white mb-3">Écran trop petit</h2>
-                                    <p class="text-gray-300 text-sm leading-relaxed">
-                                        Votre écran est trop petit, par conséquent la console n'est pas supportée. 
-                                        Veuillez utiliser un écran plus large ou tourner votre appareil.
-                                    </p>
-                                </div>
-                            `;
-                            document.body.appendChild(smallScreenMessage);
-                        } else {
-                            smallScreenMessage.style.display = 'flex';
-                        }
-                    } else {
-                        appContainer.style.display = 'block';
-                        // Masquer le message si l'écran est assez grand
-                        const smallScreenMessage = document.getElementById('small-screen-message');
-                        if (smallScreenMessage) {
-                            smallScreenMessage.style.display = 'none';
-                        }
-                    }
-                       
-                }
-                // Appel initial
-                updatePromptDisplay();
-
-                // Écoute du redimensionnement
-                window.addEventListener('resize', updatePromptDisplay);
-            </script>
         </div>
 
         <div id="code-import-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-20 p-4">

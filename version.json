@@ -1,8 +1,14 @@
 {
-  "version": "1.2.11",
+  "version": "1.2.12",
   "buildDate": "2025-06-05",
-  "changelog": "fix heigh console + input prblm",
+  "changelog": "fix heigh console + responsive",
   "history": [
+    {
+      "version": "1.2.12",
+      "date": "2025-06-05",
+      "changelog": "fix heigh console + responsive",
+      "type": "patch"
+    },
     {
       "version": "1.2.11",
       "date": "2025-06-05",
