@@ -9,10 +9,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
-<body class="bg-gray-900">
-
-    <div id="app-container" class="main-container bg-gray-900 text-gray-100 font-mono p-4 shadow-lg overflow-hidden">
-        <div class="flex flex-col h-screen">
+<body class="bg-gray-900 h-screen overflow-hidden">
+    <div id="app-container" class="main-container bg-gray-900 text-gray-100 font-mono p-4 shadow-lg h-full flex flex-col">
+        <div class="flex flex-col h-full">
             <nav class="menu-bar bg-gray-800 p-2 rounded-t-lg flex items-center justify-between relative z-10 flex-shrink-0 border-b border-gray-700">
                 <div class="flex space-x-1 sm:space-x-4">
                     <div class="relative">
@@ -69,14 +68,14 @@
                 </div>
                 <span id="console-name" class="text-xs sm:text-sm text-gray-400 mr-3 select-none">Console Linux Web</span>
             </nav>
-            <div id="console-output" class="flex-grow bg-gray-800 p-4 overflow-y-auto custom-scrollbar rounded-b-lg border border-gray-700 shadow-inner">
+            <div id="console-output" class="flex-1 bg-gray-800 p-4 overflow-auto custom-scrollbar rounded-b-lg border border-gray-700 shadow-inner mb-3">
                 <div id="loading-llm-indicator" class="text-yellow-400 hidden animate-pulse">
                     <span class="inline-block mr-2">⚡</span>Génération en cours...
                 </div>
                 <div id="console-end-ref"></div>
             </div>
 
-            <form id="command-form" class="flex mt-3 flex-shrink-0 bg-gray-800 p-2 rounded-lg border border-gray-700">
+            <form id="command-form" class="flex flex-shrink-0 bg-gray-800 p-2 rounded-lg border border-gray-700">
                 <label for="command-input" id="prompt-label" class="flex-shrink-0 text-green-400 mr-2 flex items-center select-none font-bold"></label>
                 </label>
                 <input

@@ -1,8 +1,14 @@
 {
-  "version": "1.2.13",
+  "version": "1.2.14",
   "buildDate": "2025-06-05",
-  "changelog": "test fix all ui bug",
+  "changelog": "test fix all ui bug part 2",
   "history": [
+    {
+      "version": "1.2.14",
+      "date": "2025-06-05",
+      "changelog": "test fix all ui bug part 2",
+      "type": "patch"
+    },
     {
       "version": "1.2.13",
       "date": "2025-06-05",
