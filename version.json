@@ -1,8 +1,14 @@
 {
-  "version": "1.2.10",
-  "buildDate": "2025-06-04",
-  "changelog": "better matrix view",
+  "version": "1.2.11",
+  "buildDate": "2025-06-05",
+  "changelog": "fix heigh console + input prblm",
   "history": [
+    {
+      "version": "1.2.11",
+      "date": "2025-06-05",
+      "changelog": "fix heigh console + input prblm",
+      "type": "patch"
+    },
     {
       "version": "1.2.10",
       "date": "2025-06-04",
