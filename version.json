@@ -1,8 +1,14 @@
 {
-  "version": "2.0.1",
+  "version": "2.0.2",
   "date": "2025-06-05",
-  "changelog": "SEO Meta Tags",
+  "changelog": "Add icon SEO",
   "history": [
+    {
+      "version": "2.0.2",
+      "date": "2025-06-06",
+      "changelog": "Add icon SEO",
+      "type": "patch"
+    },
     {
       "version": "2.0.1",
       "date": "2025-06-06",
