@@ -1,8 +1,20 @@
 {
-  "version": "2.0.3",
+  "version": "2.0.5",
   "date": "2025-06-05",
-  "changelog": "Fix icon SEO",
+  "changelog": "Ajout de version cmd",
   "history": [
+    {
+      "version": "2.0.5",
+      "date": "2025-06-06",
+      "changelog": "Ajout de version cmd",
+      "type": "patch"
+    },
+    {
+      "version": "2.0.4",
+      "date": "2025-06-06",
+      "changelog": "Better cdisconnect et cconnect UI",
+      "type": "patch"
+    },
     {
       "version": "2.0.3",
       "date": "2025-06-06",

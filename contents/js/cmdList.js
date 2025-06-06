@@ -1,3 +1,5 @@
+const { version } = require("os");
+
 // --- Command Descriptions and Metadata ---
 const COMMAND_METADATA = {
     // Navigation
@@ -197,6 +199,14 @@ const COMMAND_METADATA = {
             '-c : compte les correspondances'
         ],
         examples: ['grep "hello" fichier.txt', 'grep -i "error" log.txt']
+    },
+    version: {
+        category: 'Utilitaires',
+        description: 'Affiche la version de la console',
+        synopsis: 'version',
+        helpOption: "None",
+        options: [],
+        examples: ['version']
     },
     wc: {
         category: 'Utilitaires',

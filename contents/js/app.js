@@ -187,6 +187,7 @@ const app = {
         // Charger les informations de version
         this.loadVersionInfo();
         this.populateBinDirectory();
+        this.updateWindowTitle();
 
     },
 
@@ -255,6 +256,11 @@ const app = {
         // Utilise le pseudo du cookie si présent, sinon "user"
         let pseudo = this.getPseudoFromCookie() || "user";
         this.promptLabelElement.innerHTML = `${pseudo}@webconsole:<span class="text-blue-400">${this.currentDir}</span>$`;
+    },
+
+    updateWindowTitle() {
+        const pseudo = this.getPseudoFromCookie() || "user";
+        document.title = `${pseudo} - CLK Console `;
     },
 
     // --- File System Navigation ---
@@ -635,24 +641,243 @@ const app = {
         about() {
             this.openAboutModal();
         },
+        version: async function() {
+            // Animation de chargement
+            const loadingHTML = `
+            <div id="version-loading" class="mt-3 p-4 bg-gray-800/30 border border-gray-600 rounded-lg">
+                <div class="flex items-center justify-center space-x-3">
+                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
+                <span class="text-blue-300 font-medium">Récupération des informations de version...</span>
+                </div>
+            </div>
+            `;
+            this.addOutput(loadingHTML, 'system');
 
+            try {
+            const response = await fetch('/version.json');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const versionData = await response.json();
+
+            // Supprimer l'animation de chargement
+            setTimeout(() => {
+                const loadingElement = document.getElementById('version-loading');
+                if (loadingElement) {
+                loadingElement.remove();
+                }
+
+                const versionHTML = `
+                <div class="border border-purple-500 rounded-xl p-6 bg-gradient-to-br from-purple-900/30 to-blue-900/20 backdrop-blur-sm mt-3">
+                    <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center border-2 border-purple-400">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        </div>
+                        <div>
+                        <h2 class="text-2xl font-bold text-white">CLK Console</h2>
+                        <p class="text-purple-300 text-sm">Console Linux Web Interactive</p>
+                        </div>
+                    </div>
+                    <div class="bg-purple-500/20 text-purple-400 px-4 py-2 rounded-full text-lg font-bold border border-purple-500/30">
+                        v${versionData.version || 'N/A'}
+                    </div>
+                    </div>
+                    
+                    <div class="grid md:grid-cols-2 gap-6 mb-6">
+                    <div class="space-y-3">
+                        <h3 class="text-lg font-semibold text-blue-300 flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-4m-5 0H3m2 0h4M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                        </svg>
+                        Informations Version
+                        </h3>
+                        <div class="space-y-2 text-sm">
+                        <div class="flex justify-between p-2 bg-purple-900/30 rounded">
+                            <span class="text-purple-300 font-medium">Version:</span>
+                            <span class="text-white font-mono">${versionData.version || 'N/A'}</span>
+                        </div>
+                        <div class="flex justify-between p-2 bg-blue-900/30 rounded">
+                            <span class="text-blue-300 font-medium">Date de build:</span>
+                            <span class="text-white font-mono">${versionData.buildDate || 'N/A'}</span>
+                        </div>
+                        <div class="flex justify-between p-2 bg-green-900/30 rounded">
+                            <span class="text-green-300 font-medium">Auteur:</span>
+                            <span class="text-white font-mono">${versionData.author || 'Klaynight'}</span>
+                        </div>
+                        <div class="flex justify-between p-2 bg-yellow-900/30 rounded">
+                            <span class="text-yellow-300 font-medium">Environnement:</span>
+                            <span class="text-white font-mono">${versionData.environment || 'Production'}</span>
+                        </div>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <h3 class="text-lg font-semibold text-purple-300 flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                        </svg>
+                        Statistiques Système
+                        </h3>
+                        <div class="space-y-2 text-sm">
+                        <div class="flex justify-between p-2 bg-gray-700/30 rounded">
+                            <span class="text-gray-300 font-medium">Commandes:</span>
+                            <span class="text-white font-mono">${Object.keys(COMMAND_METADATA).length}</span>
+                        </div>
+                        <div class="flex justify-between p-2 bg-gray-700/30 rounded">
+                            <span class="text-gray-300 font-medium">Runtime:</span>
+                            <span class="text-white font-mono">JavaScript</span>
+                        </div>
+                        <div class="flex justify-between p-2 bg-gray-700/30 rounded">
+                            <span class="text-gray-300 font-medium">Plateforme:</span>
+                            <span class="text-white font-mono">${navigator.userAgentData?.platform || navigator.userAgent.match(/\(([^)]+)\)/)?.[1]?.split(';')[0]?.trim() || 'Inconnu'}</span>
+                        </div>
+                        <div class="flex justify-between p-2 bg-gray-700/30 rounded">
+                            <span class="text-gray-300 font-medium">Navigateur:</span>
+                            <span class="text-white font-mono">${navigator.userAgent.split(' ')[0]}</span>
+                        </div>
+                        </div>
+                    </div>
+                    </div>
+                    
+                    <div class="mt-6 pt-4 border-t border-gray-600">
+                    <div class="flex items-center justify-end text-sm text-gray-400">
+                        <div class="text-xs">
+                        Made with ❤️ by <span class="text-purple-400">${versionData.author || versionData.owner?.login || 'Klaynight'}</span>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+                `;
+                
+                this.addOutput(versionHTML, 'system');
+            }, 500);
+
+            } catch (error) {
+            // Supprimer l'animation de chargement
+            const loadingElement = document.getElementById('version-loading');
+            if (loadingElement) {
+                loadingElement.remove();
+            }
+
+            // Affichage d'erreur avec fallback
+            this.addOutput(`
+                <div class="mt-3 p-4 bg-red-900/20 border border-red-600 rounded-lg">
+                <div class="flex items-center mb-2">
+                    <span class="text-red-400 mr-2">❌</span>
+                    <span class="text-red-300 font-medium">Erreur lors de la récupération de la version</span>
+                </div>
+                <div class="text-red-400 text-sm">${error.message}</div>
+                <div class="text-gray-400 text-xs mt-2">
+                    Affichage des informations de base disponibles...
+                </div>
+                </div>
+            `, 'error');
+
+            // Fallback vers l'affichage basique
+            setTimeout(() => {
+                const fallbackHTML = `
+                <div class="border border-gray-500 rounded-xl p-6 bg-gray-800/50 mt-3">
+                    <div class="text-center">
+                    <div class="w-16 h-16 bg-gray-600 rounded-full flex items-center justify-center border-2 border-gray-500 mx-auto mb-4">
+                        <svg class="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <h2 class="text-2xl font-bold text-white mb-2">CLK Console</h2>
+                    <p class="text-gray-300 mb-4">Console Linux Web Interactive (Mode hors ligne)</p>
+                    <div class="text-sm text-gray-400">
+                        <div>Version: Information indisponible</div>
+                        <div>Date: ${new Date().toLocaleDateString()}</div>
+                        <div>Commandes disponibles: ${Object.keys(COMMAND_METADATA).length}</div>
+                    </div>
+                    </div>
+                </div>
+                `;
+                this.addOutput(fallbackHTML, 'system');
+            }, 1000);
+            }
+        },
         cconnect: async function (args) {
             if (!args || args.length === 0 || !args[0].trim()) {
-                this.addOutput('Erreur : veuillez fournir un pseudo. Utilisation : cconnect <username>', 'error');
-                return;
+            this.addOutput('Erreur : veuillez fournir un pseudo. Utilisation : cconnect <username>', 'error');
+            return;
             }
             const pseudo = args[0].trim();
             this.setPseudoCookie(pseudo);
-            this.addOutput(`Connecté en tant que <span class="text-green-400">${pseudo}</span>.`, "system");
+            
+            // Interface améliorée pour la connexion
+            const connectionHTML = `
+            <div class="border border-green-500 rounded-lg p-4 bg-green-900/20 backdrop-blur-sm mt-3">
+                <div class="flex items-center mb-3">
+                <span class="text-2xl mr-2">🔗</span>
+                <span class="font-bold text-green-400 text-xl">Connexion réussie</span>
+                </div>
+                <div class="space-y-2">
+                <div class="flex items-center justify-between p-2 bg-green-900/30 rounded">
+                    <span class="text-green-300 font-medium">Utilisateur:</span>
+                    <span class="text-white font-mono font-bold">${pseudo}</span>
+                </div>
+                <div class="flex items-center justify-between p-2 bg-green-900/30 rounded">
+                    <span class="text-green-300 font-medium">Statut:</span>
+                    <span class="text-green-400 font-mono">✅ Connecté</span>
+                </div>
+                <div class="flex items-center justify-between p-2 bg-green-900/30 rounded">
+                    <span class="text-green-300 font-medium">Session:</span>
+                    <span class="text-white font-mono">${new Date().toLocaleString()}</span>
+                </div>
+                </div>
+                <div class="mt-3 text-xs text-gray-400 text-center">
+                Titre de la fenêtre mis à jour automatiquement
+                </div>
+            </div>
+            `;
+            this.addOutput(connectionHTML, "system");
             this.updatePrompt();
+            this.updateWindowTitle();
         },
 
         cdisconnect: function () {
+            const currentPseudo = this.getPseudoFromCookie() || 'user';
+            
             // Supprime le cookie pseudo
             document.cookie = "pseudo=;path=/;max-age=0";
-            this.addOutput('Déconnecté. Le pseudo a été réinitialisé à "user".', "system");
+            
+            // Interface améliorée pour la déconnexion
+            const disconnectionHTML = `
+            <div class="border border-orange-500 rounded-lg p-4 bg-orange-900/20 backdrop-blur-sm mt-3">
+                <div class="flex items-center mb-3">
+                <span class="text-2xl mr-2">🔌</span>
+                <span class="font-bold text-orange-400 text-xl">Déconnexion</span>
+                </div>
+                <div class="space-y-2">
+                <div class="flex items-center justify-between p-2 bg-orange-900/30 rounded">
+                    <span class="text-orange-300 font-medium">Ancien utilisateur:</span>
+                    <span class="text-white font-mono line-through">${currentPseudo}</span>
+                </div>
+                <div class="flex items-center justify-between p-2 bg-orange-900/30 rounded">
+                    <span class="text-orange-300 font-medium">Nouvel utilisateur:</span>
+                    <span class="text-white font-mono font-bold">user</span>
+                </div>
+                <div class="flex items-center justify-between p-2 bg-orange-900/30 rounded">
+                    <span class="text-orange-300 font-medium">Statut:</span>
+                    <span class="text-orange-400 font-mono">⚡ Déconnecté</span>
+                </div>
+                </div>
+                <div class="mt-3 text-xs text-gray-400 text-center">
+                Session réinitialisée - Titre de la fenêtre mis à jour
+                </div>
+            </div>
+            `;
+            this.addOutput(disconnectionHTML, "system");
             this.updatePrompt();
+            this.updateWindowTitle();
         },
+
         history: function () {
             if (this.history.length === 0) {
                 this.addOutput('Aucune commande enregistrée.', 'system');
