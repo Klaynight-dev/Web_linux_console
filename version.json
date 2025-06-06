@@ -1,8 +1,14 @@
 {
-  "version": "2.0.0",
+  "version": "2.0.1",
   "date": "2025-06-05",
-  "changelog": "Structure and Better UI Update",
+  "changelog": "SEO Meta Tags",
   "history": [
+    {
+      "version": "2.0.1",
+      "date": "2025-06-06",
+      "changelog": "SEO Meta Tags",
+      "type": "patch"
+    },
     {
       "version": "2.0.0",
       "date": "2025-06-05",
@@ -184,5 +190,5 @@
       "type": "patch"
     }
   ],
-  "buildDate": "2025-06-05"
+  "buildDate": "2025-06-06"
 }
