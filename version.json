@@ -1,8 +1,32 @@
 {
-  "version": "2.0.5",
+  "version": "2.0.9",
   "date": "2025-06-05",
-  "changelog": "Ajout de version cmd",
+  "changelog": "reboot cmd",
   "history": [
+    {
+      "version": "2.0.9",
+      "date": "2025-06-07",
+      "changelog": "reboot cmd",
+      "type": "patch"
+    },
+    {
+      "version": "2.0.8",
+      "date": "2025-06-07",
+      "changelog": "genpass cmd",
+      "type": "patch"
+    },
+    {
+      "version": "2.0.7",
+      "date": "2025-06-07",
+      "changelog": "Calc cmd",
+      "type": "patch"
+    },
+    {
+      "version": "2.0.6",
+      "date": "2025-06-07",
+      "changelog": "Fix responsive UI err",
+      "type": "patch"
+    },
     {
       "version": "2.0.5",
       "date": "2025-06-06",
@@ -214,5 +238,5 @@
       "type": "patch"
     }
   ],
-  "buildDate": "2025-06-06"
+  "buildDate": "2025-06-07"
 }

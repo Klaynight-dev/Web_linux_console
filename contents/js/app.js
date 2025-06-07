@@ -3897,6 +3897,236 @@ ${bottomBorder}
             window.addEventListener('resize', handleResize);
         },
 
+        // Générateur de mots de passe
+        genpass(args) {
+            const options = this.parseOptions(args, {
+            'l': 'length',
+            'n': 'numbers',
+            's': 'symbols',
+            'u': 'uppercase',
+            'c': 'count',
+            'h': 'help'
+            });
+            
+            // Help option
+            if (options.help) {
+            this.addOutput('<span class="font-bold text-blue-400">genpass - générateur de mots de passe sécurisés</span>');
+            this.addOutput('');
+            this.addOutput('<span class="text-green-400">UTILISATION:</span>');
+            this.addOutput('    genpass [OPTIONS] [longueur]');
+            this.addOutput('');
+            this.addOutput('<span class="text-green-400">OPTIONS:</span>');
+            this.addOutput('    -l, --length N     longueur du mot de passe (défaut: 12)');
+            this.addOutput('    -c, --count N      générer N mots de passe (défaut: 1)');
+            this.addOutput('    -n, --numbers      exclure les chiffres');
+            this.addOutput('    -s, --symbols      exclure les symboles');
+            this.addOutput('    -u, --uppercase    exclure les majuscules');
+            this.addOutput('    -h, --help         afficher cette aide');
+            this.addOutput('');
+            this.addOutput('<span class="text-green-400">EXEMPLES:</span>');
+            this.addOutput('    genpass            génère un mot de passe de 12 caractères');
+            this.addOutput('    genpass 16         génère un mot de passe de 16 caractères');
+            this.addOutput('    genpass -c 5       génère 5 mots de passe');
+            this.addOutput('    genpass -n -s      génère sans chiffres ni symboles');
+            return;
+            }
+            
+            // Rechercher un nombre dans les arguments pour la longueur
+            let length = parseInt(options.length) || 12;
+            const numberArg = args.find(arg => /^\d+$/.test(arg));
+            if (numberArg) {
+            length = parseInt(numberArg);
+            }
+            
+            // Nombre de mots de passe à générer
+            let count = parseInt(options.count) || 1;
+            if (count > 10) count = 10; // Limite pour éviter le spam
+            
+            // Support des options négatives avec "-"
+            const includeNumbers = !args.includes('-n') && options.numbers !== false;
+            const includeSymbols = !args.includes('-s') && options.symbols !== false;
+            const includeUppercase = !args.includes('-u') && options.uppercase !== false;
+            
+            // Validation de la longueur
+            if (length < 4 || length > 128) {
+            this.addOutput('<span class="text-red-400">❌ Erreur: la longueur doit être entre 4 et 128 caractères</span>', 'error');
+            return;
+            }
+            
+            let chars = 'abcdefghijklmnopqrstuvwxyz';
+            if (includeUppercase) chars += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            if (includeNumbers) chars += '0123456789';
+            if (includeSymbols) chars += '!@#$%^&*()_+-=[]{}|;:,.?';
+            
+            // Génération des mots de passe
+            for (let p = 0; p < count; p++) {
+            let password = '';
+            for (let i = 0; i < length; i++) {
+            password += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            
+            // Calculer la force du mot de passe
+            let strength = 0;
+            let strengthText = '';
+            let strengthColor = '';
+            
+            if (password.length >= 8) strength += 20;
+            if (password.length >= 12) strength += 10;
+            if (/[a-z]/.test(password)) strength += 15;
+            if (/[A-Z]/.test(password)) strength += 15;
+            if (/[0-9]/.test(password)) strength += 15;
+            if (/[^a-zA-Z0-9]/.test(password)) strength += 25;
+            
+            if (strength < 40) {
+            strengthText = 'Faible';
+            strengthColor = 'text-red-400';
+            } else if (strength < 70) {
+            strengthText = 'Moyen';
+            strengthColor = 'text-yellow-400';
+            } else if (strength < 90) {
+            strengthText = 'Fort';
+            strengthColor = 'text-green-400';
+            } else {
+            strengthText = 'Très fort';
+            strengthColor = 'text-green-300';
+            }
+            
+            const passwordHTML = `
+            <div class="border border-gray-600 rounded-lg p-4 bg-gray-800/50 mt-2">
+            <div class="flex items-center justify-between mb-3">
+                <span class="font-bold text-blue-400">Mot de passe ${count > 1 ? '#' + (p + 1) : ''}</span>
+                <span class="px-2 py-1 rounded text-xs font-semibold ${strengthColor} bg-gray-700">${strengthText}</span>
+            </div>
+            
+            <div class="bg-gray-900 rounded-lg p-3 border border-gray-600 mb-3">
+                <div class="flex items-center">
+                <span class="font-mono text-lg text-green-300 select-all break-all flex-1 min-w-0 mr-3">${password}</span>
+                <button onclick="navigator.clipboard.writeText('${password}').then(() => app.addOutput('🔐 Mot de passe copié!', 'system'))" 
+                class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs transition-colors duration-200 flex-shrink-0 whitespace-nowrap">
+                📋 Copier
+                </button>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                <div class="bg-gray-700/30 rounded p-2 text-center">
+                <div class="text-gray-400 mb-1">Longueur</div>
+                <div class="text-white font-mono">${password.length}</div>
+                </div>
+                <div class="bg-gray-700/30 rounded p-2 text-center">
+                <div class="text-gray-400 mb-1">Force</div>
+                <div class="${strengthColor} font-semibold">${strength}/100</div>
+                </div>
+                <div class="bg-gray-700/30 rounded p-2 text-center">
+                <div class="text-gray-400 mb-1">Entropie</div>
+                <div class="text-white font-mono">${Math.floor(Math.log2(Math.pow(chars.length, length)))} bits</div>
+                </div>
+                <div class="bg-gray-700/30 rounded p-2 text-center">
+                <div class="text-gray-400 mb-1">Charset</div>
+                <div class="text-white font-mono">${chars.length}</div>
+                </div>
+            </div>
+            </div>
+            `;
+            
+            this.addOutput(passwordHTML, 'system');
+            }
+        },
+
+
+
+        // Calculatrice
+        calc(args) {
+            const expression = args.join(' ');
+            if (!expression) {
+                this.addOutput('calc: utilisation: calc <expression>', 'error');
+                return;
+            }
+            
+            try {
+                // Remplacer les opérateurs textuels
+                let safeExpression = expression
+                    .replace(/[^0-9+\-*/().\s]/g, '') // Sécurité basique
+                    .replace(/\s+/g, '');
+                    
+                const result = Function('"use strict"; return (' + safeExpression + ')')();
+                this.addOutput(`<span class="text-blue-400">📊 ${expression} = <span class="text-yellow-300 font-mono">${result}</span></span>`);
+            } catch (error) {
+                this.addOutput('calc: expression invalide', 'error');
+            }
+        },
+        
+        reboot() {
+            const rebootHTML = `
+                <div class="border border-orange-500 rounded-lg p-4 bg-orange-900/20 backdrop-blur-sm">
+                    <div class="flex items-center mb-3">
+                        <span class="text-2xl mr-2">🔄</span>
+                        <span class="font-bold text-orange-400 text-xl">Redémarrage du système</span>
+                    </div>
+                    <div class="text-gray-300 text-sm mb-2">Le système va redémarrer dans quelques secondes...</div>
+                    <div class="text-yellow-400 text-xs italic">⚠️ Toutes les données non sauvegardées seront perdues</div>
+                </div>
+            `;
+            this.addOutput(rebootHTML, 'system');
+
+            // Animation de chargement
+            const loadingHTML = `
+                <div id="reboot-loading" class="mt-3 p-4 bg-gray-800/30 border border-gray-600 rounded-lg">
+                    <div class="flex items-center justify-center space-x-3">
+                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-400"></div>
+                        <span class="text-orange-300 font-medium">Fermeture des processus...</span>
+                    </div>
+                    <div class="mt-3 space-y-2">
+                        <div class="flex items-center space-x-2">
+                            <div class="animate-pulse w-2 h-2 bg-red-400 rounded-full"></div>
+                            <span class="text-sm text-gray-400">Arrêt des services système...</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="animate-pulse w-2 h-2 bg-yellow-400 rounded-full" style="animation-delay: 0.3s"></div>
+                            <span class="text-sm text-gray-400">Sauvegarde des données...</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="animate-pulse w-2 h-2 bg-green-400 rounded-full" style="animation-delay: 0.6s"></div>
+                            <span class="text-sm text-gray-400">Nettoyage de la mémoire...</span>
+                        </div>
+                    </div>
+                    <div class="mt-3 bg-gray-700 rounded-full h-2">
+                        <div id="reboot-progress" class="bg-gradient-to-r from-orange-500 to-red-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+            `;
+            this.addOutput(loadingHTML, 'system');
+
+            // Animation de la barre de progression
+            let progress = 0;
+            const progressBar = document.getElementById('reboot-progress');
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 15 + 5;
+                if (progress > 100) progress = 100;
+                if (progressBar) {
+                    progressBar.style.width = progress + '%';
+                }
+                if (progress >= 100) {
+                    clearInterval(progressInterval);
+                    // Attendre un peu puis recharger
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                }
+            }, 200);
+
+            // Message de confirmation après 2 secondes
+            setTimeout(() => {
+                this.addOutput(`
+                    <div class="mt-3 p-3 bg-red-900/20 border border-red-600 rounded-lg">
+                        <div class="flex items-center">
+                            <span class="text-red-400 mr-2">🔄</span>
+                            <span class="text-red-300 font-medium">Redémarrage en cours...</span>
+                        </div>
+                    </div>
+                `, 'system');
+            }, 2000);
+        },
     },
 
     // --- Event Handlers ---
@@ -4441,29 +4671,61 @@ ${bottomBorder}
         });
     },
 
-};
-
-
-function updatePromptDisplay() {
+    updatePromptDisplay() {
         const promptLabel = document.getElementById('prompt-label');
         const consoleName = document.getElementById('console-name');
+        const menuButtons = document.getElementById('menu-buttons');
         const appContainer = document.getElementById('app-container');
+        const commandInput = document.getElementsByClassName('command-prompt');
+        const commandForm = document.getElementById('command-form');
 
-        if (window.innerWidth <= 520) {
-            promptLabel.style.display = 'none';
-        } else {
-            promptLabel.style.display = 'flex';
+        if (promptLabel && commandInput && commandForm) {
+            requestAnimationFrame(() => {
+
+                const tempPromptElement = document.createElement('span');
+                tempPromptElement.style.visibility = 'hidden';
+                tempPromptElement.style.position = 'absolute';
+                tempPromptElement.style.whiteSpace = 'nowrap';
+                tempPromptElement.style.zIndex = '-1';
+                tempPromptElement.innerHTML = promptLabel.innerHTML;
+                tempPromptElement.className = promptLabel.className;
+                document.body.appendChild(tempPromptElement);
+                
+                const promptWidth = tempPromptElement.getBoundingClientRect().width;
+                document.body.removeChild(tempPromptElement);
+                
+                const formWidth = commandForm.getBoundingClientRect().width;
+                const inputMinWidth = 150;
+                const margin = 75;
+                
+                if (promptWidth + inputMinWidth + margin > formWidth) {
+                    promptLabel.style.display = 'none';
+                } else {
+                    promptLabel.style.display = 'inline-flex';
+                }
+            });
         }
 
-        if (window.innerWidth <= 365) {
-            consoleName.style.display = 'none';
-        } else {
-            consoleName.style.display = 'flex';
+        if (consoleName && menuButtons) {
+            requestAnimationFrame(() => {
+            const consoleNameRect = consoleName.getBoundingClientRect();
+            const menuButtonsRect = menuButtons.getBoundingClientRect();
+            
+            // Vérifier si les éléments se chevauchent horizontalement
+            const overlap = !(consoleNameRect.right + 10 < menuButtonsRect.left || 
+                    menuButtonsRect.right + 10 < consoleNameRect.left);
+                        
+            if (overlap) {
+                consoleName.style.display = 'none';
+            } else {
+                consoleName.style.display = 'flex';
+            }
+            });
         }
 
         if (window.innerWidth <= 330) {
             appContainer.style.display = 'none';
-            // Créer ou afficher le message d'écran trop petit
+
             let smallScreenMessage = document.getElementById('small-screen-message');
             if (!smallScreenMessage) {
                 smallScreenMessage = document.createElement('div');
@@ -4485,22 +4747,23 @@ function updatePromptDisplay() {
             }
         } else {
             appContainer.style.display = 'block';
-            // Masquer le message si l'écran est assez grand
+
             const smallScreenMessage = document.getElementById('small-screen-message');
             if (smallScreenMessage) {
                 smallScreenMessage.style.display = 'none';
             }
         }
-           
     }
 
-// --- Initialize the App ---
+};
+    // --- Initialize the App ---
+
 
 document.addEventListener('DOMContentLoaded', function () {
     app.init();
     // Appel initial
-    updatePromptDisplay();
+    app.updatePromptDisplay();
 
     // Écoute du redimensionnement
-    window.addEventListener('resize', updatePromptDisplay);
+    window.addEventListener('resize', () => app.updatePromptDisplay());
 });

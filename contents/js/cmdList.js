@@ -1,5 +1,3 @@
-const { version } = require("os");
-
 // --- Command Descriptions and Metadata ---
 const COMMAND_METADATA = {
     // Navigation
@@ -269,6 +267,25 @@ const COMMAND_METADATA = {
         options: [],
         examples: ['uptime']
     },
+    calc: {
+        category: 'Utilitaires',
+        description: 'Ouvre une calculatrice en ligne de commande',
+        synopsis: 'calc',
+        helpOption: "None",
+        options: [],
+        examples: ['calc', 'calc 2+2', 'calc 5*3']
+    },
+    genpass : {
+        category: 'Utilitaires',
+        description: 'Génère un mot de passe aléatoire',
+        synopsis: 'genpass',
+        helpOption: "[longueur]",
+        options: [
+            '-l : spécifie la longueur du mot de passe (par défaut 12)',
+            '-s : inclut des caractères spéciaux'
+        ],
+        examples: ['genpass', 'genpass -l 16', 'genpass -s']
+    },
 
     // Système & Processus
     ps: {
@@ -332,6 +349,14 @@ const COMMAND_METADATA = {
         helpOption: "<nom>",
         options: [],
         examples: ['killall firefox', 'killall -9 chrome']
+    },
+    reboot: {
+        category: 'Système & Processus',
+        description: 'Redémarre le système',
+        synopsis: 'reboot',
+        helpOption: "None",
+        options: [],
+        examples: ['reboot']
     },
 
     // Gestion Internet
