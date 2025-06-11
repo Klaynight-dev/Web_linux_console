@@ -4,6 +4,24 @@ const path = require('path');
 const versionFile = './version.json';
 const indexFile = './index.html';
 
+function createVersionFileIfNotExists() {
+    if (!fs.existsSync(versionFile)) {
+        const initialVersion = {
+            version: '1.0.0',
+            buildDate: new Date().toISOString().split('T')[0],
+            changelog: 'Version initiale',
+            history: [{
+                version: '1.0.0',
+                date: new Date().toISOString().split('T')[0],
+                changelog: 'Version initiale',
+                type: 'initial'
+            }]
+        };
+        fs.writeFileSync(versionFile, JSON.stringify(initialVersion, null, 2));
+        console.log('Fichier version.json créé avec la version 1.0.0');
+    }
+}
+
 function updateVersion(type = 'patch', changelog) {
     // Vérifier que le changelog est fourni
     if (!changelog) {
@@ -12,10 +30,14 @@ function updateVersion(type = 'patch', changelog) {
         process.exit(1);
     }
     
+    // Créer le fichier version.json s'il n'existe pas
+    createVersionFileIfNotExists();
+    
     // Lire la version actuelle
     const versionData = JSON.parse(fs.readFileSync(versionFile, 'utf8'));
     const [major, minor, patch] = versionData.version.split('.').map(Number);
     
+    let newVersion;
     const normalizedType = type.toLowerCase();
     switch(normalizedType) {
         case 'major':
@@ -31,8 +53,9 @@ function updateVersion(type = 'patch', changelog) {
     }
     
     // Mettre à jour version.json avec le changelog
+    const currentDate = new Date().toISOString().split('T')[0];
     versionData.version = newVersion;
-    versionData.buildDate = new Date().toISOString().split('T')[0];
+    versionData.buildDate = currentDate;
     versionData.changelog = changelog;
     
     // Ajouter l'historique des versions
@@ -41,11 +64,11 @@ function updateVersion(type = 'patch', changelog) {
     }
     versionData.history.unshift({
         version: newVersion,
-        date: versionData.buildDate,
+        date: currentDate,
         changelog: changelog,
         type: type
     });
-    
+
     fs.writeFileSync(versionFile, JSON.stringify(versionData, null, 2));
     
     // Mettre à jour index.html
@@ -61,15 +84,35 @@ function updateVersion(type = 'patch', changelog) {
 }
 
 function showCurrentVersion() {
+    createVersionFileIfNotExists();
     const versionData = JSON.parse(fs.readFileSync(versionFile, 'utf8'));
     console.log(`Version actuelle: ${versionData.version}`);
+}
+
+function showCurrentChangelog() {
+    createVersionFileIfNotExists();
+    const versionData = JSON.parse(fs.readFileSync(versionFile, 'utf8'));
+    console.log(`Changelog actuel: ${versionData.changelog}`);
 }
 
 // Gérer les arguments de ligne de commande
 const args = process.argv.slice(2);
 
-// Si "add" est le premier argument, utiliser patch par défaut
-if (args[0] === 'add') {
+// Si "now" est le premier argument, utiliser patch par défaut
+if (args[0] === 'now') {
+    const changelog = args.slice(1).join(' ');
+    if (!changelog) {
+        showCurrentVersion();
+        showCurrentChangelog();
+        process.exit(0);
+    }
+    updateVersion('patch', changelog);
+} else if (args[0] === 'version') {
+    showCurrentVersion();
+} else if (args[0] === 'changelog') {
+    showCurrentChangelog();
+} else if (args[0] === 'add') {
+    // Format: node version.js add "changelog" (patch par défaut)
     const changelog = args.slice(1).join(' ');
     if (!changelog) {
         showCurrentVersion();

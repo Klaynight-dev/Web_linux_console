@@ -65,3 +65,35 @@ html, body {
 body {
   transition: background 0.5s, color 0.5s;
 }
+
+/* Ajoutez ces styles à votre fichier CSS */
+.scrollbar-thin {
+    scrollbar-width: thin;
+}
+
+.scrollbar-thumb-gray-600::-webkit-scrollbar-thumb {
+    background-color: #4b5563;
+    border-radius: 4px;
+}
+
+.scrollbar-track-gray-800::-webkit-scrollbar-track {
+    background-color: #1f2937;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+    height: 4px;
+}
+
+#tabs-container::-webkit-scrollbar {
+    height: 4px;
+}
+
+#tabs-container::-webkit-scrollbar-thumb {
+    background-color: #4b5563;
+    border-radius: 4px;
+}
+
+#tabs-container::-webkit-scrollbar-track {
+    background-color: #1f2937;
+}
+

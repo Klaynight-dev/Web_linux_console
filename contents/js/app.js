@@ -31,6 +31,7 @@ const app = {
     historyList: document.getElementById('history-list'),
     closeHistoryModalButton: document.getElementById('close-history-modal'),
     showHistoryButton: document.getElementById('show-history-button'),
+    clearHistoryBtn: document.getElementById('clear-history-button'),
 
     // --- État ---
     currentDir: '/home/user',
@@ -38,6 +39,15 @@ const app = {
     history: [],
     historyIndex: -1,
     isLoadingLLM: false,
+
+    // --- Tabs ---
+    tabs: [],
+    tabsContainer: null,
+    newTabButton: null,
+    activeTabId: null,
+    nextTabId: 1,
+    compactTabs: false,
+
     // 'file', 'tools', 'help', ou null
     awaitingPseudo: false,
     defaultMessage: `
@@ -59,49 +69,110 @@ const app = {
     init() {
         this.loadHistoryFromCookie();
         this.loadFileSystemFromCookie();
-        // Event Listeners for command input
-        this.commandFormElement.addEventListener('submit', this.handleCommandSubmit.bind(this));
-        this.commandInputElement.addEventListener('keydown', this.handleKeyDown.bind(this));
+        
+        // Event Listeners for command input - vérification de sécurité
+        if (this.commandFormElement) {
+            this.commandFormElement.addEventListener('submit', this.handleCommandSubmit.bind(this));
+        }
+        if (this.commandInputElement) {
+            this.commandInputElement.addEventListener('keydown', this.handleKeyDown.bind(this));
+        }
 
-        // Event Listeners for Menus
-        this.fileMenuButton.addEventListener('click', () => this.toggleMenu('file'));
-        this.toolsMenuButton.addEventListener('click', () => this.toggleMenu('tools'));
-        this.helpMenuButton.addEventListener('click', () => this.toggleMenu('help'));
+        // Event Listeners for Menus - vérification de sécurité
+        if (this.fileMenuButton) {
+            this.fileMenuButton.addEventListener('click', () => this.toggleMenu('file'));
+        }
+        if (this.toolsMenuButton) {
+            this.toolsMenuButton.addEventListener('click', () => this.toggleMenu('tools'));
+        }
+        if (this.helpMenuButton) {
+            this.helpMenuButton.addEventListener('click', () => this.toggleMenu('help'));
+        }
         document.addEventListener('mousedown', this.handleClickOutsideMenu.bind(this));
 
-        // Event Listeners for Modal
-        this.openImportModalButton.addEventListener('click', this.openCodeImportModal.bind(this));
-        this.cancelImportButton.addEventListener('click', this.closeCodeImportModal.bind(this));
-        this.confirmImportButton.addEventListener('click', this.handleCodeImport.bind(this));
-        this.closeAboutModalButton.addEventListener('click', this.closeAboutModal.bind(this));
+        // Event Listeners for Modal - vérification de sécurité
+        if (this.openImportModalButton) {
+            this.openImportModalButton.addEventListener('click', this.openCodeImportModal.bind(this));
+        }
+        if (this.cancelImportButton) {
+            this.cancelImportButton.addEventListener('click', this.closeCodeImportModal.bind(this));
+        }
+        if (this.confirmImportButton) {
+            this.confirmImportButton.addEventListener('click', this.handleCodeImport.bind(this));
+        }
+        if (this.closeAboutModalButton) {
+            this.closeAboutModalButton.addEventListener('click', this.closeAboutModal.bind(this));
+        }
 
-        // Event Listeners for History Modal
-        this.showHistoryButton.addEventListener('click', this.openHistoryModal.bind(this));
-        this.closeHistoryModalButton.addEventListener('click', this.closeHistoryModal.bind(this));
+        // Event Listeners for History Modal - vérification de sécurité
+        if (this.showHistoryButton) {
+            this.showHistoryButton.addEventListener('click', this.openHistoryModal.bind(this));
+        }
+        if (this.closeHistoryModalButton) {
+            this.closeHistoryModalButton.addEventListener('click', this.closeHistoryModal.bind(this));
+        }
 
-        // Drag and Drop
-        this.appContainer.addEventListener('dragover', this.handleDragOver.bind(this));
-        this.appContainer.addEventListener('drop', this.handleDrop.bind(this));
+        // Drag and Drop - vérification de sécurité
+        if (this.appContainer) {
+            this.appContainer.addEventListener('dragover', this.handleDragOver.bind(this));
+            this.appContainer.addEventListener('drop', this.handleDrop.bind(this));
+        }
 
+        // Tab Management
+        this.tabsContainer = document.getElementById('tabs-container');
+        this.newTabButton = document.getElementById('new-tab-button');
+
+        // Charger les onglets depuis les cookies
+        this.loadTabsFromCookie();
+
+        if (this.newTabButton) {
+            this.newTabButton.addEventListener('click', this.createNewTab.bind(this));
+        }
+
+        const toggleTabsSizeButton = document.getElementById('toggle-tabs-size-button');
+        if (toggleTabsSizeButton) {
+            toggleTabsSizeButton.addEventListener('click', this.toggleTabsSize.bind(this));
+        }
 
         this.updatePrompt();
-        this.commandInputElement.focus();
-        this.addOutput(this.defaultMessage, 'system');
+        if (this.commandInputElement) {
+            this.commandInputElement.focus();
+        }
 
-        document.getElementById('font-size-range').addEventListener('input', function () {
-            document.getElementById('font-size-value').textContent = this.value + 'px';
-            document.getElementById('console-output').style.fontSize = this.value + 'px';
-        });
+        // Gestion de la taille de police (avec vérification)
+        const fontSizeRange = document.getElementById('font-size-range');
+        const fontSizeValue = document.getElementById('font-size-value');
+        const consoleOutput = document.getElementById('console-output');
+        
+        if (fontSizeRange && fontSizeValue && consoleOutput) {
+            fontSizeRange.addEventListener('input', function () {
+                fontSizeValue.textContent = this.value + 'px';
+                consoleOutput.style.fontSize = this.value + 'px';
+            });
+        }
 
         // Gestion du modal paramètres
-        document.getElementById('cancel-settings-modal').onclick = function () {
-            document.getElementById('settings-modal').classList.add('hidden');
-        };
+        const cancelSettingsModal = document.getElementById('cancel-settings-modal');
+        const saveSettingsModal = document.getElementById('save-settings-modal');
+        
+        if (cancelSettingsModal) {
+            cancelSettingsModal.onclick = function () {
+                const settingsModal = document.getElementById('settings-modal');
+                if (settingsModal) {
+                    settingsModal.classList.add('hidden');
+                }
+            };
+        }
 
-        document.getElementById('save-settings-modal').onclick = function () {
-            document.getElementById('settings-modal').classList.add('hidden');
-            // Ajoute ici la logique de sauvegarde des paramètres si besoin
-        };
+        if (saveSettingsModal) {
+            saveSettingsModal.onclick = function () {
+                const settingsModal = document.getElementById('settings-modal');
+                if (settingsModal) {
+                    settingsModal.classList.add('hidden');
+                }
+                // Ajoute ici la logique de sauvegarde des paramètres si besoin
+            };
+        }
 
         this.loadTheme();
 
@@ -131,6 +202,7 @@ const app = {
         const bgUrl = document.getElementById('console-bg-url');
         const bgFile = document.getElementById('console-bg-file');
         const bgImageImportGroup = document.getElementById('console-bg-image-import-group');
+        
         if (bgType && bgColor && bgUrl && bgFile && bgImageImportGroup) {
             bgType.addEventListener('change', function () {
                 if (this.value === 'color') {
@@ -138,7 +210,7 @@ const app = {
                     bgUrl.style.display = 'none';
                     bgImageImportGroup.style.display = 'none';
                     // Restaure la dernière couleur utilisée
-                    const lastColor = localStorage.getItem('console_bg_last_color') || '#1f2934';
+                    const lastColor = localStorage.getItem('console_bg_last_color') || '#1f2937';
                     bgColor.value = lastColor;
                     app.applyConsoleBackground('color', lastColor);
                 } else {
@@ -157,11 +229,13 @@ const app = {
                     app.applyConsoleBackground('color', this.value);
                 }
             });
+            
             bgUrl.addEventListener('input', function () {
                 if (bgType.value === 'image') {
                     app.applyConsoleBackground('image', this.value);
                 }
             });
+            
             bgFile.addEventListener('change', function () {
                 if (bgType.value === 'image' && this.files && this.files[0]) {
                     const reader = new FileReader();
@@ -174,14 +248,21 @@ const app = {
                 }
             });
         }
-
-        const clearHistoryBtn = document.getElementById('clear-history-btn');
-        if (clearHistoryBtn) {
-            clearHistoryBtn.onclick = function () {
-                app.history = [];
-                app.saveHistoryToCookie();
-                app.openHistoryModal(); // Rafraîchit la vue du modal
-            };
+        if (this.clearHistoryBtn) {
+            this.clearHistoryBtn.addEventListener('click', () => {
+                this.history = [];
+                this.saveHistoryToCookie();
+                
+                if (this.historyModal && !this.historyModal.classList.contains('hidden')) {
+                    this.showHistory();
+                }
+                
+                this.addOutput('<span class="text-green-400">✅ Historique des commandes effacé</span>', 'system');
+                const history_empty = document.getElementById('history-empty');
+                if (history_empty) {
+                    history_empty.classList.remove('hidden');
+                }
+            });
         }
 
         // Charger les informations de version
@@ -189,6 +270,564 @@ const app = {
         this.populateBinDirectory();
         this.updateWindowTitle();
 
+        // Initialiser la gestion de l'écran pour mobile
+        this.updatePromptDisplay();
+        window.addEventListener('resize', this.updatePromptDisplay.bind(this));
+
+        // Initialiser les gestionnaires de plein écran
+        this.initFullscreenHandlers();
+    },
+
+    saveTabsToCookie() {
+        const tabsData = {
+            tabs: this.tabs.map(tab => ({
+                id: tab.id,
+                title: tab.title,
+                currentDir: tab.currentDir,
+                outputHistory: tab.outputHistory || [],
+                isActive: tab.isActive,
+                history: tab.history || [], // CORRIGER : Sauvegarder l'historique
+                historyIndex: tab.historyIndex || -1, // AJOUTER : Sauvegarder l'index
+                commandCount: tab.commandCount || 0
+            })),
+            activeTabId: this.activeTabId,
+            nextTabId: this.nextTabId
+        };
+        
+        try {
+            const jsonString = JSON.stringify(tabsData);
+            localStorage.setItem('console_tabs', jsonString);
+            
+            const essentialData = {
+                activeTabId: this.activeTabId,
+                nextTabId: this.nextTabId,
+                tabCount: this.tabs.length
+            };
+            document.cookie = `console_tabs_backup=${encodeURIComponent(JSON.stringify(essentialData))};path=/;max-age=31536000`;
+        } catch (error) {
+            console.error('Erreur lors de la sauvegarde des onglets:', error);
+            this.addOutput('❌ Erreur de sauvegarde des onglets', 'error');
+        }
+    },
+
+    loadTabsFromCookie() {
+        try {
+            const savedData = localStorage.getItem('console_tabs');
+            if (savedData) {
+                const tabsData = JSON.parse(savedData);
+                
+                if (tabsData.tabs && Array.isArray(tabsData.tabs) && tabsData.tabs.length > 0) {
+                    this.tabs = tabsData.tabs.map(tab => ({
+                        id: tab.id || this.nextTabId++,
+                        title: tab.title || `Terminal ${tab.id}`,
+                        currentDir: tab.currentDir || '/home/user',
+                        outputHistory: tab.outputHistory || [],
+                        isActive: false, // Sera défini après
+                        history: tab.history || [], // CORRIGER : S'assurer que l'historique est chargé
+                        historyIndex: tab.historyIndex || -1, // AJOUTER : Charger l'index d'historique
+                        commandCount: tab.commandCount || 0
+                    }));
+                    
+                    this.nextTabId = tabsData.nextTabId || this.tabs.length + 1;
+                    this.activeTabId = tabsData.activeTabId || this.tabs[0]?.id || null;
+                    
+                    // Mettre à jour l'état actif
+                    this.tabs.forEach(tab => {
+                        tab.isActive = tab.id === this.activeTabId;
+                    });
+                    
+                    this.renderTabs();
+                    this.loadTabState(this.activeTabId);
+                    return;
+                }
+            }
+            
+            // Fallback vers les cookies si localStorage échoue
+            const cookieMatch = document.cookie.match(/(?:^|;\s*)console_tabs_backup=([^;]*)/);
+            if (cookieMatch) {
+                const backupData = JSON.parse(decodeURIComponent(cookieMatch[1]));
+                if (backupData.tabCount > 0) {
+                    this.nextTabId = backupData.nextTabId || 2;
+                    for (let i = 1; i <= backupData.tabCount; i++) {
+                        this.tabs.push({
+                            id: i,
+                            title: `Terminal ${i}`,
+                            currentDir: '/home/user',
+                            outputHistory: [],
+                            isActive: i === backupData.activeTabId,
+                            history: [], // AJOUTER : Initialiser l'historique vide
+                            historyIndex: -1, // AJOUTER : Initialiser l'index
+                            commandCount: 0
+                        });
+                    }
+                    this.activeTabId = backupData.activeTabId || 1;
+                    this.renderTabs();
+                    
+                    // AJOUTER : Charger l'historique global si pas d'onglets sauvegardés
+                    this.loadHistoryFromCookie();
+                    
+                    this.addOutput(this.defaultMessage, 'system');
+                    return;
+                }
+            }
+        } catch (error) {
+            console.error('Erreur lors du chargement des onglets:', error);
+        }
+        
+        // Si aucune sauvegarde trouvée, créer le premier onglet
+        this.createFirstTab();
+    },
+
+    createFirstTab() {
+        // AJOUTER : Charger l'historique global existant
+        this.loadHistoryFromCookie();
+        
+        const firstTab = {
+            id: this.nextTabId++,
+            title: 'Terminal 1',
+            currentDir: '/home/user',
+            outputHistory: [],
+            isActive: true,
+            history: [...this.history], // CORRIGER : Utiliser l'historique global
+            historyIndex: this.historyIndex || -1, // AJOUTER : Utiliser l'index actuel
+            commandCount: 0
+        };
+        
+        this.tabs.push(firstTab);
+        this.activeTabId = firstTab.id;
+        this.renderTabs();
+        this.saveTabsToCookie();
+        
+        // Ajouter le message de bienvenue seulement pour le premier onglet
+        this.addOutput(this.defaultMessage, 'system');
+    },
+
+    createNewTab() {
+        const newTab = {
+            id: this.nextTabId++,
+            title: `Terminal ${this.nextTabId - 1}`,
+            currentDir: '/home/user',
+            outputHistory: [],
+            isActive: false,
+            history: [],
+            commandCount: 0  // AJOUTER cette ligne
+        };
+        
+        // Sauvegarder l'état actuel avant de créer le nouvel onglet
+        this.saveCurrentTabState();
+        
+        this.tabs.push(newTab);
+        this.switchToTab(newTab.id);
+        this.renderTabs();
+        
+        // Sauvegarder immédiatement
+        this.saveTabsToCookie();
+    },
+
+    saveCurrentTabState() {
+        const activeTab = this.tabs.find(tab => tab.id === this.activeTabId);
+        if (!activeTab) return;
+
+        // CORRIGER : Sauvegarder le répertoire courant
+        activeTab.currentDir = this.currentDir;
+        
+        // CORRIGER : Sauvegarder l'historique et l'index de l'onglet actuel
+        activeTab.history = [...this.history];
+        activeTab.historyIndex = this.historyIndex;
+        
+        // Sauvegarder l'output de manière plus efficace en excluant les animations de chargement
+        const outputElements = Array.from(this.outputElement.children)
+            .filter(child => 
+                child.id !== 'loading-llm-indicator' && 
+                child.id !== 'console-end-ref' &&
+                !child.classList.contains('loading-animation') // Exclure les animations de chargement
+            );
+        
+        // Limiter à 100 éléments pour éviter les problèmes de taille
+        const limitedElements = outputElements.slice(-100);
+        
+        activeTab.outputHistory = limitedElements.map(child => ({
+            html: child.innerHTML,
+            className: child.className || ''
+        }));
+
+        // Remettre les éléments système si nécessaire
+        if (this.loadingLLMIndicator && !this.outputElement.contains(this.loadingLLMIndicator)) {
+            this.outputElement.appendChild(this.loadingLLMIndicator);
+        }
+
+        if (this.consoleEndRefElement && !this.outputElement.contains(this.consoleEndRefElement)) {
+            this.outputElement.appendChild(this.consoleEndRefElement);
+        }
+
+        // Sauvegarder immédiatement
+        this.saveTabsToCookie();
+        
+        // Re-rendre les onglets pour s'assurer que les compteurs sont à jour
+        this.renderTabs();
+    },
+
+    loadTabState(tabId) {
+        const tab = this.tabs.find(t => t.id === tabId);
+        if (!tab) return;
+
+        // CORRIGER : Charger le répertoire courant
+        this.currentDir = tab.currentDir || '/home/user';
+        
+        // CORRIGER : Charger l'historique de l'onglet OU l'historique global
+        if (tab.history && tab.history.length > 0) {
+            // Si l'onglet a son propre historique, l'utiliser
+            this.history = [...tab.history];
+            this.historyIndex = tab.historyIndex || -1;
+        } else {
+            // Sinon, charger l'historique global
+            this.loadHistoryFromCookie();
+            this.historyIndex = -1;
+        }
+
+        this.clearConsoleKeepIndicators();
+        
+        if (tab.outputHistory && tab.outputHistory.length > 0) {
+            tab.outputHistory.forEach(item => {
+                const div = document.createElement('div');
+                div.innerHTML = item.html;
+                if (item.className) {
+                    div.className = item.className;
+                }
+                this.outputElement.insertBefore(div, this.consoleEndRefElement);
+            });
+        } else {
+            // Si pas d'historique, afficher le message par défaut
+            this.addOutput(this.defaultMessage, 'system');
+        }
+
+        this.updatePrompt();
+        this.scrollToBottom();
+    },
+
+    clearConsoleKeepIndicators() {
+        const toKeep = [this.loadingLLMIndicator, this.consoleEndRefElement];
+        Array.from(this.outputElement.childNodes).forEach(child => {
+            if (!toKeep.includes(child)) {
+                this.outputElement.removeChild(child);
+            }
+        });
+    },
+
+    renameTab(tabId, newTitle) {
+        const tab = this.tabs.find(t => t.id === tabId);
+        if (tab) {
+            tab.title = newTitle;
+            this.renderTabs();
+            this.saveTabsToCookie();
+        }
+    },
+
+    renderTabs() {
+        if (!this.tabsContainer) return;
+
+        this.tabsContainer.innerHTML = '';
+
+        this.tabs.forEach(tab => {
+            const tabElement = document.createElement('div');
+            tabElement.className = `group relative flex items-center px-3 py-2 cursor-pointer transition-all duration-150 ease-out
+                ${tab.isActive 
+                    ? 'bg-gradient-to-b from-gray-800 to-gray-900 text-white border-t-2 border-blue-400 shadow-xl shadow-blue-400/10' 
+                    : 'bg-gradient-to-b from-gray-900/80 to-gray-950/60 text-gray-400 hover:bg-gradient-to-b hover:from-gray-800/90 hover:to-gray-900/70 hover:text-gray-200 hover:shadow-lg'
+                } border-r border-gray-700/30 backdrop-blur-sm rounded-lg relative overflow-hidden`;
+
+            // Indicateur d'activité animé à gauche
+            const activityIndicator = tab.isActive 
+                ? '<div class="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 via-blue-500 to-blue-600 rounded-r-full shadow-lg shadow-blue-400/50 animate-pulse"></div>'
+                : '';
+
+            // Badge de notification pour les nouvelles activités
+            const hasNewActivity = (tab.commandCount && tab.commandCount > 0 && !tab.isActive) || (tab.outputHistory && tab.outputHistory.length > 0 && !tab.isActive);
+            const notificationBadge = hasNewActivity
+                ? '<div class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-bounce shadow-lg"></div>'
+                : '';
+
+            tabElement.innerHTML = `
+                ${activityIndicator}
+                ${notificationBadge}
+                
+                <div class="flex items-center min-w-0 flex-1 relative">
+                    <!-- Icône du terminal avec animation -->
+                    <div class="flex-shrink-0 mr-3 p-1.5 rounded-lg transition-all duration-150 ${
+                        tab.isActive 
+                            ? 'bg-gradient-to-br from-blue-500/30 to-blue-600/20 text-blue-400 shadow-inner shadow-blue-400/20' 
+                            : 'bg-gradient-to-br from-gray-700/40 to-gray-800/30 text-gray-500 group-hover:bg-gradient-to-br group-hover:from-gray-600/50 group-hover:to-gray-700/40 group-hover:text-gray-400'
+                    }">
+                        <svg class="w-4 h-4 transition-transform duration-150 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 9l3 3-3 3m5 0h3"/>
+                        </svg>
+                    </div>
+                    
+                    <!-- Titre de l'onglet avec effet de typing -->
+                    <span class="truncate text-sm font-semibold select-none pointer-events-none flex-1 min-w-0 relative ${
+                        tab.isActive ? 'text-white' : 'text-gray-300'
+                    }" title="${tab.title}">
+                        ${tab.title}
+                        <!-- Curseur clignotant pour l'onglet actif -->
+                        ${tab.isActive ? '<span class="inline-block w-px h-4 ml-1 bg-blue-400 animate-pulse"></span>' : ''}
+                    </span>
+                    
+                    <!-- Badge moderne avec le nombre de commandes actualisé en temps réel -->
+                    ${tab.commandCount && tab.commandCount > 0 ? `
+                        <div class="flex-shrink-0 ml-2 px-2 py-1 text-xs rounded-full font-medium transition-all duration-150 ${
+                            tab.isActive 
+                                ? 'bg-gradient-to-r from-blue-500/25 to-blue-600/20 text-blue-300 border border-blue-400/30 shadow-inner' 
+                                : 'bg-gradient-to-r from-gray-700/40 to-gray-800/30 text-gray-500 border border-gray-600/30 group-hover:bg-gradient-to-r group-hover:from-gray-600/50 group-hover:to-gray-700/40'
+                        }">
+                            <span class="flex items-center">
+                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
+                                </svg>
+                                ${tab.commandCount}
+                            </span>
+                        </div>
+                    ` : ''}
+                </div>
+                
+                <!-- Bouton de fermeture moderne avec animations -->
+                ${this.tabs.length > 1 ? `
+                    <button class="close-tab-btn flex-shrink-0 ml-3 w-7 h-7 rounded-lg 
+                                transition-all duration-150 flex items-center justify-center text-xs
+                                opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0
+                                bg-gradient-to-br from-gray-700/0 to-gray-800/0
+                                hover:from-red-500/20 hover:to-red-600/10 hover:text-red-400 hover:scale-110 hover:shadow-lg
+                                focus:opacity-100 focus:from-red-500/20 focus:to-red-600/10 focus:text-red-400 focus:ring-2 focus:ring-red-400/50
+                                active:scale-95
+                                ${tab.isActive ? 'text-gray-400' : 'text-gray-500'}" 
+                            data-tab-id="${tab.id}" 
+                            title="Fermer l'onglet (Ctrl+W)">
+                        <svg class="w-4 h-4 transition-all duration-150" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                ` : ''}
+                
+                <!-- Bordure inférieure animée pour l'onglet actif -->
+                ${tab.isActive ? `
+                    <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 
+                                shadow-lg shadow-blue-400/50 animate-pulse"></div>
+                ` : ''}
+                
+                <!-- Indicateur de status à droite -->
+                <div class="absolute right-1 top-1 w-2 h-2 rounded-full transition-all duration-150 ${
+                    tab.isActive 
+                        ? 'bg-green-400 shadow-lg shadow-green-400/50 animate-pulse' 
+                        : 'bg-gray-600 group-hover:bg-gray-500'
+                }"></div>
+            `;
+
+            // Variables pour gérer les clics
+            let clickTimeout = null;
+            let clickCount = 0;
+
+            // Gestionnaire unifié pour tous les clics
+            tabElement.addEventListener('click', (e) => {
+                if (e.target.closest('.close-tab-btn')) return;
+                
+                e.preventDefault();
+                e.stopPropagation();
+                
+                clickCount++;
+                
+                if (clickCount === 1) {
+                    // Premier clic - programmer l'action de clic simple
+                    clickTimeout = setTimeout(() => {
+                        // Clic simple - changer d'onglet
+                        this.switchToTab(tab.id);
+                        clickCount = 0;
+                    }, 250); // Délai pour détecter le double-clic
+                } else if (clickCount === 2) {
+                    // Double-clic détecté - annuler le clic simple et exécuter le renommage
+                    clearTimeout(clickTimeout);
+                    this.startTabRename(tab.id, tabElement);
+                    clickCount = 0;
+                }
+            });
+
+            // Gestionnaire pour le bouton de fermeture
+            const closeBtn = tabElement.querySelector('.close-tab-btn');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.closeTab(tab.id);
+                });
+            }
+
+            // Support des raccourcis clavier
+            tabElement.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    this.switchToTab(tab.id);
+                } else if (e.key === 'Delete' && this.tabs.length > 1) {
+                    e.preventDefault();
+                    this.closeTab(tab.id);
+                } else if (e.key === 'F2') {
+                    e.preventDefault();
+                    this.startTabRename(tab.id, tabElement);
+                }
+            });
+
+            // Accessibilité avec compteur mis à jour
+            tabElement.setAttribute('tabindex', '0');
+            tabElement.setAttribute('role', 'tab');
+            tabElement.setAttribute('aria-selected', tab.isActive);
+            tabElement.setAttribute('aria-label', `Onglet ${tab.title}, ${tab.commandCount || 0} commandes. Double-clic pour renommer, F2 pour renommer.`);
+
+            this.tabsContainer.appendChild(tabElement);
+        });
+
+        // Délimiteur final simplifié
+        const delimiter = document.createElement('div');
+        delimiter.className = 'flex-1 bg-gradient-to-r from-gray-900/50 via-gray-800/30 to-gray-900/20 border-b border-gray-700/20';
+        this.tabsContainer.appendChild(delimiter);
+    },
+
+    startTabRename(tabId, tabElement) {
+        const tab = this.tabs.find(t => t.id === tabId);
+        if (!tab) return;
+
+        const titleSpan = tabElement.querySelector('span');
+        if (!titleSpan) return;
+        
+        const currentTitle = tab.title;
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = currentTitle;
+        input.className = 'bg-gray-600 text-white px-1 py-0 rounded text-sm border-none outline-none focus:ring-1 focus:ring-blue-500';
+        input.style.width = '100px';
+        input.style.minWidth = '80px';
+        input.style.maxWidth = '150px';
+
+        titleSpan.style.display = 'none';
+        titleSpan.parentNode.insertBefore(input, titleSpan);
+
+        input.focus();
+        input.select();
+
+        const finishRename = () => {
+            const newTitle = input.value.trim() || currentTitle;
+            
+            // Échapper le HTML pour éviter l'interprétation
+            const escapedTitle = newTitle.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+            
+            if (input.parentNode) {
+                input.parentNode.removeChild(input);
+            }
+            titleSpan.style.display = '';
+            
+            this.renameTab(tabId, escapedTitle);
+        };
+
+        const cancelRename = () => {
+            if (input.parentNode) {
+                input.parentNode.removeChild(input);
+            }
+            titleSpan.style.display = '';
+        };
+
+        input.addEventListener('blur', finishRename);
+        
+        input.addEventListener('keydown', (e) => {
+            e.stopPropagation();
+            
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                finishRename();
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                cancelRename();
+            }
+        });
+
+        input.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+    },
+
+    switchToTab(tabId) {
+        // Sauvegarder l'état de l'onglet actuel avant de changer
+        this.saveCurrentTabState();
+        
+        // Mettre à jour les états
+        this.tabs.forEach(tab => {
+            tab.isActive = tab.id === tabId;
+        });
+        
+        this.activeTabId = tabId;
+        
+        // Charger l'état du nouvel onglet
+        this.loadTabState(tabId);
+        
+        // Mettre à jour l'affichage
+        this.renderTabs();
+        
+        // Sauvegarder la nouvelle configuration
+        this.saveTabsToCookie();
+    },
+
+    closeTab(tabId) {
+        if (this.tabs.length <= 1) {
+            this.addOutput('<span class="text-yellow-400">⚠️ Impossible de fermer le dernier onglet</span>', 'system');
+            return;
+        }
+
+        const tabIndex = this.tabs.findIndex(tab => tab.id === tabId);
+        if (tabIndex === -1) return;
+
+        const wasActive = this.tabs[tabIndex].isActive;
+        this.tabs.splice(tabIndex, 1);
+
+        if (wasActive) {
+            // Activer l'onglet suivant ou précédent
+            const newActiveIndex = Math.min(tabIndex, this.tabs.length - 1);
+            const newActiveTab = this.tabs[newActiveIndex];
+            this.switchToTab(newActiveTab.id);
+        }
+
+        this.renderTabs();
+        this.saveTabsToCookie();
+    },
+
+    updatePromptDisplay() {
+        const appContainer = document.getElementById('app-container');
+        let smallScreenMessage = document.getElementById('small-screen-message');
+
+        if (window.innerWidth <= 330) {
+            appContainer.style.display = 'none';
+            
+            if (!smallScreenMessage) {
+                smallScreenMessage = document.createElement('div');
+                smallScreenMessage.id = 'small-screen-message';
+                smallScreenMessage.className = 'fixed inset-0 bg-gray-900 flex items-center justify-center z-50';
+                smallScreenMessage.innerHTML = `
+                    <div class="bg-gray-800 rounded-lg p-6 text-center max-w-sm border border-gray-700">
+                        <div class="text-red-400 text-4xl mb-4">⚠️</div>
+                        <h2 class="text-xl font-bold text-white mb-3">Écran trop petit</h2>
+                        <p class="text-gray-300 text-sm leading-relaxed">
+                            Votre écran est trop petit, par conséquent la console n'est pas supportée. 
+                            Veuillez utiliser un écran plus large ou tourner votre appareil.
+                        </p>
+                    </div>
+                `;
+                document.body.appendChild(smallScreenMessage);
+            } else {
+                smallScreenMessage.style.display = 'flex';
+            }
+        } else {
+            appContainer.style.display = 'block';
+
+            const smallScreenMessage = document.getElementById('small-screen-message');
+            if (smallScreenMessage) {
+                smallScreenMessage.style.display = 'none';
+            }
+        }
     },
 
     generateBinCommands() {
@@ -229,6 +868,57 @@ const app = {
         }
         this.outputElement.insertBefore(lineDiv, this.consoleEndRefElement);
         this.scrollToBottom();
+
+        this.updateActiveTabOutputCount();
+    },
+
+    incrementActiveTabCommandCount(arg) {
+        const activeTab = this.tabs.find(tab => tab.id === this.activeTabId);
+        if (!activeTab) return;
+
+        // Incrémenter le compteur de commandes
+        if (!activeTab.commandCount) {
+            activeTab.commandCount = 0;
+        }
+        if (arg === "clear") {
+            activeTab.commandCount = 0; // Réinitialiser le compteur si la commande est "clear"
+            return;
+        } else {
+            activeTab.commandCount++;
+        }
+
+        // Re-rendre les onglets pour actualiser le compteur
+        this.renderTabs();
+        
+        // Sauvegarder immédiatement
+        this.saveTabsToCookie();
+    },
+
+    updateActiveTabOutputCount() {
+        const activeTab = this.tabs.find(tab => tab.id === this.activeTabId);
+        if (!activeTab) return;
+
+        // Compter les éléments de sortie (exclure les indicateurs système)
+        const outputElements = Array.from(this.outputElement.children)
+            .filter(child => child.id !== 'loading-llm-indicator' && child.id !== 'console-end-ref');
+        
+        // Mettre à jour le compteur pour l'onglet actif
+        activeTab.outputHistory = outputElements.map(child => ({
+            html: child.innerHTML,
+            className: child.className || ''
+        }));
+
+        // Re-rendre les onglets pour actualiser le compteur
+        this.renderTabs();
+        
+        // Sauvegarder les modifications dans les cookies
+        this.saveTabsToCookie();
+    },
+
+    scrollToBottom() {
+        if (this.consoleEndRefElement) {
+            this.consoleEndRefElement.scrollIntoView({ behavior: 'smooth' });
+        }
     },
 
     clearConsole() {
@@ -245,11 +935,16 @@ const app = {
                 this.outputElement.insertBefore(this.loadingLLMIndicator, this.consoleEndRefElement);
             }
         }
+        // Toujours afficher le message après clear
         this.addOutput(this.defaultMessage, 'system');
-    },
+        
+        // Mettre à jour le compteur après le nettoyage
+        this.updateActiveTabOutputCount();
+        this.scrollToBottom();
+        this.incrementActiveTabCommandCount("clear");
 
-    scrollToBottom() {
-        this.consoleEndRefElement.scrollIntoView({ behavior: 'smooth' });
+        // Sauvegarder l'état de l'onglet après le nettoyage
+        this.saveCurrentTabState();
     },
 
     updatePrompt() {
@@ -325,10 +1020,142 @@ const app = {
             return;
         }
 
+        // Traitement du chaînage de commandes
+        if (this.hasCommandChaining(commandText)) {
+            await this.executeCommandChain(commandText);
+            this.commandInputElement.value = '';
+            this.historyIndex = -1;
+            return;
+        }
+
+        // Exécution d'une commande simple
+        await this.executeSingleCommand(commandText);
+        this.commandInputElement.value = '';
+        this.historyIndex = -1;
+    },
+
+    // Nouvelle méthode pour détecter le chaînage de commandes
+    hasCommandChaining(commandText) {
+        return commandText.includes('&&') || commandText.includes('||') || commandText.includes(';');
+    },
+
+    // Nouvelle méthode pour exécuter une chaîne de commandes
+    async executeCommandChain(commandText) {
         const promptLine = `<span class="text-green-400">${this.getPseudoFromCookie() || "user"}@webconsole</span>:<span class="text-blue-400">${this.currentDir}</span>$ ${commandText.replace(/</g, "&lt;").replace(/>/g, "&gt;")}`;
         this.addOutput(promptLine, 'command');
         this.addToHistory(commandText, promptLine, 'command');
 
+        // INCRÉMENTER LE COMPTEUR DE COMMANDES ICI POUR LES CHAÎNES
+        this.incrementActiveTabCommandCount();
+
+        // Parser la chaîne de commandes en respectant les opérateurs
+        const commands = this.parseCommandChain(commandText);
+        
+        let lastExitCode = 0; // 0 = succès, 1 = échec
+
+        for (let i = 0; i < commands.length; i++) {
+            const { command, operator } = commands[i];
+            
+            // Déterminer si on doit exécuter cette commande
+            let shouldExecute = true;
+            
+            if (i > 0) {
+                const prevOperator = commands[i - 1].operator;
+                if (prevOperator === '&&' && lastExitCode !== 0) {
+                    shouldExecute = false;
+                    this.addOutput(`<span class="text-yellow-400">⏭️ Commande ignorée (commande précédente a échoué): ${command}</span>`, 'system');
+                } else if (prevOperator === '||' && lastExitCode === 0) {
+                    shouldExecute = false;
+                    this.addOutput(`<span class="text-yellow-400">⏭️ Commande ignorée (commande précédente a réussi): ${command}</span>`, 'system');
+                }
+            }
+
+            if (shouldExecute) {
+                try {
+                    lastExitCode = await this.executeSingleCommandWithExitCode(command.trim());
+                } catch (error) {
+                    lastExitCode = 1;
+                    this.addOutput(`Erreur lors de l'exécution de "${command}": ${error.message}`, 'error');
+                }
+            }
+        }
+
+        // Afficher un résumé si plusieurs commandes
+        if (commands.length > 1) {
+            const successColor = lastExitCode === 0 ? 'text-green-400' : 'text-red-400';
+            const statusText = lastExitCode === 0 ? 'réussie' : 'échouée';
+            if (lastExitCode !== 0) {
+                this.addOutput(`<span class="${successColor}">⏭️ Chaîne de commandes ${statusText} (code de sortie: ${lastExitCode})</span>`, 'system');
+            }
+        }
+
+        this.updatePrompt();
+        this.commandInputElement.focus();
+    },
+
+    // Nouvelle méthode pour parser une chaîne de commandes
+    parseCommandChain(commandText) {
+        const commands = [];
+        let currentCommand = '';
+        let i = 0;
+        
+        while (i < commandText.length) {
+            const char = commandText[i];
+            const nextChar = commandText[i + 1];
+            
+            if (char === '&' && nextChar === '&') {
+                commands.push({ command: currentCommand.trim(), operator: '&&' });
+                currentCommand = '';
+                i += 2;
+            } else if (char === '|' && nextChar === '|') {
+                commands.push({ command: currentCommand.trim(), operator: '||' });
+                currentCommand = '';
+                i += 2;
+            } else if (char === ';') {
+                commands.push({ command: currentCommand.trim(), operator: ';' });
+                currentCommand = '';
+                i += 1;
+            } else {
+                currentCommand += char;
+                i += 1;
+            }
+        }
+        
+        // Ajouter la dernière commande
+        if (currentCommand.trim()) {
+            commands.push({ command: currentCommand.trim(), operator: null });
+        }
+        
+        return commands.filter(cmd => cmd.command.length > 0);
+    },
+
+    // Méthode pour exécuter une commande simple avec gestion des codes de sortie
+    async executeSingleCommandWithExitCode(commandText) {
+        const [cmd, ...args] = commandText.split(/\s+/);
+        const execute = this.commands[cmd];
+
+        if (execute) {
+            try {
+                const result = await execute.call(this, args);
+                // Retourner un code de sortie basé sur le résultat
+                return result === false ? 1 : 0;
+            } catch (error) {
+                this.addOutput(`Erreur lors de l'exécution de la commande ${cmd}: ${error.message}`, 'error');
+                return 1;
+            }
+        } else {
+            this.addOutput(`bash: ${cmd}: commande introuvable`, 'error');
+            return 1;
+        }
+    },
+
+    async executeSingleCommand(commandText) {
+        const promptLine = `<span class="text-green-400">${this.getPseudoFromCookie() || "user"}@webconsole</span>:<span class="text-blue-400">${this.currentDir}</span>$ ${commandText.replace(/</g, "&lt;").replace(/>/g, "&gt;")}`;
+        this.addOutput(promptLine, 'command');
+        this.addToHistory(commandText, promptLine, 'command');
+
+        // INCRÉMENTER LE COMPTEUR DE COMMANDES ICI SEULEMENT POUR LES COMMANDES SIMPLES
+        this.incrementActiveTabCommandCount();
 
         this.historyIndex = -1;
 
@@ -337,7 +1164,7 @@ const app = {
 
         if (execute) {
             try {
-                await execute.call(this, args); // Ensure 'this' context is correct for commands
+                await execute.call(this, args);
             } catch (error) {
                 this.addOutput(`Erreur lors de l'exécution de la commande ${cmd}: ${error.message}`, 'error');
                 console.error(`Command execution error (${cmd}):`, error);
@@ -346,9 +1173,28 @@ const app = {
             this.addOutput(`bash: ${cmd}: commande introuvable`, 'error');
         }
 
-        this.commandInputElement.value = '';
-        this.updatePrompt(); // Update prompt in case cd changed directory
-        this.commandInputElement.focus(); // Re-focus after command execution
+        this.updatePrompt();
+        this.commandInputElement.focus();
+    },
+
+    // Méthode pour exécuter une commande simple (refactorisée)
+    async executeSingleCommandWithExitCode(commandText) {
+        const [cmd, ...args] = commandText.split(/\s+/);
+        const execute = this.commands[cmd];
+
+        if (execute) {
+            try {
+                const result = await execute.call(this, args);
+                // Retourner un code de sortie basé sur le résultat
+                return result === false ? 1 : 0;
+            } catch (error) {
+                this.addOutput(`Erreur lors de l'exécution de la commande ${cmd}: ${error.message}`, 'error');
+                return 1;
+            }
+        } else {
+            this.addOutput(`bash: ${cmd}: commande introuvable`, 'error');
+            return 1;
+        }
     },
 
     // --- Utilitaire pour marquer une commande en développement ---
@@ -396,7 +1242,73 @@ const app = {
     // --- Command Definitions ---
     commands: {
         echo(args) {
-            this.addOutput(args.join(' ').replace(/</g, "&lt;").replace(/>/g, "&gt;"));
+            // Parse options
+            const options = this.parseOptions(args, {
+            'o': 'old',
+            'old': 'old'
+            });
+
+            // Help option
+            if (args.includes('--help')) {
+                this.commands.man.call(this, ['echo']);
+                return;
+            }
+
+            // Get text from remaining args
+            const text = options._.join(' ').replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            
+            // Use old style if --old or -o option is provided
+            if (options.old) {
+            this.addOutput(text);
+            return;
+            }
+            
+            // Créer une interface plus moderne pour echo avec améliorations visuelles
+            const echoHTML = `
+            <div class="border border-blue-500/50 rounded-xl p-4 bg-gradient-to-br from-blue-900/20 to-gray-900/30 backdrop-blur-sm mt-2 shadow-lg hover:shadow-blue-500/10 transition-all duration-300">
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center">
+                <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mr-3 shadow-lg">
+                    <span class="text-white text-sm">📢</span>
+                </div>
+                <span class="font-bold text-blue-300 text-lg">Echo Output</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span class="text-xs text-gray-400 font-medium">Active</span>
+                </div>
+            </div>
+            <div class="relative">
+                <div class="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-transparent rounded-lg"></div>
+                <div class="relative bg-gray-800/60 rounded-lg p-4 border border-gray-600/50 shadow-inner">
+                <div class="flex items-start space-x-3">
+                    <div class="w-1 h-full bg-gradient-to-b from-blue-400 to-blue-600 rounded-full flex-shrink-0 mt-1"></div>
+                    <div class="flex-1 min-w-0">
+                    <span class="text-white font-mono text-lg leading-relaxed break-words">${text}</span>
+                    </div>
+                </div>
+                </div>
+            </div>
+            <div class="flex items-center justify-between mt-3 pt-2 border-t border-gray-700/50">
+                <div class="flex items-center space-x-2 text-xs text-gray-400">
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                </svg>
+                <span>${new Date().toLocaleTimeString()}</span>
+                </div>
+                <div class="flex items-center space-x-1 text-xs text-gray-500">
+                <span>Length: ${text.length}</span>
+                <span>•</span>
+                <span>Type: String</span>
+                </div>
+            </div>
+            </div>
+            `;
+
+            this.addOutput(echoHTML, 'system');
+        },
+        say (args) {
+            this.commands.echo.call(this, args);
         },
         ls(args) {
             const targetPathArg = args[0] || '.';
@@ -458,21 +1370,7 @@ const app = {
 
             // Handle --help option
             if (args[0] === '--help') {
-                this.addOutput('<span class="font-bold text-blue-400">cat - concaténer et afficher des fichiers</span>');
-                this.addOutput('');
-                this.addOutput('<span class="text-green-400">UTILISATION:</span>');
-                this.addOutput('    cat [OPTION]... [FICHIER]...');
-                this.addOutput('');
-                this.addOutput('<span class="text-green-400">DESCRIPTION:</span>');
-                this.addOutput('    Concatène et affiche le contenu des fichiers spécifiés.');
-                this.addOutput('    Si aucun fichier n\'est spécifié, lit depuis l\'entrée standard.');
-                this.addOutput('');
-                this.addOutput('<span class="text-green-400">OPTIONS:</span>');
-                this.addOutput('    --help     affiche cette aide et quitte');
-                this.addOutput('');
-                this.addOutput('<span class="text-green-400">EXEMPLES:</span>');
-                this.addOutput('    cat fichier.txt        affiche le contenu de fichier.txt');
-                this.addOutput('    cat file1 file2        affiche le contenu de file1 puis file2');
+                this.commands.man.call(this, ['cat']);
                 return;
             }
 
@@ -492,23 +1390,11 @@ const app = {
         },
         help(args) {
             if (args.length > 0) {
-                const helpOption = args[0];
-                if (helpOption === '--help') {
-                    this.addOutput('<span class="font-bold text-blue-400">help - afficher l\'aide des commandes</span>');
-                    this.addOutput('');
-                    this.addOutput('<span class="text-green-400">UTILISATION:</span>');
-                    this.addOutput('    help [OPTION]');
-                    this.addOutput('');
-                    this.addOutput('<span class="text-green-400">DESCRIPTION:</span>');
-                    this.addOutput('    Affiche la liste des commandes disponibles organisées par catégorie.');
-                    this.addOutput('');
-                    this.addOutput('<span class="text-green-400">OPTIONS:</span>');
-                    this.addOutput('    --help     affiche cette aide et quitte');
-                    this.addOutput('');
-                    this.addOutput('<span class="text-green-400">EXEMPLES:</span>');
-                    this.addOutput('    help       affiche toutes les commandes');
-                    return;
-                }
+            const helpOption = args[0];
+            if (helpOption === '--help') {
+                this.commands.man.call(this, ['help']);
+                return;
+            }
             }
 
             this.addOutput('<span class="font-bold text-purple-300 text-lg">Commandes disponibles :</span>');
@@ -517,39 +1403,39 @@ const app = {
             const categoryOrder = commandHelpers.getCategoryOrder();
 
             categoryOrder.forEach((category, index) => {
-                if (grouped[category]) {
-                    const icon = commandHelpers.getCategoryIcon(category);
+            if (grouped[category]) {
+                const icon = commandHelpers.getCategoryIcon(category);
+                
+                this.addOutput(`<span class="underline text-blue-300 font-semibold mt-2">${icon} ${category}</span>`);
+                
+                grouped[category].forEach(cmdName => {
+                const metadata = COMMAND_METADATA[cmdName];
+                if (metadata) {
+                    let commandLine = `<span class="ml-4"><span class="text-green-400 cursor-pointer clickable-command" data-command="${cmdName}">${cmdName}</span>`;
                     
-                    this.addOutput(`<span class="underline text-blue-300 font-semibold mt-2">${icon} ${category}</span>`);
-                    
-                    grouped[category].forEach(cmdName => {
-                        const metadata = COMMAND_METADATA[cmdName];
-                        if (metadata) {
-                            let commandLine = `<span class="ml-4"><span class="text-green-400 cursor-pointer clickable-command" data-command="${cmdName}">${cmdName}</span>`;
-                            
-                            // Ajouter helpOption avec style si présent ET différent de "None"
-                            if (metadata.helpOption && metadata.helpOption !== "None" && metadata.helpOption.trim() !== "") {
-                                // Échapper les caractères < et > pour l'affichage HTML
-                                const escapedHelpOption = metadata.helpOption.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                                commandLine += ` <span class="bg-gray-700 text-gray-200 px-1 rounded">${escapedHelpOption}</span>`;
-                            }
-                            
-                            commandLine += ` <span class="text-gray-400">- ${metadata.description}</span></span>`;
-                            this.addOutput(commandLine);
-                        }
-                    });
-                    
-                    // Ajouter séparateur sauf pour la dernière catégorie
-                    if (index < categoryOrder.length - 1) {
-                        this.addOutput('<hr class="my-2 border-gray-700">');
+                    // Ajouter helpOption avec style si présent ET différent de "None"
+                    if (metadata.helpOption && metadata.helpOption !== "None" && metadata.helpOption.trim() !== "") {
+                    // Échapper les caractères < et > pour l'affichage HTML
+                    const escapedHelpOption = metadata.helpOption.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    commandLine += ` <span class="bg-gray-700 text-gray-200 px-1 rounded">${escapedHelpOption}</span>`;
                     }
+                    
+                    commandLine += ` <span class="text-gray-400">- ${metadata.description}</span></span>`;
+                    this.addOutput(commandLine);
                 }
+                });
+                
+                // Ajouter séparateur sauf pour la dernière catégorie
+                if (index < categoryOrder.length - 1) {
+                this.addOutput('<hr class="my-2 border-gray-700">');
+                }
+            }
             });
 
             this.addOutput('<hr class="my-2 border-gray-700">');
             
-            // Configurer les commandes cliquables
-            this.setupClickableCommands();
+            // Configurer les commandes cliquables après avoir ajouté tout l'output
+            setTimeout(() => this.setupClickableCommands(), 0);
         },
         mkdir(args) {
             if (!args || args.length === 0 || !args[0].trim()) {
@@ -642,32 +1528,27 @@ const app = {
             this.openAboutModal();
         },
         version: async function() {
-            // Animation de chargement
-            const loadingHTML = `
-            <div id="version-loading" class="mt-3 p-4 bg-gray-800/30 border border-gray-600 rounded-lg">
-                <div class="flex items-center justify-center space-x-3">
-                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
-                <span class="text-blue-300 font-medium">Récupération des informations de version...</span>
-                </div>
-            </div>
-            `;
-            this.addOutput(loadingHTML, 'system');
+            const loadingAnimation = this.createLoadingAnimation({
+                title: 'Récupération des informations de version...',
+                progressBarColors: 'from-purple-500 to-blue-500',
+                steps: [
+                    { text: 'Lecture du fichier version.json...', color: 'text-purple-400', delay: 0 },
+                    { text: 'Validation des données...', color: 'text-blue-400', delay: 200 },
+                    { text: 'Génération de l\'affichage...', color: 'text-green-400', delay: 400 }
+                ]
+            });
 
             try {
-            const response = await fetch('/version.json');
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const versionData = await response.json();
-
-            // Supprimer l'animation de chargement
-            setTimeout(() => {
-                const loadingElement = document.getElementById('version-loading');
-                if (loadingElement) {
-                loadingElement.remove();
+                const response = await fetch('/version.json');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
+                
+                const versionData = await response.json();
+
+                // Terminer l'animation
+                loadingAnimation.complete();
 
                 const versionHTML = `
                 <div class="border border-purple-500 rounded-xl p-6 bg-gradient-to-br from-purple-900/30 to-blue-900/20 backdrop-blur-sm mt-3">
@@ -755,51 +1636,46 @@ const app = {
                 `;
                 
                 this.addOutput(versionHTML, 'system');
-            }, 500);
 
             } catch (error) {
-            // Supprimer l'animation de chargement
-            const loadingElement = document.getElementById('version-loading');
-            if (loadingElement) {
-                loadingElement.remove();
-            }
+                loadingAnimation.complete();
 
-            // Affichage d'erreur avec fallback
-            this.addOutput(`
-                <div class="mt-3 p-4 bg-red-900/20 border border-red-600 rounded-lg">
-                <div class="flex items-center mb-2">
-                    <span class="text-red-400 mr-2">❌</span>
-                    <span class="text-red-300 font-medium">Erreur lors de la récupération de la version</span>
-                </div>
-                <div class="text-red-400 text-sm">${error.message}</div>
-                <div class="text-gray-400 text-xs mt-2">
-                    Affichage des informations de base disponibles...
-                </div>
-                </div>
-            `, 'error');
+                // Affichage d'erreur avec fallback
+                this.addOutput(`
+                    <div class="mt-3 p-4 bg-red-900/20 border border-red-600 rounded-lg">
+                    <div class="flex items-center mb-2">
+                        <span class="text-red-400 mr-2">❌</span>
+                        <span class="text-red-300 font-medium">Erreur lors de la récupération de la version</span>
+                    </div>
+                    <div class="text-red-400 text-sm">${error.message}</div>
+                    <div class="text-gray-400 text-xs mt-2">
+                        Affichage des informations de base disponibles...
+                    </div>
+                    </div>
+                `, 'error');
 
-            // Fallback vers l'affichage basique
-            setTimeout(() => {
-                const fallbackHTML = `
-                <div class="border border-gray-500 rounded-xl p-6 bg-gray-800/50 mt-3">
-                    <div class="text-center">
-                    <div class="w-16 h-16 bg-gray-600 rounded-full flex items-center justify-center border-2 border-gray-500 mx-auto mb-4">
-                        <svg class="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
+                // Fallback vers l'affichage basique
+                setTimeout(() => {
+                    const fallbackHTML = `
+                    <div class="border border-gray-500 rounded-xl p-6 bg-gray-800/50 mt-3">
+                        <div class="text-center">
+                        <div class="w-16 h-16 bg-gray-600 rounded-full flex items-center justify-center border-2 border-gray-500 mx-auto mb-4">
+                            <svg class="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <h2 class="text-2xl font-bold text-white mb-2">CLK Console</h2>
+                        <p class="text-gray-300 mb-4">Console Linux Web Interactive (Mode hors ligne)</p>
+                        <div class="text-sm text-gray-400">
+                            <div>Version: Information indisponible</div>
+                            <div>Date: ${new Date().toLocaleDateString()}</div>
+                            <div>Commandes disponibles: ${Object.keys(COMMAND_METADATA).length}</div>
+                        </div>
+                        </div>
                     </div>
-                    <h2 class="text-2xl font-bold text-white mb-2">CLK Console</h2>
-                    <p class="text-gray-300 mb-4">Console Linux Web Interactive (Mode hors ligne)</p>
-                    <div class="text-sm text-gray-400">
-                        <div>Version: Information indisponible</div>
-                        <div>Date: ${new Date().toLocaleDateString()}</div>
-                        <div>Commandes disponibles: ${Object.keys(COMMAND_METADATA).length}</div>
-                    </div>
-                    </div>
-                </div>
-                `;
-                this.addOutput(fallbackHTML, 'system');
-            }, 1000);
+                    `;
+                    this.addOutput(fallbackHTML, 'system');
+                }, 1000);
             }
         },
         cconnect: async function (args) {
@@ -839,9 +1715,10 @@ const app = {
             this.addOutput(connectionHTML, "system");
             this.updatePrompt();
             this.updateWindowTitle();
+            this.updatePromptDisplay();
         },
 
-        cdisconnect: function () {
+        cdisconnect: async function () {
             const currentPseudo = this.getPseudoFromCookie() || 'user';
             
             // Supprime le cookie pseudo
@@ -876,6 +1753,7 @@ const app = {
             this.addOutput(disconnectionHTML, "system");
             this.updatePrompt();
             this.updateWindowTitle();
+            this.updatePromptDisplay();
         },
 
         history: function () {
@@ -1014,54 +1892,27 @@ const app = {
             }, 0);
         },
         github: async function () {
-
-            // Animation de chargement
-            const loadingHTML = `
-            <div id="github-loading" class="mt-3 p-4 bg-gray-800/30 border border-gray-600 rounded-lg">
-                <div class="flex items-center justify-center space-x-3">
-                <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
-                <span class="text-blue-300 font-medium">Connexion à l'API GitHub...</span>
-                </div>
-                <div class="mt-3 bg-gray-700 rounded-full h-2">
-                <div id="github-progress" class="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
-                </div>
-            </div>
-            `;
-            this.addOutput(loadingHTML, 'system');
-
-            // Animation de la barre de progression
-            let progress = 0;
-            const progressBar = document.getElementById('github-progress');
-            const progressInterval = setInterval(() => {
-            progress += Math.random() * 20 + 10;
-            if (progress > 95) progress = 95;
-            if (progressBar) {
-                progressBar.style.width = progress + '%';
-            }
-            }, 200);
+            const loadingAnimation = this.createLoadingAnimation({
+                title: 'Connexion à l\'API GitHub...',
+                progressBarColors: 'from-blue-500 to-purple-500',
+                steps: [
+                    { text: 'Connexion au serveur GitHub...', color: 'text-blue-400', delay: 0 },
+                    { text: 'Récupération des données du dépôt...', color: 'text-purple-400', delay: 300 },
+                    { text: 'Analyse des informations...', color: 'text-green-400', delay: 600 }
+                ]
+            });
 
             try {
-            // Appel à l'API GitHub
-            const response = await fetch('https://api.github.com/repos/Klaynight-dev/Web_linux_console');
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const repoData = await response.json();
-
-            // Terminer l'animation de chargement
-            clearInterval(progressInterval);
-            if (progressBar) {
-                progressBar.style.width = '100%';
-            }
-
-            setTimeout(() => {
-                // Supprimer l'animation de chargement
-                const loadingElement = document.getElementById('github-loading');
-                if (loadingElement) {
-                loadingElement.remove();
+                const response = await fetch('https://api.github.com/repos/Klaynight-dev/Web_linux_console');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
+                
+                const repoData = await response.json();
+
+                // Terminer l'animation
+                loadingAnimation.complete();
 
                 const githubHTML = `
                 <div class="border border-blue-500 rounded-xl p-6 bg-gradient-to-br from-blue-900/30 to-purple-900/20 backdrop-blur-sm mt-3">
@@ -1119,7 +1970,7 @@ const app = {
                     
                     <div class="flex flex-wrap gap-3 justify-center">
                     <a href="${repoData.html_url}" target="_blank" 
-                       class="flex items-center space-x-2 bg-gradient-to-r from-gray-800 to-gray-700 hover:from-gray-700 hover:to-gray-600 text-white px-6 py-3 rounded-lg transition-all duration-300 transform hover:scale-105 border border-gray-600 hover:border-gray-500">
+                    class="flex items-center space-x-2 bg-gradient-to-r from-gray-800 to-gray-700 hover:from-gray-700 hover:to-gray-600 text-white px-6 py-3 rounded-lg transition-all duration-300 transform hover:scale-105 border border-gray-600 hover:border-gray-500">
                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
                         </svg>
@@ -1127,7 +1978,7 @@ const app = {
                     </a>
                     
                     <a href="${repoData.html_url}/issues" target="_blank" 
-                       class="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white px-6 py-3 rounded-lg transition-all duration-300 transform hover:scale-105">
+                    class="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white px-6 py-3 rounded-lg transition-all duration-300 transform hover:scale-105">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
@@ -1135,7 +1986,7 @@ const app = {
                     </a>
                     
                     <a href="${repoData.html_url}/fork" target="_blank" 
-                       class="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white px-6 py-3 rounded-lg transition-all duration-300 transform hover:scale-105">
+                    class="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white px-6 py-3 rounded-lg transition-all duration-300 transform hover:scale-105">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                         </svg>
@@ -1144,7 +1995,7 @@ const app = {
                     
                     ${repoData.clone_url ? `
                     <button onclick="navigator.clipboard.writeText('${repoData.clone_url}').then(() => app.addOutput('URL de clonage copiée!', 'system'))" 
-                           class="flex items-center space-x-2 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white px-6 py-3 rounded-lg transition-all duration-300 transform hover:scale-105">
+                        class="flex items-center space-x-2 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white px-6 py-3 rounded-lg transition-all duration-300 transform hover:scale-105">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                         </svg>
@@ -1168,164 +2019,351 @@ const app = {
                 `;
                 
                 this.addOutput(githubHTML, 'system');
-            }, 800);
 
             } catch (error) {
-            // En cas d'erreur, nettoyer l'animation et afficher l'erreur
-            clearInterval(progressInterval);
-            const loadingElement = document.getElementById('github-loading');
-            if (loadingElement) {
-                loadingElement.remove();
-            }
-
-            this.addOutput(`
-                <div class="mt-3 p-4 bg-red-900/20 border border-red-600 rounded-lg">
-                <div class="flex items-center mb-2">
-                    <span class="text-red-400 mr-2">❌</span>
-                    <span class="text-red-300 font-medium">Erreur lors de la récupération des données GitHub</span>
-                </div>
-                <div class="text-red-400 text-sm">${error.message}</div>
-                <div class="text-gray-400 text-xs mt-2">
-                    Vérifiez votre connexion internet ou que le dépôt existe bien.
-                </div>
-                </div>
-            `, 'error');
-
-            // Fallback vers l'affichage statique
-            setTimeout(() => {
-                const fallbackHTML = `
-                <div class="border border-blue-500 rounded-xl p-6 bg-gradient-to-br from-blue-900/30 to-purple-900/20 backdrop-blur-sm mt-3">
-                    <div class="text-center">
-                    <div class="w-16 h-16 bg-black rounded-full flex items-center justify-center border-2 border-gray-600 mx-auto mb-4">
-                        <svg class="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-                        </svg>
+                loadingAnimation.complete();
+                this.addOutput(`
+                    <div class="mt-3 p-4 bg-red-900/20 border border-red-600 rounded-lg">
+                        <div class="flex items-center mb-2">
+                            <span class="text-red-400 mr-2">❌</span>
+                            <span class="text-red-300 font-medium">Erreur lors de la récupération des données GitHub</span>
+                        </div>
+                        <div class="text-red-400 text-sm">${error.message}</div>
+                        <div class="text-gray-400 text-xs mt-2">
+                            Vérifiez votre connexion internet ou que le dépôt existe bien.
+                        </div>
                     </div>
-                    <h2 class="text-2xl font-bold text-white mb-2">CLK Console</h2>
-                    <p class="text-gray-300 mb-4">Console Linux Web Interactive (Mode hors ligne)</p>
-                    <a href="https://github.com/Klaynight-dev/Web_linux_console" target="_blank" 
-                       class="inline-flex items-center space-x-2 bg-gradient-to-r from-gray-800 to-gray-700 hover:from-gray-700 hover:to-gray-600 text-white px-6 py-3 rounded-lg transition-all duration-300">
-                        <span class="font-semibold">Visitez le dépôt GitHub</span>
-                    </a>
-                    </div>
-                </div>
-                `;
-                this.addOutput(fallbackHTML, 'system');
-            }, 1000);
+                `, 'error');
+
+                // Fallback vers l'affichage statique
+                setTimeout(() => {
+                    const fallbackHTML = `
+                        <div class="border border-blue-500 rounded-xl p-6 bg-gradient-to-br from-blue-900/30 to-purple-900/20 backdrop-blur-sm mt-3">
+                            <div class="text-center">
+                            <div class="w-16 h-16 bg-black rounded-full flex items-center justify-center border-2 border-gray-600 mx-auto mb-4">
+                                <svg class="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                                </svg>
+                            </div>
+                            <h2 class="text-2xl font-bold text-white mb-2">CLK Console</h2>
+                            <p class="text-gray-300 mb-4">Console Linux Web Interactive (Mode hors ligne)</p>
+                            <a href="https://github.com/Klaynight-dev/Web_linux_console" target="_blank" 
+                            class="inline-flex items-center space-x-2 bg-gradient-to-r from-gray-800 to-gray-700 hover:from-gray-700 hover:to-gray-600 text-white px-6 py-3 rounded-lg transition-all duration-300">
+                                <span class="font-semibold">Visitez le dépôt GitHub</span>
+                            </a>
+                            </div>
+                        </div>
+                    `;
+                    this.addOutput(fallbackHTML, 'system');
+                }, 1000);
             }
         },
         clearHistory: function () {
             this.history = [];
             this.saveHistoryToCookie();
-            this.addOutput('Historique des commandes effacé.', 'system');
+            this.addOutput('<span class="text-green-400">✅ Historique des commandes effacé</span>', 'system');
         },
         resetAllCache: function () {
-            this.addOutput('<span class="text-red-400 font-bold">⚠️ ATTENTION ⚠️</span>');
-            this.addOutput('<span class="text-yellow-400">Cette action va supprimer définitivement :</span>');
-            this.addOutput('• Tous les cookies de l\'application');
-            this.addOutput('• L\'historique des commandes');
-            this.addOutput('• Le système de fichiers personnalisé');
-            this.addOutput('• Les paramètres de personnalisation');
-            this.addOutput('');
-            this.addOutput('<span class="text-red-400">Cette action est IRRÉVERSIBLE !</span>');
-            this.addOutput('<span class="text-white">Voulez-vous vraiment continuer ? (y/N)</span>');
+            // Créer le modal de confirmation
+            let modal = document.getElementById('reset-cache-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'reset-cache-modal';
+                modal.className = 'fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50';
+                modal.innerHTML = `
+                    <div class="bg-gray-900 rounded-2xl shadow-2xl p-8 max-w-2xl w-full mx-4 border-2 border-red-500 relative">
+                        <!-- Bouton fermer -->
+                        <button id="reset-close-x" class="absolute top-4 right-4 text-gray-400 hover:text-white text-2xl font-bold transition-colors duration-150">&times;</button>
+                        
+                        <!-- Header avec animation -->
+                        <div class="flex items-center justify-center mb-6">
+                            <div class="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mr-4 animate-pulse">
+                                <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.498 0L4.316 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-2xl font-bold text-red-400 mb-2">RÉINITIALISATION COMPLÈTE</h2>
+                                <p class="text-red-300 text-lg">Cette action est IRRÉVERSIBLE !</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Données à supprimer -->
+                        <div class="bg-red-900/40 border border-red-600/50 rounded-lg p-4 mb-6">
+                            <h3 class="text-yellow-300 font-bold text-lg mb-3 flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                                Données qui seront supprimées définitivement :
+                            </h3>
+                            <div class="grid md:grid-cols-2 gap-3">
+                                <div class="space-y-2">
+                                    <div class="flex items-center p-2 bg-red-800/30 rounded">
+                                        <span class="text-red-300 mr-2">🍪</span>
+                                        <span class="text-white text-sm">Tous les cookies</span>
+                                    </div>
+                                    <div class="flex items-center p-2 bg-red-800/30 rounded">
+                                        <span class="text-red-300 mr-2">📜</span>
+                                        <span class="text-white text-sm">Historique des commandes</span>
+                                    </div>
+                                    <div class="flex items-center p-2 bg-red-800/30 rounded">
+                                        <span class="text-red-300 mr-2">📁</span>
+                                        <span class="text-white text-sm">Système de fichiers</span>
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="flex items-center p-2 bg-red-800/30 rounded">
+                                        <span class="text-red-300 mr-2">🎨</span>
+                                        <span class="text-white text-sm">Paramètres personnalisés</span>
+                                    </div>
+                                    <div class="flex items-center p-2 bg-red-800/30 rounded">
+                                        <span class="text-red-300 mr-2">🗂️</span>
+                                        <span class="text-white text-sm">Onglets et historique</span>
+                                    </div>
+                                    <div class="flex items-center p-2 bg-red-800/30 rounded">
+                                        <span class="text-red-300 mr-2">💾</span>
+                                        <span class="text-white text-sm">Stockage local</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Avertissement -->
+                        <div class="bg-gradient-to-r from-orange-900/40 to-red-900/40 border border-orange-500/50 rounded-lg p-4 mb-6">
+                            <div class="flex items-center justify-center">
+                                <svg class="w-6 h-6 text-orange-400 mr-3 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.498 0L4.316 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                                <span class="text-orange-300 font-bold text-lg text-center">
+                                    L'application sera complètement réinitialisée à son état initial
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <!-- Zone de progression (cachée initialement) -->
+                        <div id="reset-progress" class="hidden mb-6">
+                            <div class="flex items-center justify-center space-x-3 mb-4">
+                                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
+                                <span class="text-blue-300 font-bold text-xl">Suppression en cours...</span>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="flex items-center space-x-3">
+                                    <div class="animate-pulse w-3 h-3 bg-red-400 rounded-full"></div>
+                                    <span class="text-gray-300">Suppression des cookies...</span>
+                                </div>
+                                <div class="flex items-center space-x-3">
+                                    <div class="animate-pulse w-3 h-3 bg-yellow-400 rounded-full" style="animation-delay: 0.2s"></div>
+                                    <span class="text-gray-300">Effacement de l'historique...</span>
+                                </div>
+                                <div class="flex items-center space-x-3">
+                                    <div class="animate-pulse w-3 h-3 bg-green-400 rounded-full" style="animation-delay: 0.4s"></div>
+                                    <span class="text-gray-300">Réinitialisation du système de fichiers...</span>
+                                </div>
+                                <div class="flex items-center space-x-3">
+                                    <div class="animate-pulse w-3 h-3 bg-purple-400 rounded-full" style="animation-delay: 0.6s"></div>
+                                    <span class="text-gray-300">Nettoyage du stockage local...</span>
+                                </div>
+                            </div>
+                            <div class="mt-4 bg-gray-700 rounded-full h-3">
+                                <div id="reset-progress-bar" class="bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 h-3 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Boutons d'action -->
+                        <div id="reset-buttons" class="flex items-center justify-center space-x-4">
+                            <button id="reset-confirm-btn" class="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white px-8 py-3 rounded-lg font-bold transition-all duration-300 transform hover:scale-105 flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                                Oui, supprimer tout
+                            </button>
+                            <button id="reset-cancel-btn" class="bg-gradient-to-r from-gray-600 to-gray-500 hover:from-gray-700 hover:to-gray-600 text-white px-8 py-3 rounded-lg font-bold transition-all duration-300 transform hover:scale-105 flex items-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                                Annuler
+                            </button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
             
-            // Sauvegarder les gestionnaires d'événements actuels
-            const originalSubmitHandler = this.handleCommandSubmit.bind(this);
-            const originalKeydownHandler = this.handleKeyDown.bind(this);
+            modal.classList.remove('hidden');
             
-            // Créer un nouveau gestionnaire pour la confirmation
-            const confirmationHandler = (e) => {
-                e.preventDefault();
-                // Ne rien faire lors du submit, on gère tout dans keydown
-                return false;
+            // Gestionnaires d'événements pour les boutons
+            const confirmBtn = document.getElementById('reset-confirm-btn');
+            const cancelBtn = document.getElementById('reset-cancel-btn');
+            const closeBtn = document.getElementById('reset-close-x');
+            const buttonsDiv = document.getElementById('reset-buttons');
+            const progressDiv = document.getElementById('reset-progress');
+
+            let closeModal = () => {
+                modal.classList.add('hidden');
+                this.commandInputElement.focus();
             };
-            
-            // Gestionnaire pour les touches (pour détecter y/n directement)
-            const keydownHandler = (e) => {
-                // Détecter la pression sur 'y' ou 'n' directement
-                if (e.key.toLowerCase() === 'y') {
-                    e.preventDefault();
-                    
-                    // Exécuter la suppression
-                    document.cookie.split(";").forEach(cookie => {
-                        const eqPos = cookie.indexOf("=");
-                        const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
-                        document.cookie = name.trim() + "=;path=/;max-age=0";
-                    });
-                    
-                    // Vider localStorage
-                    localStorage.clear();
-                    
-                    // Réinitialiser l'état de l'application
-                    this.history = [];
-                    
-                    // Réinitialiser le système de fichiers à l'état par défaut
-                    this.fileSystem = {'/':{type:'directory',children:{'bin':{type:'directory',children:{}},'home':{type:'directory',children:{'user':{type:'directory',children:{'welcome.txt':{type:'file',content:'Bienvenue sur votre console Linux web!'},'notes.txt':{type:'file',content:'Ceci est un fichier de notes. Utilisez "cat notes.txt" pour le lire.'}}}}},'etc':{type:'directory',children:{'motd':{type:'file',get content(){const mots=["Message du jour : Amusez-vous bien !","Message du jour : Apprenez quelque chose de nouveau aujourd'hui.","Message du jour : La persévérance paie toujours.","Message du jour : Codez avec passion.","Message du jour : Prenez une pause et respirez.","Message du jour : La curiosité est une qualité.","Message du jour : Essayez une nouvelle commande.","Message du jour : Partagez vos connaissances.","Message du jour : La simplicité est la sophistication suprême.","Message du jour : Un bug aujourd'hui, une solution demain.","Message du jour : La créativité commence par une idée.","Message du jour : Osez sortir de votre zone de confort.","Message du jour : La collaboration fait la force.","Message du jour : Chaque jour est une nouvelle opportunité.","Message du jour : L'échec est le début du succès.","Message du jour : Prenez soin de vous.","Message du jour : La patience est une vertu.","Message du jour : Faites de votre mieux.","Message du jour : Le partage, c'est la vie."];const now=new Date();const start=new Date(now.getFullYear(),0,0);const diff=now-start;const oneDay=1000*60*60*24;const dayOfYear=Math.floor(diff/oneDay);return mots[dayOfYear%mots.length];}}}}}}};
-                    
-                    this.currentDir = '/home/user';
-                    this.populateBinDirectory();
-                    this.saveFileSystemToCookie();
-                    
-                    // Vider complètement la console
-                    this.clearConsole();
-                    
-                    // Afficher les messages de confirmation
-                    this.addOutput('<span class="text-green-400 font-bold">✅ SUPPRESSION TERMINÉE</span>', 'system');
-                    this.addOutput('<span class="text-green-400">• Tous les cookies ont été supprimés</span>', 'system');
-                    this.addOutput('<span class="text-green-400">• L\'historique des commandes a été effacé</span>', 'system');
-                    this.addOutput('<span class="text-green-400">• Le système de fichiers a été réinitialisé</span>', 'system');
-                    this.addOutput('<span class="text-green-400">• Les paramètres ont été remis par défaut</span>', 'system');
-                    this.addOutput('');
-                    this.addOutput('<span class="text-blue-400">L\'application a été complètement réinitialisée à son état initial.</span>', 'system');
-                    
-                    this.updatePrompt();
-                    
-                    // Restaurer les gestionnaires originaux
-                    this.commandFormElement.removeEventListener('submit', confirmationHandler);
-                    this.commandInputElement.removeEventListener('keydown', keydownHandler);
-                    this.commandFormElement.addEventListener('submit', originalSubmitHandler);
-                    this.commandInputElement.addEventListener('keydown', originalKeydownHandler);
-                    
-                    // Nettoyer et remettre le focus
-                    this.commandInputElement.value = '';
-                    this.historyIndex = -1;
-                    this.commandInputElement.focus();
-                    
-                } else if (e.key.toLowerCase() === 'n') {
-                    e.preventDefault();
-                    
-                    this.addOutput('<span class="text-gray-400">Opération annulée.</span>', 'system');
-                    
-                    // Restaurer les gestionnaires originaux
-                    this.commandFormElement.removeEventListener('submit', confirmationHandler);
-                    this.commandInputElement.removeEventListener('keydown', keydownHandler);
-                    this.commandFormElement.addEventListener('submit', originalSubmitHandler);
-                    this.commandInputElement.addEventListener('keydown', originalKeydownHandler);
-                    
-                    // Nettoyer et remettre le focus
-                    this.commandInputElement.value = '';
-                    this.historyIndex = -1;
-                    this.commandInputElement.focus();
-                }
+
+            const performReset = () => {
+                // Masquer les boutons et afficher la progression
+                buttonsDiv.classList.add('hidden');
+                progressDiv.classList.remove('hidden');
                 
-                // Bloquer les autres fonctionnalités pendant la confirmation
-                if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Tab' || (e.key === 'l' && e.ctrlKey) || e.key === 'Enter') {
-                    e.preventDefault();
+                // Simulation de progression
+                let progress = 0;
+                const progressBar = document.getElementById('reset-progress-bar');
+                const progressInterval = setInterval(() => {
+                    progress += Math.random() * 15 + 10;
+                    if (progress > 100) progress = 100;
+                    if (progressBar) {
+                        progressBar.style.width = progress + '%';
+                    }
+                }, 200);
+                
+                setTimeout(() => {
+                    clearInterval(progressInterval);
+                    
+                    // Effectuer la réinitialisation
+                    try {
+                        // Supprimer tous les cookies
+                        document.cookie.split(";").forEach(function(c) { 
+                            document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+                        });
+                        
+                        // Vider localStorage
+                        localStorage.clear();
+                        
+                        // Vider sessionStorage
+                        sessionStorage.clear();
+                        
+                        // Réinitialiser les données de l'application
+                        this.history = [];
+                        this.tabs = [];
+                        this.currentDir = '/home/user';
+                        this.fileSystem = {
+                            '/': {
+                                type: 'directory',
+                                children: {
+                                    'bin': { type: 'directory', children: {} },
+                                    'home': {
+                                        type: 'directory',
+                                        children: {
+                                            'user': {
+                                                type: 'directory',
+                                                children: {
+                                                    'welcome.txt': {
+                                                        type: 'file',
+                                                        content: 'Bienvenue sur votre console Linux web!'
+                                                    },
+                                                    'notes.txt': {
+                                                        type: 'file',
+                                                        content: 'Ceci est un fichier de notes. Utilisez "cat notes.txt" pour le lire.'
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    },
+                                    'etc': {
+                                        type: 'directory',
+                                        children: {
+                                            'motd': { 
+                                                type: 'file',
+                                                get content() {
+                                                    const mots = ["Message du jour : Amusez-vous bien !", "Message du jour : Apprenez quelque chose de nouveau aujourd'hui.", "Message du jour : La persévérance paie toujours.", "Message du jour : Codez avec passion.", "Message du jour : Prenez une pause et respirez.", "Message du jour : La curiosité est une qualité.", "Message du jour : Essayez une nouvelle commande.", "Message du jour : Partagez vos connaissances.", "Message du jour : La simplicité est la sophistication suprême.", "Message du jour : Un bug aujourd'hui, une solution demain.", "Message du jour : La créativité commence par une idée.", "Message du jour : Osez sortir de votre zone de confort.", "Message du jour : La collaboration fait la force.", "Message du jour : Chaque jour est une nouvelle opportunité.", "Message du jour : L'échec est le début du succès.", "Message du jour : Prenez soin de vous.", "Message du jour : La patience est une vertu.", "Message du jour : Faites de votre mieux.", "Message du jour : Le partage, c'est la vie."];
+                                                    const now = new Date();
+                                                    const start = new Date(now.getFullYear(), 0, 0);
+                                                    const diff = now - start;
+                                                    const oneDay = 1000 * 60 * 60 * 24;
+                                                    const dayOfYear = Math.floor(diff / oneDay);
+                                                    return mots[dayOfYear % mots.length];
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        };
+                        
+                        // Populer le répertoire bin
+                        this.populateBinDirectory();
+                        this.saveFileSystemToCookie();
+                        
+                        // Réinitialiser les onglets
+                        this.tabs = [];
+                        this.activeTabId = null;
+                        this.nextTabId = 1;
+                        this.createFirstTab();
+                        
+                        // Fermer le modal
+                        closeModal();
+                        
+                        // Vider complètement la console
+                        this.clearConsole();
+                        
+                        // Utiliser la méthode reboot existante pour redémarrer
+                        this.commands.reboot.call(this);
+                        
+                        // Mettre à jour le prompt et remettre le focus
+                        this.updatePrompt();
+                        this.commandInputElement.focus();
+                        
+                    } catch (error) {
+                        // En cas d'erreur, afficher une notification d'erreur
+                        closeModal();
+                        this.showNotification({
+                            type: 'error',
+                            title: '❌ Erreur de réinitialisation',
+                            message: 'Une erreur est survenue : ' + error.message,
+                            duration: 8000,
+                            actions: [
+                                {
+                                    text: '🔄 Réessayer',
+                                    callback: () => {
+                                        this.commands.resetAllCache.call(this);
+                                    }
+                                },
+                                {
+                                    text: '⚠️ Recharger manuellement',
+                                    callback: () => {
+                                        window.location.reload();
+                                    }
+                                }
+                            ]
+                        });
+                    }
+                }, 1500);
+            };
+
+            // Événements
+            confirmBtn.onclick = performReset;
+            cancelBtn.onclick = closeModal;
+            closeBtn.onclick = closeModal;
+
+            // Fermer en cliquant à l'extérieur
+            modal.onclick = (e) => {
+                if (e.target === modal) {
+                    closeModal();
                 }
             };
-            
-            // Remplacer temporairement les gestionnaires
-            this.commandFormElement.removeEventListener('submit', originalSubmitHandler);
-            this.commandInputElement.removeEventListener('keydown', originalKeydownHandler);
-            this.commandFormElement.addEventListener('submit', confirmationHandler);
-            this.commandInputElement.addEventListener('keydown', keydownHandler);
-            
-            // Vider le champ de saisie et donner le focus
-            this.commandInputElement.value = '';
-            this.historyIndex = -1;
-            this.commandInputElement.focus();
+
+            // Support des touches
+            const keyHandler = (e) => {
+                if (e.key === 'Escape') {
+                    closeModal();
+                } else if (e.key === 'Enter') {
+                    performReset();
+                }
+            };
+
+            document.addEventListener('keydown', keyHandler);
+
+            // Nettoyer les événements lors de la fermeture
+            const originalCloseModal = closeModal;
+            closeModal = () => {
+                document.removeEventListener('keydown', keyHandler);
+                originalCloseModal();
+            };
         },
+        
         lshw: function () {
             // Affiche les vraies informations matérielles du PC
             const headerHTML = `
@@ -1340,416 +2378,174 @@ const app = {
             `;
             this.addOutput(headerHTML, 'system');
 
-            // Ajouter l'animation de chargement
-            const loadingHTML = `
-                <div id="lshw-loading" class="mt-3 p-4 bg-gray-800/30 border border-gray-600 rounded-lg">
-                    <div class="flex items-center justify-center space-x-3">
-                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-green-400"></div>
-                        <span class="text-green-300 font-medium">Analyse matérielle en cours...</span>
-                    </div>
-                    <div class="mt-3 space-y-2">
-                        <div class="flex items-center space-x-2">
-                            <div class="animate-pulse w-2 h-2 bg-blue-400 rounded-full"></div>
-                            <span class="text-sm text-gray-400">Détection CPU et mémoire...</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <div class="animate-pulse w-2 h-2 bg-purple-400 rounded-full" style="animation-delay: 0.3s"></div>
-                            <span class="text-sm text-gray-400">Analyse GPU via WebGL...</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <div class="animate-pulse w-2 h-2 bg-yellow-400 rounded-full" style="animation-delay: 0.6s"></div>
-                            <span class="text-sm text-gray-400">Inventaire des périphériques...</span>
-                        </div>
-                    </div>
-                    <div class="mt-3 bg-gray-700 rounded-full h-2">
-                        <div id="lshw-progress" class="bg-gradient-to-r from-green-500 to-blue-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
-                    </div>
-                </div>
-            `;
-            this.addOutput(loadingHTML, 'system');
+            const loadingAnimation = this.createLoadingAnimation({
+                title: 'Analyse matérielle en cours...',
+                progressBarColors: 'from-green-500 to-blue-500',
+                steps: [
+                    { text: 'Détection CPU et mémoire...', color: 'text-blue-400', delay: 0 },
+                    { text: 'Analyse GPU via WebGL...', color: 'text-purple-400', delay: 300 },
+                    { text: 'Inventaire des périphériques...', color: 'text-yellow-400', delay: 600 }
+                ]
+            });
 
-            // Animation de la barre de progression
-            let progress = 0;
-            const progressBar = document.getElementById('lshw-progress');
-            const progressInterval = setInterval(() => {
-                progress += Math.random() * 12 + 8;
-                if (progress > 95) progress = 95;
-                if (progressBar) {
-                    progressBar.style.width = progress + '%';
-                }
-            }, 250);
-
-            // Fonction pour récupérer les vraies informations matérielles
-            const getRealHardwareInfo = async () => {
-                const hwInfo = {};
+            // Simulation de l'analyse matérielle
+            setTimeout(() => {
+                loadingAnimation.complete();
                 
-                try {
-                    const nav = window.navigator;
+                // Fonction pour récupérer les vraies informations matérielles
+                const getRealHardwareInfo = async () => {
+                    const hwInfo = {};
                     
-                    // Informations système de base
-                    hwInfo.system = {
-                        userAgent: nav.userAgent,
-                        platform: nav.platform || 'Inconnu',
-                        language: nav.language || 'Inconnu',
-                        languages: (nav.languages || []).join(', '),
-                        online: navigator.onLine,
-                        cookieEnabled: nav.cookieEnabled,
-                        doNotTrack: nav.doNotTrack,
-                        vendor: nav.vendor,
-                        product: nav.product,
-                        webdriver: nav.webdriver
-                    };
-
-                    // Informations CPU et mémoire
-                    hwInfo.cpu = {
-                        cores: nav.hardwareConcurrency || 'Inconnu',
-                        memory: nav.deviceMemory ? `${nav.deviceMemory} GB` : 'Inconnu'
-                    };
-
-                    // Informations d'affichage
-                    if (window.screen) {
-                        hwInfo.display = {
-                            resolution: `${window.screen.width}x${window.screen.height}`,
-                            colorDepth: `${window.screen.colorDepth} bits`,
-                            orientation: window.screen.orientation ? window.screen.orientation.type : 'Inconnu',
-                            pixelRatio: window.devicePixelRatio || 'Inconnu',
-                            viewport: `${window.innerWidth}x${window.innerHeight}`
-                        };
-                    }
-
-                    // Informations tactiles
-                    if (nav.maxTouchPoints !== undefined) {
-                        hwInfo.touch = {
-                            maxPoints: nav.maxTouchPoints,
-                            supported: nav.maxTouchPoints > 0
-                        };
-                    }
-
-                    // Informations réseau
-                    if (nav.connection) {
-                        const c = nav.connection;
-                        hwInfo.network = {
-                            type: c.effectiveType || c.type || 'Inconnu',
-                            downlink: c.downlink ? `${c.downlink} Mbps` : 'Inconnu',
-                            rtt: c.rtt ? `${c.rtt} ms` : 'Inconnu',
-                            saveData: c.saveData !== undefined ? (c.saveData ? 'Activé' : 'Désactivé') : 'Inconnu'
-                        };
-                    }
-
-                    // Informations WebGL/GPU
                     try {
-                        const canvas = document.createElement('canvas');
-                        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                        if (gl) {
-                            hwInfo.gpu = {
-                                version: gl.getParameter(gl.VERSION),
-                                vendor: gl.getParameter(gl.VENDOR),
-                                renderer: gl.getParameter(gl.RENDERER),
-                                shadingLanguage: gl.getParameter(gl.SHADING_LANGUAGE_VERSION)
-                            };
+                        const nav = window.navigator;
+                        
+                        // Informations système de base
+                        hwInfo.system = {
+                            userAgent: nav.userAgent,
+                            platform: nav.platform || 'Inconnu',
+                            language: nav.language || 'Inconnu',
+                            languages: (nav.languages || []).join(', '),
+                            online: navigator.onLine,
+                            cookieEnabled: nav.cookieEnabled,
+                            doNotTrack: nav.doNotTrack,
+                            vendor: nav.vendor,
+                            product: nav.product,
+                            webdriver: nav.webdriver
+                        };
 
-                            const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-                            if (debugInfo) {
-                                hwInfo.gpu.unmaskedVendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
-                                hwInfo.gpu.unmaskedRenderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                        // Informations CPU et mémoire
+                        hwInfo.cpu = {
+                            cores: nav.hardwareConcurrency || 'Inconnu',
+                            memory: nav.deviceMemory ? `${nav.deviceMemory} GB` : 'Inconnu'
+                        };
+
+                        // Informations d'affichage
+                        if (window.screen) {
+                            hwInfo.display = {
+                                resolution: `${window.screen.width}x${window.screen.height}`,
+                                colorDepth: `${window.screen.colorDepth} bits`,
+                                orientation: window.screen.orientation ? window.screen.orientation.type : 'Inconnu',
+                                pixelRatio: window.devicePixelRatio || 'Inconnu',
+                                viewport: `${window.innerWidth}x${window.innerHeight}`
+                            };
+                        }
+
+                        // Informations tactiles
+                        if (nav.maxTouchPoints !== undefined) {
+                            hwInfo.touch = {
+                                maxPoints: nav.maxTouchPoints,
+                                supported: nav.maxTouchPoints > 0
+                            };
+                        }
+
+                        // Informations réseau
+                        if (nav.connection) {
+                            const c = nav.connection;
+                            hwInfo.network = {
+                                type: c.effectiveType || c.type || 'Inconnu',
+                                downlink: c.downlink ? `${c.downlink} Mbps` : 'Inconnu',
+                                rtt: c.rtt ? `${c.rtt} ms` : 'Inconnu',
+                                saveData: c.saveData !== undefined ? (c.saveData ? 'Activé' : 'Désactivé') : 'Inconnu'
+                            };
+                        }
+
+                        // Informations WebGL/GPU
+                        try {
+                            const canvas = document.createElement('canvas');
+                            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                            if (gl) {
+                                hwInfo.gpu = {
+                                    version: gl.getParameter(gl.VERSION),
+                                    vendor: gl.getParameter(gl.VENDOR),
+                                    renderer: gl.getParameter(gl.RENDERER),
+                                    shadingLanguage: gl.getParameter(gl.SHADING_LANGUAGE_VERSION)
+                                };
+
+                                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                                if (debugInfo) {
+                                    hwInfo.gpu.unmaskedVendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
+                                    hwInfo.gpu.unmaskedRenderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                                }
+                            }
+                        } catch (error) {
+                            hwInfo.gpu = { error: 'Non accessible' };
+                        }
+
+                        // Informations batterie
+                        if (navigator.getBattery) {
+                            try {
+                                const battery = await navigator.getBattery();
+                                hwInfo.battery = {
+                                    level: `${Math.round(battery.level * 100)}%`,
+                                    charging: battery.charging,
+                                    chargingTime: battery.chargingTime !== Infinity ? `${Math.round(battery.chargingTime / 60)} min` : 'Indéfini',
+                                    dischargingTime: battery.dischargingTime !== Infinity ? `${Math.round(battery.dischargingTime / 60)} min` : 'Indéfini'
+                                };
+                            } catch (error) {
+                                hwInfo.battery = { error: 'Non accessible' };
                             }
                         }
+
+                        // Informations périphériques média
+                        if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+                            try {
+                                const devices = await navigator.mediaDevices.enumerateDevices();
+                                hwInfo.media = {
+                                    audioInputs: devices.filter(d => d.kind === 'audioinput').length,
+                                    videoInputs: devices.filter(d => d.kind === 'videoinput').length,
+                                    audioOutputs: devices.filter(d => d.kind === 'audiooutput').length
+                                };
+                            } catch (error) {
+                                hwInfo.media = { error: 'Non accessible' };
+                            }
+                        }
+
+                        // Informations de performance
+                        if (window.performance) {
+                            hwInfo.performance = {
+                                memory: window.performance.memory ? {
+                                    usedJSHeapSize: this.formatBytes(window.performance.memory.usedJSHeapSize),
+                                    totalJSHeapSize: this.formatBytes(window.performance.memory.totalJSHeapSize),
+                                    jsHeapSizeLimit: this.formatBytes(window.performance.memory.jsHeapSizeLimit)
+                                } : 'Non disponible',
+                                timing: {
+                                    loadTime: window.performance.timing.loadEventEnd - window.performance.timing.navigationStart,
+                                    domContentLoaded: window.performance.timing.domContentLoadedEventEnd - window.performance.timing.navigationStart,
+                                    networkLatency: window.performance.timing.responseStart - window.performance.timing.fetchStart
+                                }
+                            };
+                        }
+
+                        // Informations de géolocalisation
+                        hwInfo.geolocation = {
+                            supported: 'geolocation' in navigator,
+                            status: navigator.geolocation ? 'Disponible' : 'Non supporté'
+                        };
+
+                        // Informations diverses
+                        hwInfo.misc = {
+                            localStorage: typeof Storage !== 'undefined',
+                            sessionStorage: typeof sessionStorage !== 'undefined',
+                            webWorkers: typeof Worker !== 'undefined',
+                            serviceWorkers: 'serviceWorker' in navigator,
+                            notifications: 'Notification' in window,
+                            permissions: 'permissions' in navigator,
+                            vibration: 'vibrate' in navigator,
+                            fullscreen: document.fullscreenEnabled || document.webkitFullscreenEnabled || document.mozFullScreenEnabled || document.msFullscreenEnabled,
+                            clipboard: navigator.clipboard !== undefined,
+                            share: navigator.share !== undefined
+                        };
+
+                        return hwInfo;
+
                     } catch (error) {
-                        hwInfo.gpu = { error: 'Non accessible' };
+                        console.error('Erreur récupération matériel:', error);
+                        return {};
                     }
+                };
 
-                    // Informations batterie
-                    if (navigator.getBattery) {
-                        try {
-                            const battery = await navigator.getBattery();
-                            hwInfo.battery = {
-                                level: `${Math.round(battery.level * 100)}%`,
-                                charging: battery.charging,
-                                chargingTime: battery.chargingTime !== Infinity ? `${Math.round(battery.chargingTime / 60)} min` : 'Indéfini',
-                                dischargingTime: battery.dischargingTime !== Infinity ? `${Math.round(battery.dischargingTime / 60)} min` : 'Indéfini'
-                            };
-                        } catch (error) {
-                            hwInfo.battery = { error: 'Non accessible' };
-                        }
-                    }
-
-                    // Informations batterie
-                    if (navigator.getBattery) {
-                        try {
-                            const battery = await navigator.getBattery();
-                            hwInfo.battery = {
-                                level: `${Math.round(battery.level * 100)}%`,
-                                charging: battery.charging,
-                                chargingTime: battery.chargingTime !== Infinity ? `${Math.round(battery.chargingTime / 60)} min` : 'Indéfini',
-                                dischargingTime: battery.dischargingTime !== Infinity ? `${Math.round(battery.dischargingTime / 60)} min` : 'Indéfini'
-                            };
-                        } catch (error) {
-                            hwInfo.battery = { error: 'Non accessible' };
-                        }
-                    }
-
-                    // Informations périphériques média
-                    if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
-                        try {
-                            const devices = await navigator.mediaDevices.enumerateDevices();
-                            hwInfo.media = {
-                                audioInputs: devices.filter(d => d.kind === 'audioinput').length,
-                                videoInputs: devices.filter(d => d.kind === 'videoinput').length,
-                                audioOutputs: devices.filter(d => d.kind === 'audiooutput').length
-                            };
-                        } catch (error) {
-                            hwInfo.media = { error: 'Non accessible' };
-                        }
-                    }
-
-                    return hwInfo;
-
-                } catch (error) {
-                    console.error('Erreur récupération matériel:', error);
-                    return {};
-                }
-            };
-
-            // Fonction pour afficher les informations matérielles
-            const displayHardwareInfo = (hwInfo) => {
-                let output = '';
-
-                // Système de base
-                if (hwInfo.system) {
-                    output += `
-                        <div class="border border-gray-600 rounded-lg p-4 bg-gray-800/50 mt-3">
-                            <div class="flex items-center mb-3">
-                                <span class="text-lg mr-2">💻</span>
-                                <span class="font-bold text-blue-400 text-lg">Système</span>
-                            </div>
-                            <div class="space-y-2 text-sm">
-                                <div class="flex justify-between p-2 bg-gray-700/30 rounded">
-                                    <span class="text-blue-300 font-medium">Plateforme:</span>
-                                    <span class="text-white font-mono">${hwInfo.system.platform}</span>
-                                </div>
-                                <div class="flex justify-between p-2 bg-gray-700/30 rounded">
-                                    <span class="text-green-300 font-medium">Langue:</span>
-                                    <span class="text-white font-mono">${hwInfo.system.language}</span>
-                                </div>
-                                <div class="flex justify-between p-2 bg-gray-700/30 rounded">
-                                    <span class="text-purple-300 font-medium">Navigateur:</span>
-                                    <span class="text-white font-mono">${hwInfo.system.vendor || 'Inconnu'}</span>
-                                </div>
-                                <div class="flex justify-between p-2 bg-gray-700/30 rounded">
-                                    <span class="text-yellow-300 font-medium">En ligne:</span>
-                                    <span class="text-white font-mono">${hwInfo.system.online ? 'Oui' : 'Non'}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }
-
-                // CPU et Mémoire
-                if (hwInfo.cpu) {
-                    output += `
-                        <div class="border border-gray-600 rounded-lg p-4 bg-gray-800/50 mt-3">
-                            <div class="flex items-center mb-3">
-                                <span class="text-lg mr-2">🧠</span>
-                                <span class="font-bold text-cyan-400 text-lg">Processeur & Mémoire</span>
-                            </div>
-                            <div class="space-y-2 text-sm">
-                                <div class="flex justify-between p-2 bg-blue-900/30 rounded">
-                                    <span class="text-cyan-300 font-medium">Cœurs CPU:</span>
-                                    <span class="text-white font-mono">${hwInfo.cpu.cores}</span>
-                                </div>
-                                <div class="flex justify-between p-2 bg-blue-900/30 rounded">
-                                    <span class="text-cyan-300 font-medium">RAM estimée:</span>
-                                    <span class="text-white font-mono">${hwInfo.cpu.memory}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }
-
-                // Affichage
-                if (hwInfo.display) {
-                    output += `
-                        <div class="border border-gray-600 rounded-lg p-4 bg-gray-800/50 mt-3">
-                            <div class="flex items-center mb-3">
-                                <span class="text-lg mr-2">🖥️</span>
-                                <span class="font-bold text-purple-400 text-lg">Affichage</span>
-                            </div>
-                            <div class="space-y-2 text-sm">
-                                <div class="flex justify-between p-2 bg-purple-900/30 rounded">
-                                    <span class="text-purple-300 font-medium">Résolution:</span>
-                                    <span class="text-white font-mono">${hwInfo.display.resolution}</span>
-                                </div>
-                                <div class="flex justify-between p-2 bg-purple-900/30 rounded">
-                                    <span class="text-purple-300 font-medium">Profondeur couleur:</span>
-                                    <span class="text-white font-mono">${hwInfo.display.colorDepth}</span>
-                                </div>
-                                <div class="flex justify-between p-2 bg-purple-900/30 rounded">
-                                    <span class="text-purple-300 font-medium">Pixel Ratio:</span>
-                                    <span class="text-white font-mono">${hwInfo.display.pixelRatio}</span>
-                                </div>
-                                <div class="flex justify-between p-2 bg-purple-900/30 rounded">
-                                    <span class="text-purple-300 font-medium">Fenêtre visible:</span>
-                                    <span class="text-white font-mono">${hwInfo.display.viewport}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }
-
-                // GPU
-                if (hwInfo.gpu && !hwInfo.gpu.error) {
-                    output += `
-                        <div class="border border-gray-600 rounded-lg p-4 bg-gray-800/50 mt-3">
-                            <div class="flex items-center mb-3">
-                                <span class="text-lg mr-2">🎮</span>
-                                <span class="font-bold text-red-400 text-lg">Carte Graphique (WebGL)</span>
-                            </div>
-                            <div class="space-y-2 text-sm">
-                                ${hwInfo.gpu.unmaskedVendor ? `
-                                    <div class="flex justify-between p-2 bg-red-900/30 rounded">
-                                        <span class="text-red-300 font-medium">Fabricant:</span>
-                                        <span class="text-white font-mono">${hwInfo.gpu.unmaskedVendor}</span>
-                                    </div>
-                                ` : ''}
-                                ${hwInfo.gpu.unmaskedRenderer ? `
-                                    <div class="flex justify-between p-2 bg-red-900/30 rounded">
-                                        <span class="text-red-300 font-medium">Modèle:</span>
-                                        <span class="text-white font-mono">${hwInfo.gpu.unmaskedRenderer}</span>
-                                    </div>
-                                ` : ''}
-                                <div class="flex justify-between p-2 bg-red-900/30 rounded">
-                                    <span class="text-red-300 font-medium">WebGL Version:</span>
-                                    <span class="text-white font-mono">${hwInfo.gpu.version}</span>
-                                </div>
-                                <div class="flex justify-between p-2 bg-red-900/30 rounded">
-                                    <span class="text-red-300 font-medium">Shading Language:</span>
-                                    <span class="text-white font-mono">${hwInfo.gpu.shadingLanguage}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }
-
-                // Réseau
-                if (hwInfo.network) {
-                    output += `
-                        <div class="border border-gray-600 rounded-lg p-4 bg-gray-800/50 mt-3">
-                            <div class="flex items-center mb-3">
-                                <span class="text-lg mr-2">🌐</span>
-                                <span class="font-bold text-yellow-400 text-lg">Réseau</span>
-                            </div>
-                            <div class="space-y-2 text-sm">
-                                <div class="flex justify-between p-2 bg-yellow-900/30 rounded">
-                                    <span class="text-yellow-300 font-medium">Type connexion:</span>
-                                    <span class="text-white font-mono">${hwInfo.network.type}</span>
-                                </div>
-                                <div class="flex justify-between p-2 bg-yellow-900/30 rounded">
-                                    <span class="text-yellow-300 font-medium">Débit estimé:</span>
-                                    <span class="text-white font-mono">${hwInfo.network.downlink}</span>
-                                </div>
-                                <div class="flex justify-between p-2 bg-yellow-900/30 rounded">
-                                    <span class="text-yellow-300 font-medium">Latence:</span>
-                                    <span class="text-white font-mono">${hwInfo.network.rtt}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }
-
-                // Batterie
-                if (hwInfo.battery && !hwInfo.battery.error) {
-                    output += `
-                        <div class="border border-gray-600 rounded-lg p-4 bg-gray-800/50 mt-3">
-                            <div class="flex items-center mb-3">
-                                <span class="text-lg mr-2">🔋</span>
-                                <span class="font-bold text-orange-400 text-lg">Batterie</span>
-                            </div>
-                            <div class="space-y-2 text-sm">
-                                <div class="flex justify-between p-2 bg-orange-900/30 rounded">
-                                    <span class="text-orange-300 font-medium">Niveau:</span>
-                                    <span class="text-white font-mono">${hwInfo.battery.level}</span>
-                                </div>
-                                <div class="flex justify-between p-2 bg-orange-900/30 rounded">
-                                    <span class="text-orange-300 font-medium">En charge:</span>
-                                    <span class="text-white font-mono">${hwInfo.battery.charging ? 'Oui' : 'Non'}</span>
-                                </div>
-                                ${hwInfo.battery.chargingTime !== 'Indéfini' ? `
-                                    <div class="flex justify-between p-2 bg-orange-900/30 rounded">
-                                        <span class="text-orange-300 font-medium">Temps charge:</span>
-                                        <span class="text-white font-mono">${hwInfo.battery.chargingTime}</span>
-                                    </div>
-                                ` : ''}
-                            </div>
-                        </div>
-                    `;
-                }
-
-                // Périphériques média
-                if (hwInfo.media && !hwInfo.media.error) {
-                    output += `
-                        <div class="border border-gray-600 rounded-lg p-4 bg-gray-800/50 mt-3">
-                            <div class="flex items-center mb-3">
-                                <span class="text-lg mr-2">🎤</span>
-                                <span class="font-bold text-pink-400 text-lg">Périphériques Média</span>
-                            </div>
-                            <div class="space-y-2 text-sm">
-                                <div class="flex justify-between p-2 bg-pink-900/30 rounded">
-                                    <span class="text-pink-300 font-medium">Microphones:</span>
-                                    <span class="text-white font-mono">${hwInfo.media.audioInputs}</span>
-                                </div>
-                                <div class="flex justify-between p-2 bg-pink-900/30 rounded">
-                                    <span class="text-pink-300 font-medium">Caméras:</span>
-                                    <span class="text-white font-mono">${hwInfo.media.videoInputs}</span>
-                                </div>
-                                <div class="flex justify-between p-2 bg-pink-900/30 rounded">
-                                    <span class="text-pink-300 font-medium">Haut-parleurs:</span>
-                                    <span class="text-white font-mono">${hwInfo.media.audioOutputs}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }
-
-                // Informations tactiles
-                if (hwInfo.touch) {
-                    output += `
-                        <div class="border border-gray-600 rounded-lg p-4 bg-gray-800/50 mt-3">
-                            <div class="flex items-center mb-3">
-                                <span class="text-lg mr-2">👆</span>
-                                <span class="font-bold text-teal-400 text-lg">Interface Tactile</span>
-                            </div>
-                            <div class="space-y-2 text-sm">
-                                <div class="flex justify-between p-2 bg-teal-900/30 rounded">
-                                    <span class="text-teal-300 font-medium">Points tactiles max:</span>
-                                    <span class="text-white font-mono">${hwInfo.touch.maxPoints}</span>
-                                </div>
-                                <div class="flex justify-between p-2 bg-teal-900/30 rounded">
-                                    <span class="text-teal-300 font-medium">Support tactile:</span>
-                                    <span class="text-white font-mono">${hwInfo.touch.supported ? 'Oui' : 'Non'}</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }
-
-                return output;
-            };
-
-            // Exécution et affichage
-            getRealHardwareInfo().then(hwInfo => {
-                // Terminer l'animation de chargement
-                clearInterval(progressInterval);
-                if (progressBar) {
-                    progressBar.style.width = '100%';
-                }
-
-                setTimeout(() => {
-                    // Supprimer l'animation de chargement
-                    const loadingElement = document.getElementById('lshw-loading');
-                    if (loadingElement) {
-                        loadingElement.remove();
-                    }
-
+                // Exécution et affichage avec le nouveau constructeur
+                getRealHardwareInfo().then(hwInfo => {
                     if (Object.keys(hwInfo).length === 0) {
                         this.addOutput(`
                             <div class="mt-3 p-4 bg-red-900/20 border border-red-600 rounded-lg">
@@ -1759,7 +2555,247 @@ const app = {
                         return;
                     }
 
-                    let output = displayHardwareInfo(hwInfo);
+                    let output = '';
+
+                    // Système de base
+                    if (hwInfo.system) {
+                        output += this.createInfoBlock({
+                            title: 'Système',
+                            icon: '💻',
+                            color: 'text-blue-400',
+                            items: [
+                                { label: 'Plateforme', value: hwInfo.system.platform, labelColor: 'text-blue-300' },
+                                { label: 'Langue', value: hwInfo.system.language, labelColor: 'text-green-300' },
+                                { label: 'Navigateur', value: hwInfo.system.vendor || 'Inconnu', labelColor: 'text-purple-300' },
+                                { label: 'En ligne', value: hwInfo.system.online ? 'Oui' : 'Non', labelColor: 'text-yellow-300' },
+                                { label: 'Cookies', value: hwInfo.system.cookieEnabled ? 'Activés' : 'Désactivés', labelColor: 'text-cyan-300' }
+                            ]
+                        });
+                    }
+
+                    // CPU et Mémoire
+                    if (hwInfo.cpu) {
+                        output += this.createInfoBlock({
+                            title: 'Processeur & Mémoire',
+                            icon: '🧠',
+                            color: 'text-cyan-400',
+                            itemBgColor: 'bg-blue-900/30',
+                            items: [
+                                { label: 'Cœurs CPU', value: hwInfo.cpu.cores, labelColor: 'text-cyan-300' },
+                                { label: 'RAM estimée', value: hwInfo.cpu.memory, labelColor: 'text-cyan-300' }
+                            ]
+                        });
+                    }
+
+                    // Affichage
+                    if (hwInfo.display) {
+                        output += this.createInfoBlock({
+                            title: 'Affichage',
+                            icon: '🖥️',
+                            color: 'text-purple-400',
+                            itemBgColor: 'bg-purple-900/30',
+                            items: [
+                                { label: 'Résolution', value: hwInfo.display.resolution, labelColor: 'text-purple-300' },
+                                { label: 'Profondeur couleur', value: hwInfo.display.colorDepth, labelColor: 'text-purple-300' },
+                                { label: 'Pixel Ratio', value: hwInfo.display.pixelRatio, labelColor: 'text-purple-300' },
+                                { label: 'Fenêtre visible', value: hwInfo.display.viewport, labelColor: 'text-purple-300' },
+                                { label: 'Orientation', value: hwInfo.display.orientation, labelColor: 'text-purple-300' }
+                            ]
+                        });
+                    }
+
+                    // GPU
+                    if (hwInfo.gpu && !hwInfo.gpu.error) {
+                        const gpuItems = [
+                            { label: 'WebGL Version', value: hwInfo.gpu.version, labelColor: 'text-red-300' },
+                            { label: 'Shading Language', value: hwInfo.gpu.shadingLanguage, labelColor: 'text-red-300' },
+                            { label: 'Vendor (masqué)', value: hwInfo.gpu.vendor, labelColor: 'text-red-300' },
+                            { label: 'Renderer (masqué)', value: hwInfo.gpu.renderer, labelColor: 'text-red-300' }
+                        ];
+
+                        // Ajouter les infos non masquées si disponibles
+                        if (hwInfo.gpu.unmaskedVendor) {
+                            gpuItems.unshift({ label: 'Fabricant', value: hwInfo.gpu.unmaskedVendor, labelColor: 'text-red-300' });
+                        }
+                        if (hwInfo.gpu.unmaskedRenderer) {
+                            gpuItems.splice(hwInfo.gpu.unmaskedVendor ? 1 : 0, 0, 
+                                { label: 'Modèle', value: hwInfo.gpu.unmaskedRenderer, labelColor: 'text-red-300' }
+                            );
+                        }
+
+                        output += this.createInfoBlock({
+                            title: 'Carte Graphique (WebGL)',
+                            icon: '🎮',
+                            color: 'text-red-400',
+                            itemBgColor: 'bg-red-900/30',
+                            items: gpuItems
+                        });
+                    }
+
+                    // Réseau
+                    if (hwInfo.network) {
+                        output += this.createInfoBlock({
+                            title: 'Réseau',
+                            icon: '🌐',
+                            color: 'text-yellow-400',
+                            itemBgColor: 'bg-yellow-900/30',
+                            items: [
+                                { label: 'Type connexion', value: hwInfo.network.type, labelColor: 'text-yellow-300' },
+                                { label: 'Débit estimé', value: hwInfo.network.downlink, labelColor: 'text-yellow-300' },
+                                { label: 'Latence', value: hwInfo.network.rtt, labelColor: 'text-yellow-300' },
+                                { label: 'Économie données', value: hwInfo.network.saveData, labelColor: 'text-yellow-300' }
+                            ]
+                        });
+                    }
+
+                    // Batterie
+                    if (hwInfo.battery && !hwInfo.battery.error) {
+                        const batteryItems = [
+                            { label: 'Niveau', value: hwInfo.battery.level, labelColor: 'text-orange-300' },
+                            { label: 'En charge', value: hwInfo.battery.charging ? 'Oui' : 'Non', labelColor: 'text-orange-300' }
+                        ];
+
+                        if (hwInfo.battery.chargingTime !== 'Indéfini') {
+                            batteryItems.push({ label: 'Temps charge', value: hwInfo.battery.chargingTime, labelColor: 'text-orange-300' });
+                        }
+                        if (hwInfo.battery.dischargingTime !== 'Indéfini') {
+                            batteryItems.push({ label: 'Autonomie', value: hwInfo.battery.dischargingTime, labelColor: 'text-orange-300' });
+                        }
+
+                        output += this.createInfoBlock({
+                            title: 'Batterie',
+                            icon: '🔋',
+                            color: 'text-orange-400',
+                            itemBgColor: 'bg-orange-900/30',
+                            items: batteryItems
+                        });
+                    }
+
+                    // Périphériques média
+                    if (hwInfo.media && !hwInfo.media.error) {
+                        output += this.createInfoBlock({
+                            title: 'Périphériques Média',
+                            icon: '🎤',
+                            color: 'text-pink-400',
+                            itemBgColor: 'bg-pink-900/30',
+                            items: [
+                                { label: 'Microphones', value: hwInfo.media.audioInputs, labelColor: 'text-pink-300' },
+                                { label: 'Caméras', value: hwInfo.media.videoInputs, labelColor: 'text-pink-300' },
+                                { label: 'Haut-parleurs', value: hwInfo.media.audioOutputs, labelColor: 'text-pink-300' }
+                            ]
+                        });
+                    }
+
+                    // Interface tactile
+                    if (hwInfo.touch) {
+                        output += this.createInfoBlock({
+                            title: 'Interface Tactile',
+                            icon: '👆',
+                            color: 'text-teal-400',
+                            itemBgColor: 'bg-teal-900/30',
+                            items: [
+                                { label: 'Points tactiles max', value: hwInfo.touch.maxPoints, labelColor: 'text-teal-300' },
+                                { label: 'Support tactile', value: hwInfo.touch.supported ? 'Oui' : 'Non', labelColor: 'text-teal-300' }
+                            ]
+                        });
+                    }
+
+                    // Performance
+                    if (hwInfo.performance) {
+                        const perfItems = [];
+                        
+                        if (hwInfo.performance.memory !== 'Non disponible') {
+                            perfItems.push(
+                                { label: 'Mémoire JS utilisée', value: hwInfo.performance.memory.usedJSHeapSize, labelColor: 'text-green-300' },
+                                { label: 'Mémoire JS totale', value: hwInfo.performance.memory.totalJSHeapSize, labelColor: 'text-green-300' },
+                                { label: 'Limite mémoire JS', value: hwInfo.performance.memory.jsHeapSizeLimit, labelColor: 'text-green-300' }
+                            );
+                        }
+                        
+                        perfItems.push(
+                            { label: 'Temps de chargement', value: `${hwInfo.performance.timing.loadTime} ms`, labelColor: 'text-green-300' },
+                            { label: 'DOM prêt en', value: `${hwInfo.performance.timing.domContentLoaded} ms`, labelColor: 'text-green-300' },
+                            { label: 'Latence réseau', value: `${hwInfo.performance.timing.networkLatency} ms`, labelColor: 'text-green-300' }
+                        );
+
+                        output += this.createInfoBlock({
+                            title: 'Performance & Mémoire JS',
+                            icon: '⚡',
+                            color: 'text-green-400',
+                            itemBgColor: 'bg-green-900/30',
+                            items: perfItems
+                        });
+                    }
+
+                    // Capacités diverses (en grille)
+                    if (hwInfo.misc) {
+                        const miscHTML = `
+                            <div class="grid grid-cols-2 gap-2 text-sm">
+                                <div class="flex justify-between p-2 bg-indigo-900/30 rounded">
+                                    <span class="text-indigo-300 font-medium">localStorage:</span>
+                                    <span class="text-white font-mono">${hwInfo.misc.localStorage ? '✅' : '❌'}</span>
+                                </div>
+                                <div class="flex justify-between p-2 bg-indigo-900/30 rounded">
+                                    <span class="text-indigo-300 font-medium">sessionStorage:</span>
+                                    <span class="text-white font-mono">${hwInfo.misc.sessionStorage ? '✅' : '❌'}</span>
+                                </div>
+                                <div class="flex justify-between p-2 bg-indigo-900/30 rounded">
+                                    <span class="text-indigo-300 font-medium">Web Workers:</span>
+                                    <span class="text-white font-mono">${hwInfo.misc.webWorkers ? '✅' : '❌'}</span>
+                                </div>
+                                <div class="flex justify-between p-2 bg-indigo-900/30 rounded">
+                                    <span class="text-indigo-300 font-medium">Service Workers:</span>
+                                    <span class="text-white font-mono">${hwInfo.misc.serviceWorkers ? '✅' : '❌'}</span>
+                                </div>
+                                <div class="flex justify-between p-2 bg-indigo-900/30 rounded">
+                                    <span class="text-indigo-300 font-medium">Notifications:</span>
+                                    <span class="text-white font-mono">${hwInfo.misc.notifications ? '✅' : '❌'}</span>
+                                </div>
+                                <div class="flex justify-between p-2 bg-indigo-900/30 rounded">
+                                    <span class="text-indigo-300 font-medium">Permissions:</span>
+                                    <span class="text-white font-mono">${hwInfo.misc.permissions ? '✅' : '❌'}</span>
+                                </div>
+                                <div class="flex justify-between p-2 bg-indigo-900/30 rounded">
+                                    <span class="text-indigo-300 font-medium">Vibration:</span>
+                                    <span class="text-white font-mono">${hwInfo.misc.vibration ? '✅' : '❌'}</span>
+                                </div>
+                                <div class="flex justify-between p-2 bg-indigo-900/30 rounded">
+                                    <span class="text-indigo-300 font-medium">Fullscreen:</span>
+                                    <span class="text-white font-mono">${hwInfo.misc.fullscreen ? '✅' : '❌'}</span>
+                                </div>
+                                <div class="flex justify-between p-2 bg-indigo-900/30 rounded">
+                                    <span class="text-indigo-300 font-medium">Clipboard:</span>
+                                    <span class="text-white font-mono">${hwInfo.misc.clipboard ? '✅' : '❌'}</span>
+                                </div>
+                                <div class="flex justify-between p-2 bg-indigo-900/30 rounded">
+                                    <span class="text-indigo-300 font-medium">Web Share:</span>
+                                    <span class="text-white font-mono">${hwInfo.misc.share ? '✅' : '❌'}</span>
+                                </div>
+                            </div>
+                        `;
+
+                        output += this.createInfoBlock({
+                            title: 'Capacités & APIs',
+                            icon: '🔧',
+                            color: 'text-indigo-400',
+                            items: [], // Pas d'items standards
+                            customHTML: miscHTML
+                        });
+                    }
+
+                    // Géolocalisation
+                    if (hwInfo.geolocation) {
+                        output += this.createInfoBlock({
+                            title: 'Géolocalisation',
+                            icon: '📍',
+                            color: 'text-emerald-400',
+                            itemBgColor: 'bg-emerald-900/30',
+                            items: [
+                                { label: 'Support', value: hwInfo.geolocation.supported ? 'Oui' : 'Non', labelColor: 'text-emerald-300' },
+                                { label: 'Statut', value: hwInfo.geolocation.status, labelColor: 'text-emerald-300' }
+                            ]
+                        });
+                    }
 
                     // Message de succès
                     const successHTML = `
@@ -1775,21 +2811,14 @@ const app = {
                     `;
 
                     this.addOutput(output + successHTML, 'system');
-                }, 600);
-            }).catch(error => {
-                // En cas d'erreur, nettoyer l'animation
-                clearInterval(progressInterval);
-                const loadingElement = document.getElementById('lshw-loading');
-                if (loadingElement) {
-                    loadingElement.remove();
-                }
-
-                this.addOutput(`
-                    <div class="mt-3 p-4 bg-red-900/20 border border-red-600 rounded-lg">
-                        <span class="text-red-400">❌ Erreur lors de la récupération des informations matérielles: ${error.message}</span>
-                    </div>
-                `, 'error');
-            });
+                }).catch(error => {
+                    this.addOutput(`
+                        <div class="mt-3 p-4 bg-red-900/20 border border-red-600 rounded-lg">
+                            <span class="text-red-400">❌ Erreur lors de la récupération des informations matérielles: ${error.message}</span>
+                        </div>
+                    `, 'error');
+                });
+            }, 10);
         },
 
         ifconfig: function () {
@@ -1806,269 +2835,124 @@ const app = {
             `;
             this.addOutput(headerHTML, 'system');
 
-            // Ajouter l'animation de chargement
-            const loadingHTML = `
-                <div id="ifconfig-loading" class="mt-3 p-4 bg-gray-800/30 border border-gray-600 rounded-lg">
-                    <div class="flex items-center justify-center space-x-3">
-                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
-                        <span class="text-blue-300 font-medium">Analyse des interfaces réseau en cours...</span>
-                    </div>
-                    <div class="mt-3 space-y-2">
-                        <div class="flex items-center space-x-2">
-                            <div class="animate-pulse w-2 h-2 bg-green-400 rounded-full"></div>
-                            <span class="text-sm text-gray-400">Récupération IP publique...</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <div class="animate-pulse w-2 h-2 bg-yellow-400 rounded-full" style="animation-delay: 0.3s"></div>
-                            <span class="text-sm text-gray-400">Détection des IPs locales via WebRTC...</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <div class="animate-pulse w-2 h-2 bg-purple-400 rounded-full" style="animation-delay: 0.6s"></div>
-                            <span class="text-sm text-gray-400">Analyse des capacités réseau...</span>
-                        </div>
-                    </div>
-                    <div class="mt-3 bg-gray-700 rounded-full h-2">
-                        <div id="ifconfig-progress" class="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
-                    </div>
-                </div>
-            `;
-            this.addOutput(loadingHTML, 'system');
+            const loadingAnimation = this.createLoadingAnimation({
+                title: 'Analyse des interfaces réseau en cours...',
+                progressBarColors: 'from-blue-500 to-green-500',
+                steps: [
+                    { text: 'Récupération IP publique...', color: 'text-green-400', delay: 0 },
+                    { text: 'Détection des IPs locales via WebRTC...', color: 'text-yellow-400', delay: 300 },
+                    { text: 'Analyse des capacités réseau...', color: 'text-purple-400', delay: 600 }
+                ]
+            });
 
-            // Animation de la barre de progression
-            let progress = 0;
-            const progressBar = document.getElementById('ifconfig-progress');
-            const progressInterval = setInterval(() => {
-                progress += Math.random() * 15 + 5;
-                if (progress > 95) progress = 95;
-                if (progressBar) {
-                    progressBar.style.width = progress + '%';
-                }
-            }, 200);
-
-            // Fonction pour récupérer les vraies informations réseau
-            const getRealNetworkInfo = async () => {
-                const interfaces = [];
+            // Simulation de l'analyse réseau
+            setTimeout(() => {
+                loadingAnimation.complete();
                 
-                try {
-                    // Utilise l'API Navigator pour récupérer des infos réelles
-                    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+                // Fonction pour récupérer les vraies informations réseau
+                const getRealNetworkInfo = async () => {
+                    const interfaces = [];
                     
-                    // Interface principale (WiFi/Ethernet)
-                    const mainInterface = {
-                        name: 'eth0',
-                        type: connection ? (connection.type || 'ethernet') : 'ethernet',
-                        state: navigator.onLine ? 'UP RUNNING' : 'DOWN',
-                        speed: connection ? connection.downlink : null,
-                        effectiveType: connection ? connection.effectiveType : null,
-                        rtt: connection ? connection.rtt : null
-                    };
-
-                    // Récupération de l'IP publique réelle
                     try {
-                        const publicResponse = await fetch('https://httpbin.org/ip');
-                        const publicData = await publicResponse.json();
-                        mainInterface.publicIP = publicData.origin;
-                    } catch {
-                        // Fallback vers un autre service
-                        try {
-                            const fallbackResponse = await fetch('https://api64.ipify.org?format=json');
-                            const fallbackData = await fallbackResponse.json();
-                            mainInterface.publicIP = fallbackData.ip;
-                        } catch {
-                            mainInterface.publicIP = 'Non accessible';
-                        }
-                    }
-
-                    // Récupération des IPs locales via WebRTC (plus précise)
-                    const localIPs = await new Promise((resolve) => {
-                        const ips = new Set();
-                        const rtc = new RTCPeerConnection({
-                            iceServers: [
-                                { urls: 'stun:stun.l.google.com:19302' },
-                                { urls: 'stun:stun1.l.google.com:19302' }
-                            ]
-                        });
-
-                        rtc.createDataChannel('');
-                        rtc.onicecandidate = (e) => {
-                            if (e.candidate) {
-                                const parts = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(e.candidate.candidate);
-                                if (parts && parts[1] && parts[1] !== '127.0.0.1') {
-                                    ips.add(parts[1]);
-                                }
-                            }
+                        // Utilise l'API Navigator pour récupérer des infos réelles
+                        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+                        
+                        // Interface principale (WiFi/Ethernet)
+                        const mainInterface = {
+                            name: 'eth0',
+                            type: connection ? (connection.type || 'ethernet') : 'ethernet',
+                            state: navigator.onLine ? 'UP RUNNING' : 'DOWN',
+                            speed: connection ? connection.downlink : null,
+                            effectiveType: connection ? connection.effectiveType : null,
+                            rtt: connection ? connection.rtt : null
                         };
 
-                        rtc.createOffer().then(offer => rtc.setLocalDescription(offer));
-                        
-                        setTimeout(() => {
-                            rtc.close();
-                            resolve(Array.from(ips));
-                        }, 3000);
-                    });
-
-                    mainInterface.localIPs = localIPs;
-
-                    // Récupération d'informations système via Battery API
-                    if ('getBattery' in navigator) {
+                        // Récupération de l'IP publique réelle
                         try {
-                            const battery = await navigator.getBattery();
-                            mainInterface.powerInfo = {
-                                charging: battery.charging,
-                                level: Math.round(battery.level * 100),
-                                chargingTime: battery.chargingTime,
-                                dischargingTime: battery.dischargingTime
+                            const publicResponse = await fetch('https://httpbin.org/ip');
+                            const publicData = await publicResponse.json();
+                            mainInterface.publicIP = publicData.origin;
+                        } catch {
+                            // Fallback vers un autre service
+                            try {
+                                const fallbackResponse = await fetch('https://api64.ipify.org?format=json');
+                                const fallbackData = await fallbackResponse.json();
+                                mainInterface.publicIP = fallbackData.ip;
+                            } catch {
+                                mainInterface.publicIP = 'Non accessible';
+                            }
+                        }
+
+                        // Récupération des IPs locales via WebRTC (plus précise)
+                        const localIPs = await new Promise((resolve) => {
+                            const ips = new Set();
+                            const rtc = new RTCPeerConnection({
+                                iceServers: [
+                                    { urls: 'stun:stun.l.google.com:19302' },
+                                    { urls: 'stun:stun1.l.google.com:19302' }
+                                ]
+                            });
+
+                            rtc.createDataChannel('');
+                            rtc.onicecandidate = (e) => {
+                                if (e.candidate) {
+                                    const parts = /([0-9]{1,3}(\.[0-9]{1,3}){3})/.exec(e.candidate.candidate);
+                                    if (parts && parts[1] && parts[1] !== '127.0.0.1') {
+                                        ips.add(parts[1]);
+                                    }
+                                }
                             };
-                        } catch {}
-                    }
 
-                    // Informations sur les capacités réseau
-                    if ('serviceWorker' in navigator) {
-                        mainInterface.serviceWorkerSupport = true;
-                    }
-
-                    interfaces.push(mainInterface);
-
-                    // Interface de bouclage (simulation réaliste)
-                    interfaces.push({
-                        name: 'lo',
-                        type: 'loopback',
-                        state: 'UP LOOPBACK RUNNING',
-                        ip: '127.0.0.1',
-                        netmask: '255.0.0.0',
-                        mtu: 65536
-                    });
-
-                    return interfaces;
-
-                } catch (error) {
-                    console.error('Erreur récupération réseau:', error);
-                    return [];
-                }
-            };
-
-            // Fonction pour afficher les interfaces réseau
-            const displayInterface = (iface) => {
-                let interfaceHTML = `
-                    <div class="border border-gray-600 rounded-lg p-4 bg-gray-800/50 mt-3">
-                        <div class="flex items-center justify-between mb-3">
-                            <div class="flex items-center">
-                                <span class="text-lg mr-2">${iface.type === 'loopback' ? '🔄' : '🌐'}</span>
-                                <span class="font-bold text-green-400 text-lg">${iface.name}</span>
-                                <span class="ml-2 text-gray-400 text-sm">(${iface.type})</span>
-                            </div>
-                            <span class="px-2 py-1 ${iface.state.includes('UP') ? 'bg-green-700 text-green-200' : 'bg-red-700 text-red-200'} rounded text-xs font-semibold">
-                                ${iface.state}
-                            </span>
-                        </div>
-                        <div class="space-y-2 text-sm">
-                `;
-
-                if (iface.name === 'eth0') {
-                    if (iface.publicIP) {
-                        interfaceHTML += `
-                            <div class="flex justify-between p-2 bg-blue-900/30 rounded">
-                                <span class="text-blue-300 font-medium">IP Publique:</span>
-                                <span class="text-white font-mono">${iface.publicIP}</span>
-                            </div>
-                        `;
-                    }
-
-                    if (iface.localIPs && iface.localIPs.length > 0) {
-                        iface.localIPs.forEach((ip, index) => {
-                            interfaceHTML += `
-                                <div class="flex justify-between p-2 bg-gray-700/30 rounded">
-                                    <span class="text-green-300 font-medium">IP Locale ${index + 1}:</span>
-                                    <span class="text-white font-mono">${ip}/24</span>
-                                </div>
-                            `;
+                            rtc.createOffer().then(offer => rtc.setLocalDescription(offer));
+                            
+                            setTimeout(() => {
+                                rtc.close();
+                                resolve(Array.from(ips));
+                            }, 100);
                         });
+
+                        mainInterface.localIPs = localIPs;
+
+                        // Récupération d'informations système via Battery API
+                        if ('getBattery' in navigator) {
+                            try {
+                                const battery = await navigator.getBattery();
+                                mainInterface.powerInfo = {
+                                    charging: battery.charging,
+                                    level: Math.round(battery.level * 100),
+                                    chargingTime: battery.chargingTime,
+                                    dischargingTime: battery.dischargingTime
+                                };
+                            } catch {}
+                        }
+
+                        // Informations sur les capacités réseau
+                        if ('serviceWorker' in navigator) {
+                            mainInterface.serviceWorkerSupport = true;
+                        }
+
+                        interfaces.push(mainInterface);
+
+                        // Interface de bouclage (simulation réaliste)
+                        interfaces.push({
+                            name: 'lo',
+                            type: 'loopback',
+                            state: 'UP LOOPBACK RUNNING',
+                            ip: '127.0.0.1',
+                            netmask: '255.0.0.0',
+                            mtu: 65536
+                        });
+
+                        return interfaces;
+
+                    } catch (error) {
+                        console.error('Erreur récupération réseau:', error);
+                        return [];
                     }
+                };
 
-                    if (iface.speed) {
-                        interfaceHTML += `
-                            <div class="flex justify-between p-2 bg-gray-700/30 rounded">
-                                <span class="text-yellow-300 font-medium">Débit:</span>
-                                <span class="text-white font-mono">${iface.speed} Mbps</span>
-                            </div>
-                        `;
-                    }
-
-                    if (iface.effectiveType) {
-                        interfaceHTML += `
-                            <div class="flex justify-between p-2 bg-gray-700/30 rounded">
-                                <span class="text-purple-300 font-medium">Type de connexion:</span>
-                                <span class="text-white font-mono">${iface.effectiveType}</span>
-                            </div>
-                        `;
-                    }
-
-                    if (iface.rtt) {
-                        interfaceHTML += `
-                            <div class="flex justify-between p-2 bg-gray-700/30 rounded">
-                                <span class="text-cyan-300 font-medium">Latence RTT:</span>
-                                <span class="text-white font-mono">${iface.rtt} ms</span>
-                            </div>
-                        `;
-                    }
-
-                    if (iface.powerInfo) {
-                        interfaceHTML += `
-                            <div class="flex justify-between p-2 bg-orange-900/30 rounded">
-                                <span class="text-orange-300 font-medium">Batterie:</span>
-                                <span class="text-white font-mono">${iface.powerInfo.level}% ${iface.powerInfo.charging ? '(en charge)' : ''}</span>
-                            </div>
-                        `;
-                    }
-
-                    // MTU standard pour ethernet
-                    interfaceHTML += `
-                        <div class="flex justify-between p-2 bg-gray-700/30 rounded">
-                            <span class="text-gray-300 font-medium">MTU:</span>
-                            <span class="text-white font-mono">1500</span>
-                        </div>
-                    `;
-
-                } else if (iface.name === 'lo') {
-                    interfaceHTML += `
-                        <div class="flex justify-between p-2 bg-gray-700/30 rounded">
-                            <span class="text-green-300 font-medium">IP:</span>
-                            <span class="text-white font-mono">${iface.ip}</span>
-                        </div>
-                        <div class="flex justify-between p-2 bg-gray-700/30 rounded">
-                            <span class="text-blue-300 font-medium">Netmask:</span>
-                            <span class="text-white font-mono">${iface.netmask}</span>
-                        </div>
-                        <div class="flex justify-between p-2 bg-gray-700/30 rounded">
-                            <span class="text-gray-300 font-medium">MTU:</span>
-                            <span class="text-white font-mono">${iface.mtu}</span>
-                        </div>
-                    `;
-                }
-
-                interfaceHTML += `
-                        </div>
-                    </div>
-                `;
-
-                return interfaceHTML;
-            };
-
-            // Exécution et affichage
-            getRealNetworkInfo().then(interfaces => {
-                // Terminer l'animation de chargement
-                clearInterval(progressInterval);
-                if (progressBar) {
-                    progressBar.style.width = '100%';
-                }
-
-                setTimeout(() => {
-                    // Supprimer l'animation de chargement
-                    const loadingElement = document.getElementById('ifconfig-loading');
-                    if (loadingElement) {
-                        loadingElement.remove();
-                    }
-
+                // Exécution et affichage avec le constructeur createInfoBlock
+                getRealNetworkInfo().then(interfaces => {
                     if (interfaces.length === 0) {
                         this.addOutput(`
                             <div class="mt-3 p-4 bg-red-900/20 border border-red-600 rounded-lg">
@@ -2079,53 +2963,175 @@ const app = {
                     }
 
                     let output = '';
+                    
+                    // Traiter chaque interface
                     interfaces.forEach(iface => {
-                        output += displayInterface(iface);
+                        if (iface.name === 'eth0') {
+                            // Interface principale Ethernet
+                            const eth0Items = [];
+                            
+                            // Ajouter l'IP publique si disponible
+                            if (iface.publicIP) {
+                                eth0Items.push({ 
+                                    label: 'IP Publique', 
+                                    value: iface.publicIP, 
+                                    labelColor: 'text-blue-300' 
+                                });
+                            }
+
+                            // Ajouter les IPs locales
+                            if (iface.localIPs && iface.localIPs.length > 0) {
+                                iface.localIPs.forEach((ip, index) => {
+                                    eth0Items.push({ 
+                                        label: `IP Locale ${index + 1}`, 
+                                        value: `${ip}/24`, 
+                                        labelColor: 'text-green-300' 
+                                    });
+                                });
+                            }
+
+                            // Ajouter les informations de connexion
+                            if (iface.speed) {
+                                eth0Items.push({ 
+                                    label: 'Débit', 
+                                    value: `${iface.speed} Mbps`, 
+                                    labelColor: 'text-yellow-300' 
+                                });
+                            }
+
+                            if (iface.effectiveType) {
+                                eth0Items.push({ 
+                                    label: 'Type de connexion', 
+                                    value: iface.effectiveType, 
+                                    labelColor: 'text-purple-300' 
+                                });
+                            }
+
+                            if (iface.rtt) {
+                                eth0Items.push({ 
+                                    label: 'Latence RTT', 
+                                    value: `${iface.rtt} ms`, 
+                                    labelColor: 'text-cyan-300' 
+                                });
+                            }
+
+                            // Ajouter les informations de batterie si disponibles
+                            if (iface.powerInfo) {
+                                eth0Items.push({ 
+                                    label: 'Batterie', 
+                                    value: `${iface.powerInfo.level}% ${iface.powerInfo.charging ? '(en charge)' : ''}`, 
+                                    labelColor: 'text-orange-300',
+                                    bgColor: 'bg-orange-900/30'
+                                });
+                            }
+
+                            // MTU standard pour ethernet
+                            eth0Items.push({ 
+                                label: 'MTU', 
+                                value: '1500', 
+                                labelColor: 'text-gray-300' 
+                            });
+
+                            // Créer le bloc pour eth0 avec badge de statut
+                            const statusBadgeHTML = `
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="flex items-center">
+                                        <span class="text-lg mr-2">🌐</span>
+                                        <span class="font-bold text-green-400 text-lg">${iface.name}</span>
+                                        <span class="ml-2 text-gray-400 text-sm">(${iface.type})</span>
+                                    </div>
+                                    <span class="px-2 py-1 ${iface.state.includes('UP') ? 'bg-green-700 text-green-200' : 'bg-red-700 text-red-200'} rounded text-xs font-semibold">
+                                        ${iface.state}
+                                    </span>
+                                </div>
+                            `;
+
+                            output += this.createInfoBlock({
+                                title: '', // Pas de titre car on utilise le HTML personnalisé en haut
+                                icon: '',
+                                color: 'text-green-400',
+                                items: eth0Items,
+                                customHTML: statusBadgeHTML
+                            });
+
+                        } else if (iface.name === 'lo') {
+                            // Interface de bouclage
+                            const loItems = [
+                                { label: 'IP', value: iface.ip, labelColor: 'text-green-300' },
+                                { label: 'Netmask', value: iface.netmask, labelColor: 'text-blue-300' },
+                                { label: 'MTU', value: iface.mtu.toString(), labelColor: 'text-gray-300' }
+                            ];
+
+                            const loStatusBadgeHTML = `
+                                <div class="flex items-center justify-between mb-2">
+                                    <div class="flex items-center">
+                                        <span class="text-lg mr-2">🔄</span>
+                                        <span class="font-bold text-blue-400 text-lg">${iface.name}</span>
+                                        <span class="ml-2 text-gray-400 text-sm">(${iface.type})</span>
+                                    </div>
+                                    <span class="px-2 py-1 ${iface.state.includes('UP') ? 'bg-green-700 text-green-200' : 'bg-red-700 text-red-200'} rounded text-xs font-semibold">
+                                        ${iface.state}
+                                    </span>
+                                </div>
+                            `;
+
+                            output += this.createInfoBlock({
+                                title: '',
+                                icon: '',
+                                color: 'text-blue-400',
+                                items: loItems,
+                                customHTML: loStatusBadgeHTML
+                            });
+                        }
                     });
 
-                    // Informations système additionnelles
-                    output += `
-                        <div class="mt-4 p-3 bg-gray-800/30 border border-gray-600 rounded-lg">
-                            <div class="flex items-center mb-2">
-                                <span class="text-lg mr-2">🖥️</span>
-                                <span class="font-semibold text-blue-300">Informations système</span>
-                            </div>
-                            <div class="text-xs text-gray-400 space-y-1">
-                                <div>• Platform: ${navigator.platform}</div>
-                                <div>• User Agent: ${navigator.userAgent.substring(0, 80)}...</div>
-                                <div>• Cores CPU: ${navigator.hardwareConcurrency || 'Inconnu'}</div>
-                                <div>• RAM estimée: ${navigator.deviceMemory || 'Inconnu'} GB</div>
-                                <div>• Résolution: ${screen.width}x${screen.height}</div>
-                            </div>
+                    // Bloc d'informations système additionnelles
+                    const systemItems = [
+                        { label: 'Platform', value: navigator.platform, labelColor: 'text-blue-300' },
+                        { label: 'Cores CPU', value: navigator.hardwareConcurrency || 'Inconnu', labelColor: 'text-green-300' },
+                        { label: 'RAM estimée', value: `${navigator.deviceMemory || 'Inconnu'} GB`, labelColor: 'text-purple-300' },
+                        { label: 'Résolution', value: `${screen.width}x${screen.height}`, labelColor: 'text-yellow-300' }
+                    ];
+
+                    const userAgentHTML = `
+                        <div class="mt-2 p-2 bg-gray-700/30 rounded">
+                            <span class="text-cyan-300 font-medium text-sm">User Agent:</span>
+                            <div class="text-white font-mono text-xs mt-1 break-all">${navigator.userAgent.substring(0, 120)}...</div>
                         </div>
                     `;
+
+                    output += this.createInfoBlock({
+                        title: 'Informations système',
+                        icon: '🖥️',
+                        color: 'text-blue-300',
+                        itemBgColor: 'bg-gray-700/20',
+                        borderColor: 'border-gray-600',
+                        items: systemItems,
+                        customHTML: userAgentHTML
+                    });
 
                     // Message de succès
                     const successHTML = `
                         <div class="mt-3 p-3 bg-green-900/20 border border-green-600 rounded-lg">
                             <div class="flex items-center">
                                 <span class="text-green-400 mr-2">✅</span>
-                                <span class="text-green-300 font-medium">Analyse terminée avec succès</span>
+                                <span class="text-green-300 font-medium">Analyse des interfaces réseau terminée avec succès</span>
+                            </div>
+                            <div class="text-xs text-gray-400 mt-1">
+                                Toutes les interfaces réseau disponibles ont été détectées et analysées.
                             </div>
                         </div>
                     `;
 
                     this.addOutput(output + successHTML, 'system');
-                }, 500);
-            }).catch(error => {
-                // En cas d'erreur, nettoyer l'animation
-                clearInterval(progressInterval);
-                const loadingElement = document.getElementById('ifconfig-loading');
-                if (loadingElement) {
-                    loadingElement.remove();
-                }
-
-                this.addOutput(`
-                    <div class="mt-3 p-4 bg-red-900/20 border border-red-600 rounded-lg">
-                        <span class="text-red-400">❌ Erreur lors de la récupération des informations réseau: ${error.message}</span>
-                    </div>
-                `, 'error');
-            });
+                }).catch(error => {
+                    this.addOutput(`
+                        <div class="mt-3 p-4 bg-red-900/20 border border-red-600 rounded-lg">
+                            <span class="text-red-400">❌ Erreur lors de la récupération des informations réseau: ${error.message}</span>
+                        </div>
+                    `, 'error');
+                });
+            }, 100);
         },
 
         free(args) {
@@ -2307,27 +3313,8 @@ const app = {
             });
 
             if (args.length > 0 && args[0] === '--help') {
-            this.addOutput('<span class="font-bold text-blue-400">cookies - gestion des cookies du navigateur</span>');
-            this.addOutput('');
-            this.addOutput('<span class="text-green-400">UTILISATION:</span>');
-            this.addOutput('    cookies [OPTION]...');
-            this.addOutput('');
-            this.addOutput('<span class="text-green-400">DESCRIPTION:</span>');
-            this.addOutput('    Affiche et gère les cookies stockés dans le navigateur.');
-            this.addOutput('');
-            this.addOutput('<span class="text-green-400">OPTIONS:</span>');
-            this.addOutput('    -a, --all      affiche tous les détails des cookies');
-            this.addOutput('    -c, --count    affiche seulement le nombre de cookies');
-            this.addOutput('    -s, --size     affiche la taille totale des cookies');
-            this.addOutput('    -l, --list     liste les noms des cookies');
-            this.addOutput('    -d, --delete   supprime tous les cookies (dangereux!)');
-            this.addOutput('        --help     affiche cette aide et quitte');
-            this.addOutput('');
-            this.addOutput('<span class="text-green-400">EXEMPLES:</span>');
-            this.addOutput('    cookies        affiche un résumé des cookies');
-            this.addOutput('    cookies -a     affiche tous les détails');
-            this.addOutput('    cookies -c     compte les cookies');
-            return;
+                this.commands.man.call(this, ['cookies']);
+                return;
             }
 
             // Récupération des cookies ET du localStorage
@@ -2786,34 +3773,8 @@ const app = {
 
             // Help option
             if (options.help) {
-            this.addOutput('<span class="font-bold text-blue-400">tree - afficher l\'arborescence des répertoires</span>');
-            this.addOutput('');
-            this.addOutput('<span class="text-green-400">UTILISATION:</span>');
-            this.addOutput('    tree [OPTION]... [RÉPERTOIRE]...');
-            this.addOutput('');
-            this.addOutput('<span class="text-green-400">DESCRIPTION:</span>');
-            this.addOutput('    Affiche l\'arborescence des répertoires sous forme d\'arbre visuel.');
-            this.addOutput('');
-            this.addOutput('<span class="text-green-400">OPTIONS:</span>');
-            this.addOutput('    -a             affiche tous les fichiers (y compris cachés)');
-            this.addOutput('    -d             affiche seulement les répertoires');
-            this.addOutput('    -f             affiche le chemin complet pour chaque fichier');
-            this.addOutput('    -i             désactive l\'indentation, affiche une liste plate');
-            this.addOutput('    -C             colorise la sortie (activé par défaut)');
-            this.addOutput('    -s             affiche la taille des fichiers');
-            this.addOutput('    -h             format lisible pour les tailles (avec -s)');
-            this.addOutput('    -D             affiche la date de modification');
-            this.addOutput('    -F             ajoute des indicateurs de type de fichier');
-            this.addOutput('    -L <niveau>    limite la profondeur d\'affichage');
-            this.addOutput('    -P <motif>     liste seulement les fichiers correspondant au motif');
-            this.addOutput('    --help         affiche cette aide et quitte');
-            this.addOutput('');
-            this.addOutput('<span class="text-green-400">EXEMPLES:</span>');
-            this.addOutput('    tree           affiche l\'arborescence du répertoire courant');
-            this.addOutput('    tree -a        affiche tous les fichiers y compris cachés');
-            this.addOutput('    tree -d -L 2   affiche seulement les répertoires sur 2 niveaux');
-            this.addOutput('    tree -s -h     affiche avec les tailles en format lisible');
-            return;
+                this.commands.man.call(this, ['tree']);
+                return;
             }
 
             const maxLevel = options.level || 20;
@@ -3010,9 +3971,9 @@ const app = {
 
         find(args) {
             const options = this.parseOptions(args, {
-                'name': 'name',
-                'type': 'type',
-                'maxdepth': 'maxdepth'
+            'name': 'name',
+            'type': 'type',
+            'maxdepth': 'maxdepth'
             });
 
             const startPath = options._.find(arg => !arg.startsWith('-') && !arg.match(/^(f|d)$/)) || '.';
@@ -3020,8 +3981,8 @@ const app = {
             const startNode = this.getPath(resolvedPath);
 
             if (!startNode) {
-                this.addOutput(`find: '${startPath}': Aucun fichier ou dossier de ce type`, 'error');
-                return;
+            this.addOutput(`find: '${startPath}': Aucun fichier ou dossier de ce type`, 'error');
+            return;
             }
 
             const namePattern = options.name;
@@ -3030,36 +3991,45 @@ const app = {
 
             const results = [];
             const search = (node, currentPath, depth = 0) => {
-                if (depth > maxDepth) return;
+            if (depth > maxDepth) return;
 
-                // Vérifie si le nœud correspond aux critères
-                let matches = true;
-                if (typeFilter) {
-                    matches = matches && ((typeFilter === 'f' && node.type === 'file') ||
-                        (typeFilter === 'd' && node.type === 'directory'));
-                }
-                if (namePattern) {
-                    const fileName = currentPath.split('/').pop();
-                    const regex = new RegExp(namePattern.replace(/\*/g, '.*').replace(/\?/g, '.'), 'i');
-                    matches = matches && regex.test(fileName);
-                }
+            // Vérifie si le nœud correspond aux critères
+            let matches = true;
+            if (typeFilter) {
+                matches = matches && ((typeFilter === 'f' && node.type === 'file') ||
+                (typeFilter === 'd' && node.type === 'directory'));
+            }
+            if (namePattern) {
+                const fileName = currentPath.split('/').pop();
+                const regex = new RegExp(namePattern.replace(/\*/g, '.*').replace(/\?/g, '.'), 'i');
+                matches = matches && regex.test(fileName);
+            }
 
+            if (matches) {
+                results.push(currentPath);
+            }
 
-                if (matches) {
-                    results.push(currentPath);
-                }
-
-                // Recherche récursive dans les répertoires
-                if (node.type === 'directory') {
-                    Object.keys(node.children).forEach(childName => {
-                        const childPath = currentPath === '/' ? `/${childName}` : `${currentPath}/${childName}`;
-                        search(node.children[childName], childPath, depth + 1);
-                    });
-                }
+            // Recherche récursive dans TOUS les répertoires enfants
+            if (node.type === 'directory' && node.children) {
+                Object.keys(node.children).forEach(childName => {
+                const childPath = currentPath === '/' ? `/${childName}` : `${currentPath}/${childName}`;
+                const childNode = node.children[childName];
+                
+                // Continuer la recherche récursivement pour chaque enfant
+                search(childNode, childPath, depth + 1);
+                });
+            }
             };
 
+            // Commencer la recherche depuis le nœud de départ
             search(startNode, resolvedPath);
+            
+            // Afficher tous les résultats trouvés
+            if (results.length === 0) {
+            this.addOutput(`find: aucun fichier trouvé correspondant aux critères`);
+            } else {
             results.forEach(result => this.addOutput(result));
+            }
         },
 
         grep(args) {
@@ -3344,6 +4314,23 @@ const app = {
                 `;
             }
 
+            if (metadata.seeAlso && metadata.seeAlso.length > 0) {
+                output += `
+                    <div class="mb-4">
+                        <div class="text-yellow-300 font-bold mb-1">VOIR AUSSI</div>
+                        <div class="ml-4">
+                `;
+
+                metadata.seeAlso.forEach(relatedCmd => {
+                    output += `<span class="text-green-400 font-mono cursor-pointer hover:text-green-300 clickable-command mr-3" data-command="${relatedCmd}">${relatedCmd}</span>`;
+                });
+
+                output += `
+                        </div>
+                    </div>
+                `;
+            }
+
             output += `
                 <div class="mt-4 text-xs text-gray-500">
                     WebConsole Manual - Tapez '<span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="man">man</span>' pour voir tous les manuels disponibles
@@ -3352,32 +4339,6 @@ const app = {
             `;
 
             this.addOutput(output);
-            this.setupClickableCommands();
-        },
-
-        listCommands: function() {
-            this.addOutput('<span class="font-bold text-blue-400 text-lg">Liste complète des commandes :</span>');
-            
-            const grouped = commandHelpers.groupCommandsByCategory();
-            let totalCommands = 0;
-            
-            Object.entries(grouped).forEach(([category, commands]) => {
-                const icon = commandHelpers.getCategoryIcon(category);
-                
-                this.addOutput(`\n<span class="text-yellow-300 font-semibold">${icon} ${category} (${commands.length} commandes)</span>`);
-                
-                commands.sort().forEach(cmdName => {
-                    const metadata = COMMAND_METADATA[cmdName];
-                    if (metadata) {
-                        this.addOutput(`  <span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="${cmdName} ">${cmdName}</span> - ${metadata.description}`);
-                        totalCommands++;
-                    }
-                });
-            });
-            
-            this.addOutput(`\n<span class="text-purple-400">Total : ${totalCommands} commandes disponibles</span>`);
-            this.addOutput(`<span class="text-gray-400">Utilisez '<span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="man ">man [commande]</span>' pour plus d'informations sur une commande spécifique.</span>`);
-            
             this.setupClickableCommands();
         },
 
@@ -3910,25 +4871,8 @@ ${bottomBorder}
             
             // Help option
             if (options.help) {
-            this.addOutput('<span class="font-bold text-blue-400">genpass - générateur de mots de passe sécurisés</span>');
-            this.addOutput('');
-            this.addOutput('<span class="text-green-400">UTILISATION:</span>');
-            this.addOutput('    genpass [OPTIONS] [longueur]');
-            this.addOutput('');
-            this.addOutput('<span class="text-green-400">OPTIONS:</span>');
-            this.addOutput('    -l, --length N     longueur du mot de passe (défaut: 12)');
-            this.addOutput('    -c, --count N      générer N mots de passe (défaut: 1)');
-            this.addOutput('    -n, --numbers      exclure les chiffres');
-            this.addOutput('    -s, --symbols      exclure les symboles');
-            this.addOutput('    -u, --uppercase    exclure les majuscules');
-            this.addOutput('    -h, --help         afficher cette aide');
-            this.addOutput('');
-            this.addOutput('<span class="text-green-400">EXEMPLES:</span>');
-            this.addOutput('    genpass            génère un mot de passe de 12 caractères');
-            this.addOutput('    genpass 16         génère un mot de passe de 16 caractères');
-            this.addOutput('    genpass -c 5       génère 5 mots de passe');
-            this.addOutput('    genpass -n -s      génère sans chiffres ni symboles');
-            return;
+                this.commands.man.call(this, ['genpass']);
+                return;
             }
             
             // Rechercher un nombre dans les arguments pour la longueur
@@ -4057,107 +5001,632 @@ ${bottomBorder}
         },
         
         reboot() {
-            const rebootHTML = `
-                <div class="border border-orange-500 rounded-lg p-4 bg-orange-900/20 backdrop-blur-sm">
-                    <div class="flex items-center mb-3">
-                        <span class="text-2xl mr-2">🔄</span>
-                        <span class="font-bold text-orange-400 text-xl">Redémarrage du système</span>
-                    </div>
-                    <div class="text-gray-300 text-sm mb-2">Le système va redémarrer dans quelques secondes...</div>
-                    <div class="text-yellow-400 text-xs italic">⚠️ Toutes les données non sauvegardées seront perdues</div>
-                </div>
-            `;
-            this.addOutput(rebootHTML, 'system');
-
-            // Animation de chargement
-            const loadingHTML = `
-                <div id="reboot-loading" class="mt-3 p-4 bg-gray-800/30 border border-gray-600 rounded-lg">
-                    <div class="flex items-center justify-center space-x-3">
-                        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-400"></div>
-                        <span class="text-orange-300 font-medium">Fermeture des processus...</span>
-                    </div>
-                    <div class="mt-3 space-y-2">
-                        <div class="flex items-center space-x-2">
-                            <div class="animate-pulse w-2 h-2 bg-red-400 rounded-full"></div>
-                            <span class="text-sm text-gray-400">Arrêt des services système...</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <div class="animate-pulse w-2 h-2 bg-yellow-400 rounded-full" style="animation-delay: 0.3s"></div>
-                            <span class="text-sm text-gray-400">Sauvegarde des données...</span>
-                        </div>
-                        <div class="flex items-center space-x-2">
-                            <div class="animate-pulse w-2 h-2 bg-green-400 rounded-full" style="animation-delay: 0.6s"></div>
-                            <span class="text-sm text-gray-400">Nettoyage de la mémoire...</span>
-                        </div>
-                    </div>
-                    <div class="mt-3 bg-gray-700 rounded-full h-2">
-                        <div id="reboot-progress" class="bg-gradient-to-r from-orange-500 to-red-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
-                    </div>
-                </div>
-            `;
-            this.addOutput(loadingHTML, 'system');
-
-            // Animation de la barre de progression
-            let progress = 0;
-            const progressBar = document.getElementById('reboot-progress');
-            const progressInterval = setInterval(() => {
-                progress += Math.random() * 15 + 5;
-                if (progress > 100) progress = 100;
-                if (progressBar) {
-                    progressBar.style.width = progress + '%';
+            // Notification de début de redémarrage
+            this.showNotification({
+            type: 'warning',
+            title: '🔄 Redémarrage du système',
+            message: 'Le système va redémarrer dans quelques secondes...',
+            duration: 3000,
+            actions: [
+                {
+                text: '⚡ Redémarrer maintenant',
+                callback: () => {
+                    window.location.reload();
                 }
-                if (progress >= 100) {
-                    clearInterval(progressInterval);
-                    // Attendre un peu puis recharger
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
                 }
-            }, 200);
+            ]
+            });
 
-            // Message de confirmation après 2 secondes
+            // Notification de progression (après 1 seconde)
             setTimeout(() => {
-                this.addOutput(`
-                    <div class="mt-3 p-3 bg-red-900/20 border border-red-600 rounded-lg">
-                        <div class="flex items-center">
-                            <span class="text-red-400 mr-2">🔄</span>
-                            <span class="text-red-300 font-medium">Redémarrage en cours...</span>
-                        </div>
-                    </div>
-                `, 'system');
-            }, 2000);
+            this.showNotification({
+                type: 'info',
+                title: '⚙️ Arrêt des services',
+                message: 'Fermeture des processus système en cours...',
+                duration: 3000,
+                closable: false
+            });
+            }, 1000);
+
+            // Notification de sauvegarde (après 2.5 secondes)
+            setTimeout(() => {
+            this.showNotification({
+                type: 'info',
+                title: '💾 Sauvegarde',
+                message: 'Sauvegarde des données utilisateur...',
+                duration: 2500,
+                closable: false
+            });
+            }, 2500);
+
+            // Notification de nettoyage (après 4 secondes)
+            setTimeout(() => {
+            this.showNotification({
+                type: 'info',
+                title: '🧹 Nettoyage',
+                message: 'Nettoyage de la mémoire système...',
+                duration: 2000,
+                closable: false
+            });
+            }, 4000);
+
+            // Notification de compte à rebours (après 5.5 secondes)
+            setTimeout(() => {
+            let countdown = 5;
+            const countdownNotificationId = this.showNotification({
+                type: 'warning',
+                title: `🔄 Redémarrage dans ${countdown} secondes`,
+                message: 'Le système va redémarrer automatiquement',
+                duration: 0,
+                closable: false,
+                showProgress: false,
+                actions: [
+                {
+                    text: '⚡ Redémarrer immédiatement',
+                    callback: () => {
+                    window.location.reload();
+                    }
+                }
+                ]
+            });
+
+            // Mise à jour du compte à rebours
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                const notification = document.getElementById(countdownNotificationId);
+                if (notification && countdown > 0) {
+                const titleElement = notification.querySelector('.font-semibold');
+                if (titleElement) {
+                    titleElement.textContent = `🔄 Redémarrage dans ${countdown} seconde${countdown > 1 ? 's' : ''}`;
+                }
+                } else {
+                clearInterval(countdownInterval);
+                }
+            }, 1000);
+
+            // Redémarrage final (après 5 secondes)
+            setTimeout(() => {
+                clearInterval(countdownInterval);
+                this.closeNotification(countdownNotificationId);
+                
+                this.showNotification({
+                type: 'success',
+                title: '✨ Redémarrage en cours...',
+                message: 'Le système redémarre maintenant',
+                duration: 2000,
+                closable: false,
+                showProgress: true
+                });
+                
+                // Rechargement final
+                setTimeout(() => {
+                window.location.reload();
+                }, 1000);
+            }, 5000);
+            }, 5500);
         },
+
+        newtab(args) {
+            const title = args.join(' ').trim();
+            const newTab = {
+                id: this.nextTabId++,
+                title: title || `Terminal ${this.nextTabId - 1}`,
+                currentDir: '/home/user',
+                outputHistory: [],
+                isActive: false,
+                history: []
+            };
+            
+            this.saveCurrentTabState();
+            this.tabs.push(newTab);
+            this.switchToTab(newTab.id);
+            this.renderTabs();
+            
+            
+            this.addOutput(`<span class="text-green-400">✅ Nouvel onglet créé : ${newTab.title}</span>`, 'system');
+        },
+
+        closetab(args) {
+            if (this.tabs.length <= 1) {
+                this.addOutput('<span class="text-yellow-400">⚠️ Impossible de fermer le dernier onglet</span>', 'system');
+                return;
+            }
+
+            let targetTabId = this.activeTabId;
+            
+            if (args.length > 0) {
+                const tabNumber = parseInt(args[0]);
+                if (!isNaN(tabNumber) && tabNumber > 0 && tabNumber <= this.tabs.length) {
+                    targetTabId = this.tabs[tabNumber - 1].id;
+                }
+            }
+
+            const tab = this.tabs.find(t => t.id === targetTabId);
+            if (tab) {
+                this.addOutput(`<span class="text-red-400">🗑️ Fermeture de l'onglet : ${tab.title}</span>`, 'system');
+                this.closeTab(targetTabId);
+            }
+        },
+
+        renametab(args) {
+            const newTitle = args.join(' ').trim();
+            if (!newTitle) {
+                this.addOutput('renametab: utilisation: renametab <nouveau nom>', 'error');
+                return;
+            }
+
+            this.renameTab(this.activeTabId, newTitle);
+            this.addOutput(`<span class="text-blue-400">📝 Onglet renommé : ${newTitle}</span>`, 'system');
+        },
+
+        listtabs() {
+            this.addOutput('<span class="font-bold text-blue-400">📋 Liste des onglets :</span>');
+            this.tabs.forEach((tab, index) => {
+                const activeIndicator = tab.isActive ? '<span class="text-green-400">●</span>' : '<span class="text-gray-500">○</span>';
+                this.addOutput(`  ${activeIndicator} ${index + 1}. ${tab.title} <span class="text-gray-400">(${tab.currentDir})</span>`);
+            });
+        },
+
+        switchtab(args) {
+            if (args.length === 0) {
+                this.addOutput('switchtab: utilisation: switchtab <numéro>', 'error');
+                return;
+            }
+
+            const tabNumber = parseInt(args[0]);
+            if (isNaN(tabNumber) || tabNumber < 1 || tabNumber > this.tabs.length) {
+                this.addOutput(`switchtab: numéro d'onglet invalide (1-${this.tabs.length})`, 'error');
+                return;
+            }
+
+            const targetTab = this.tabs[tabNumber - 1];
+            this.switchToTab(targetTab.id);
+            this.addOutput(`<span class="text-blue-400">🔄 Basculé vers l'onglet : ${targetTab.title}</span>`, 'system');
+        },
+        fullscreen() {
+            app.fullscreen();
+        },
+        notify (args) {
+            // Vérifier d'abord si --help est présent avant de parser les options
+            if (args.includes('--help') || args.includes('-h')) {
+            // Utiliser la fonction man pour afficher l'aide de notify
+            this.commands.man.call(this, ['notify']);
+            return;
+            }
+
+            // Parser manuellement les arguments pour gérer correctement les espaces dans les valeurs
+            let type = 'info';
+            let title = 'Notification';
+            let duration = 5000;
+            let persistent = false;
+            let action = null;
+            let messageArgs = [];
+            
+            // Fonction pour extraire les valeurs entre guillemets ou un seul argument
+            const extractQuotedValue = (args, startIndex) => {
+            if (startIndex >= args.length) return { value: null, nextIndex: startIndex };
+            
+            const firstArg = args[startIndex];
+            
+            // Si l'argument commence par des guillemets
+            if (firstArg.startsWith('"')) {
+                // Si c'est un argument complet entre guillemets
+                if (firstArg.endsWith('"') && firstArg.length > 1) {
+                return { 
+                    value: firstArg.slice(1, -1), // Enlever les guillemets
+                    nextIndex: startIndex + 1 
+                };
+                }
+                
+                // Sinon, chercher la fin des guillemets dans les arguments suivants
+                let result = firstArg.slice(1); // Enlever le guillemet du début
+                let currentIndex = startIndex + 1;
+                
+                while (currentIndex < args.length) {
+                const currentArg = args[currentIndex];
+                if (currentArg.endsWith('"')) {
+                    result += ' ' + currentArg.slice(0, -1); // Enlever le guillemet de fin
+                    return { value: result, nextIndex: currentIndex + 1 };
+                } else {
+                    result += ' ' + currentArg;
+                }
+                currentIndex++;
+                }
+                
+                // Si on arrive ici, les guillemets ne sont pas fermés
+                return { value: result, nextIndex: currentIndex };
+            } else {
+                // Pas de guillemets, prendre juste l'argument
+                return { value: firstArg, nextIndex: startIndex + 1 };
+            }
+            };
+            
+            for (let i = 0; i < args.length; i++) {
+            const arg = args[i];
+            
+            if (arg === '-t' && i + 1 < args.length) {
+                const result = extractQuotedValue(args, i + 1);
+                if (result.value !== null) {
+                type = result.value;
+                i = result.nextIndex - 1; // -1 car la boucle va incrémenter
+                } else {
+                i++; // Skip si pas de valeur
+                }
+            } else if (arg === '-T' && i + 1 < args.length) {
+                const result = extractQuotedValue(args, i + 1);
+                if (result.value !== null) {
+                title = result.value;
+                i = result.nextIndex - 1; // -1 car la boucle va incrémenter
+                } else {
+                i++; // Skip si pas de valeur
+                }
+            } else if (arg === '-d' && i + 1 < args.length) {
+                const result = extractQuotedValue(args, i + 1);
+                if (result.value !== null) {
+                const parsedDuration = parseInt(result.value);
+                if (!isNaN(parsedDuration) && parsedDuration >= 0) {
+                    duration = parsedDuration;
+                }
+                i = result.nextIndex - 1; // -1 car la boucle va incrémenter
+                } else {
+                i++; // Skip si pas de valeur
+                }
+            } else if (arg === '-p') {
+                persistent = true;
+            } else if (arg === '-a' && i + 1 < args.length) {
+                const result = extractQuotedValue(args, i + 1);
+                if (result.value !== null) {
+                action = result.value;
+                i = result.nextIndex - 1; // -1 car la boucle va incrémenter
+                } else {
+                i++; // Skip si pas de valeur
+                }
+            } else if (!arg.startsWith('-')) {
+                // C'est un argument du message
+                messageArgs.push(arg);
+            }
+            }
+
+            if (messageArgs.length === 0) {
+            this.addOutput('notify: manque le message à afficher', 'error');
+            this.addOutput('Utilisez "notify --help" pour plus d\'informations.');
+            return;
+            }
+
+            const message = messageArgs.join(' ');
+            
+            // Déterminer le type de notification
+            const validTypes = ['info', 'success', 'warning', 'error'];
+            const notificationType = validTypes.includes(type) ? type : 'info';
+            
+            // Déterminer la durée finale
+            if (persistent) {
+            duration = 0; // Permanent
+            }
+            
+            // Préparer les actions
+            const actions = [];
+            if (action) {
+            actions.push({
+                text: action,
+                callback: () => {
+                this.addOutput(`Action "${action}" exécutée`, 'system');
+                }
+            });
+            }
+
+            // Afficher la notification
+            this.showNotification({
+            type: notificationType,
+            title: title,
+            message: message,
+            duration: duration,
+            closable: true,
+            actions: actions
+            });
+
+            // Utiliser la fonction existante createInfoBlock pour créer un bloc d'information structuré
+            const notificationInfo = this.createInfoBlock({
+            title: 'Configuration de la notification',
+            icon: '📱',
+            color: 'text-blue-400',
+            bgColor: 'bg-blue-900/20',
+            borderColor: 'border-blue-500',
+            items: [
+                { label: 'Type', value: notificationType, labelColor: 'text-blue-300' },
+                { label: 'Titre', value: `"${title}"`, labelColor: 'text-purple-300' },
+                { label: 'Message', value: `"${message}"`, labelColor: 'text-green-300' },
+                { label: 'Durée', value: duration === 0 ? '∞ permanente' : duration + 'ms', labelColor: 'text-yellow-300' },
+                { label: 'Persistante', value: persistent ? '✅ oui' : '❌ non', labelColor: 'text-orange-300' },
+                { label: 'Action', value: action || '❌ aucune', labelColor: 'text-cyan-300' },
+            ]
+            });
+
+            this.addOutput(notificationInfo, 'system');
+
+            // Confirmer dans la console
+            const durationText = duration === 0 ? 'permanente' : `${duration}ms`;
+            this.addOutput(`📱 Notification ${notificationType} affichée (durée: ${durationText})`, 'system');
+        }
+
+    },
+
+    // --- Système de notifications popup à droite ---
+    showNotification: function(options = {}) {
+        // Configuration par défaut
+        const config = {
+            type: 'info', // 'success', 'warning', 'error', 'info'
+            title: 'Notification',
+            message: '',
+            duration: 4000, // Durée en millisecondes (0 = permanent)
+            closable: true,
+            showProgress: true,
+            icon: null, // Icône personnalisée ou null pour l'icône par défaut
+            actions: [], // Tableau d'actions [{text: 'Action', callback: function() {}}]
+            ...options
+        };
+
+        // Définir les styles et icônes par type
+        const typeConfig = {
+            success: {
+                gradient: 'from-green-600 to-green-500',
+                borderColor: 'border-green-400/30',
+                bgColor: 'bg-green-600',
+                icon: `<svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>`
+            },
+            error: {
+                gradient: 'from-red-600 to-red-500',
+                borderColor: 'border-red-400/30',
+                bgColor: 'bg-red-600',
+                icon: `<svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>`
+            },
+            warning: {
+                gradient: 'from-yellow-600 to-orange-500',
+                borderColor: 'border-yellow-400/30',
+                bgColor: 'bg-yellow-600',
+                icon: `<svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.728-.833-2.498 0L4.316 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>`
+            },
+            info: {
+                gradient: 'from-blue-600 to-blue-500',
+                borderColor: 'border-blue-400/30',
+                bgColor: 'bg-blue-600',
+                icon: `<svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>`
+            }
+        };
+
+        // Obtenir la configuration du type
+        const currentTypeConfig = typeConfig[config.type] || typeConfig.info;
+
+        // Générer un ID unique
+        const notificationId = 'notification-' + Date.now() + '-' + Math.random().toString(36).substring(2, 11);
+
+        // Créer le conteneur de notifications s'il n'existe pas
+        let notificationContainer = document.getElementById('notification-container');
+        if (!notificationContainer) {
+            notificationContainer = document.createElement('div');
+            notificationContainer.id = 'notification-container';
+            notificationContainer.className = 'fixed bottom-4 right-4 z-50 pointer-events-none space-y-2';
+            notificationContainer.style.maxWidth = '300px';
+            document.body.appendChild(notificationContainer);
+        }
+
+        // Créer la notification
+        const notification = document.createElement('div');
+        notification.id = notificationId;
+        notification.className = `transform translate-x-full transition-all duration-500 ease-out pointer-events-auto`;
+        
+        // Construire le HTML des actions (plus compactes)
+        const actionsHTML = config.actions.length > 0 ? `
+            <div class="flex items-center space-x-1 mt-2 pt-2 border-t border-white/10">
+                ${config.actions.map((action, index) => `
+                    <button onclick="app.handleNotificationAction('${notificationId}', ${index})" 
+                        class="px-2 py-1 bg-white/20 hover:bg-white/30 text-white text-xs rounded transition-colors duration-200 font-medium">
+                        ${action.text}
+                    </button>
+                `).join('')}
+            </div>
+        ` : '';
+
+        notification.innerHTML = `
+            <div class="bg-gradient-to-r ${currentTypeConfig.gradient} text-white rounded-lg shadow-lg border ${currentTypeConfig.borderColor} backdrop-blur-sm min-w-[240px] max-w-[300px] transform transition-all duration-300 hover:scale-105">
+                <div class="p-3">
+                    <div class="flex items-start space-x-2">
+                        <div class="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                            ${config.icon || currentTypeConfig.icon}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="font-semibold text-sm leading-tight">${config.title}</div>
+                            ${config.message ? `<div class="text-white/90 text-xs mt-1 leading-relaxed">${config.message}</div>` : ''}
+                            ${actionsHTML}
+                        </div>
+                        ${config.closable ? `
+                            <button onclick="app.closeNotification('${notificationId}')" 
+                                class="text-white/60 hover:text-white transition-colors flex-shrink-0 ml-1 p-0.5 rounded hover:bg-white/10">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+                ${config.showProgress && config.duration > 0 ? `
+                    <div class="bg-white/10 h-0.5 overflow-hidden rounded-b-lg">
+                        <div class="bg-white h-full transition-transform ease-linear" 
+                            style="animation: slideProgress ${config.duration}ms linear forwards; transform: translateX(-100%);"></div>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+
+        // Ajouter les styles CSS pour l'animation de la barre de progression si nécessaire
+        if (!document.getElementById('notification-styles')) {
+            const style = document.createElement('style');
+            style.id = 'notification-styles';
+            style.textContent = `
+                @keyframes slideProgress {
+                    from { transform: translateX(-100%); }
+                    to { transform: translateX(0%); }
+                }
+                
+                #notification-container .notification-enter {
+                    animation: notificationSlideIn 0.5s ease-out forwards;
+                }
+                
+                #notification-container .notification-exit {
+                    animation: notificationSlideOut 0.4s ease-in forwards;
+                }
+                
+                @keyframes notificationSlideIn {
+                    from { 
+                        transform: translateX(100%) scale(0.8); 
+                        opacity: 0;
+                    }
+                    to { 
+                        transform: translateX(0) scale(1); 
+                        opacity: 1;
+                    }
+                }
+                
+                @keyframes notificationSlideOut {
+                    from { 
+                        transform: translateX(0) scale(1); 
+                        opacity: 1;
+                    }
+                    to { 
+                        transform: translateX(100%) scale(0.8); 
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        // Stocker les actions dans une propriété globale pour y accéder depuis les callbacks
+        if (!window.notificationActions) {
+            window.notificationActions = {};
+        }
+        window.notificationActions[notificationId] = config.actions;
+
+        // Ajouter la notification au conteneur
+        notificationContainer.appendChild(notification);
+
+        // Faire apparaître la notification avec une animation
+        setTimeout(() => {
+            notification.classList.remove('translate-x-full');
+            notification.classList.add('notification-enter');
+        }, 50);
+
+        // Programmer la fermeture automatique si une durée est définie
+        if (config.duration > 0) {
+            setTimeout(() => {
+                this.closeNotification(notificationId);
+            }, config.duration);
+        }
+
+        // Retourner l'ID de la notification pour un contrôle externe si nécessaire
+        return notificationId;
+    },
+
+    // Fonction pour fermer une notification
+    closeNotification: function(notificationId) {
+        const notification = document.getElementById(notificationId);
+        if (notification) {
+            notification.classList.add('notification-exit');
+            
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+                // Nettoyer les actions stockées
+                if (window.notificationActions && window.notificationActions[notificationId]) {
+                    delete window.notificationActions[notificationId];
+                }
+                
+                // Réorganiser les notifications restantes
+                this.reorganizeNotifications();
+            }, 400);
+        }
+    },
+
+    // Fonction pour réorganiser les notifications après fermeture
+    reorganizeNotifications: function() {
+        const container = document.getElementById('notification-container');
+        if (container && container.children.length === 0) {
+            // Si plus de notifications, on peut optionnellement masquer le conteneur
+            // container.style.display = 'none';
+        }
+    },
+
+    // Fonction pour gérer les actions des notifications
+    handleNotificationAction: function(notificationId, actionIndex) {
+        if (window.notificationActions && 
+            window.notificationActions[notificationId] && 
+            window.notificationActions[notificationId][actionIndex]) {
+            
+            const action = window.notificationActions[notificationId][actionIndex];
+            if (typeof action.callback === 'function') {
+                action.callback();
+            }
+            
+            // Fermer la notification après l'action
+            this.closeNotification(notificationId);
+        }
     },
 
     // --- Event Handlers ---
     handleKeyDown(e) {
-        if (this.isLoadingLLM) return; // Don't process keydown if LLM is loading
+        if (this.isLoadingLLM) return;
 
-        if (e.key === 'ArrowUp') {
+        // Gestion spécifique des raccourcis Ctrl/Cmd dans le champ de commande SEULEMENT
+        if (e.ctrlKey || e.metaKey) {
+            const key = e.key ? e.key.toLowerCase() : String.fromCharCode(e.keyCode).toLowerCase();
+            
+            // Ne gérer que les raccourcis autorisés dans le champ de commande
+            if (['l'].includes(key)) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                switch (key) {                                                
+                    case 'l':
+                        // Ctrl+L - Clear console
+                        this.clearConsole();
+                        break;
+                    default:
+                        break;
+                }
+            }
+            return;
+        }
+
+        // Gestion des autres touches (navigation, etc.)
+        if (e.key === 'ArrowUp' || e.keyCode === 38) {
             e.preventDefault();
             if (this.history.length > 0 && this.historyIndex < this.history.length - 1) {
                 this.historyIndex++;
-                const entry = this.history[this.history.length - 1 - this.historyIndex];
-                this.commandInputElement.value = entry.cmd;
-                this.commandInputElement.setSelectionRange(this.commandInputElement.value.length, this.commandInputElement.value.length); // Move cursor to end
+                const historyEntry = this.history[this.history.length - 1 - this.historyIndex];
+                this.commandInputElement.value = historyEntry.cmd;
             }
-        } else if (e.key === 'ArrowDown') {
+        } else if (e.key === 'ArrowDown' || e.keyCode === 40) {
             e.preventDefault();
             if (this.historyIndex > 0) {
                 this.historyIndex--;
-                const entry = this.history[this.history.length - 1 - this.historyIndex];
-                this.commandInputElement.value = entry.cmd;
-                this.commandInputElement.setSelectionRange(this.commandInputElement.value.length, this.commandInputElement.value.length);
+                const historyEntry = this.history[this.history.length - 1 - this.historyIndex];
+                this.commandInputElement.value = historyEntry.cmd;
             } else if (this.historyIndex === 0) {
                 this.historyIndex = -1;
                 this.commandInputElement.value = '';
             }
-        } else if (e.key === 'Tab') {
+        } else if (e.key === 'Tab' || e.keyCode === 9) {
             e.preventDefault();
             this.handleTabCompletion();
-        } else if (e.key === 'l' && e.ctrlKey) { // Ctrl+L for clear
-            e.preventDefault();
-            this.commands.clear.call(this);
         }
     },
 
@@ -4306,33 +5775,68 @@ ${bottomBorder}
     },
 
     openHistoryModal() {
-        this.historyModal.classList.remove('hidden');
-        if (this.history.length === 0) {
-            this.historyList.innerHTML = "<em>Aucune commande enregistrée.</em>";
-        } else {
-            this.historyList.innerHTML = this.history
-                .map((entry, idx) =>
-                    `<span class="text-gray-400">#${idx + 1}</span> ` +
-                    `<span class="text-blue-300">${entry.date} ${entry.time}</span> ` +
-                    `<span>${entry.cmd.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>`
-                )
-                .reverse()
-                .join('<br>');
+        // Vérification de sécurité pour s'assurer que l'élément existe
+        if (!this.historyModal) {
+            this.addOutput('<span class="text-red-400">❌ Modal d\'historique non trouvé</span>', 'error');
+            return;
         }
+        
+        this.historyModal.classList.remove('hidden');
+        
+        // Toujours appeler showHistory() pour remplir la liste
+        this.showHistory();
+        
         this.closeAllMenus();
     },
+
     closeHistoryModal() {
-        this.historyModal.classList.add('hidden');
+        if (this.historyModal) {
+            this.historyModal.classList.add('hidden');
+        }
     },
 
     showHistory() {
-        this.historyList.innerHTML = ''; // Clear current history list
+        // Vérification de sécurité
+        if (!this.historyList) {
+            this.addOutput('<span class="text-red-400">❌ Liste d\'historique non trouvée</span>', 'error');
+            return;
+        }
+        
+        // Nettoyer la liste existante
+        this.historyList.innerHTML = '';
+        
+        // Vérifier si l'historique est vide
+        if (this.history.length === 0) {
+            this.historyList.innerHTML = '<div class="text-gray-400 text-center py-8">Aucun historique disponible</div>';
+            return;
+        }
+        
+        const history_empty = document.getElementById('history-empty');
+        if (history_empty) {
+            history_empty.classList.add('hidden');
+        }
+
         this.history.slice().reverse().forEach((entry, index) => {
-            const entryElement = document.createElement('div');
-            entryElement.classList.add('text-gray-300', 'py-1', 'border-b', 'border-gray-700');
-            entryElement.innerHTML = `${this.history.length - index}: ${entry.replace(/</g, "&lt;").replace(/>/g, "&gt;")}`;
-            this.historyList.appendChild(entryElement);
+            const historyItem = document.createElement('div');
+            historyItem.className = 'history-item bg-gray-800 rounded-lg p-4 mb-3 border border-gray-600 hover:bg-gray-700 transition-colors';
+            
+            const timeString = entry.time && entry.date ? 
+                `${entry.date} ${entry.time}` : 
+                'Date inconnue';
+                
+            historyItem.innerHTML = `
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-green-400 font-mono text-sm cursor-pointer hover:text-green-300 clickable-command" data-command="${entry.cmd}">${entry.cmd}</span>
+                    <span class="text-gray-500 text-xs">${timeString}</span>
+                </div>
+                <div class="text-gray-300 text-sm">${entry.output}</div>
+            `;
+            
+            this.historyList.appendChild(historyItem);
         });
+        
+        // Configurer les commandes cliquables
+        this.setupClickableCommands();
     },
 
     // --- Drag and Drop ---
@@ -4411,8 +5915,16 @@ ${bottomBorder}
             time: now.toLocaleTimeString(),
             timestamp: now.getTime()
         };
-        this.history = [...this.history, entry]; // Plus de slice(-50)
+        
+        this.history = [...this.history, entry];
         this.saveHistoryToCookie();
+        
+        const activeTab = this.tabs.find(tab => tab.id === this.activeTabId);
+        if (activeTab) {
+            activeTab.history = [...this.history];
+            activeTab.historyIndex = this.historyIndex;
+            this.saveTabsToCookie();
+        }
     },
     showFullHistory() {
         this.clearConsole();
@@ -4550,81 +6062,6 @@ ${bottomBorder}
             console.error('Erreur lors du chargement des informations de version:', error);
         }
     },
-    // --- Command Import System ---
-    importCommands(jsCode) {
-        try {
-            // Créer un contexte sécurisé pour l'exécution
-            const commandContext = {
-                app: this,
-                addOutput: this.addOutput.bind(this),
-                getPath: this.getPath.bind(this),
-                resolvePath: this.resolvePath.bind(this),
-                currentDir: this.currentDir,
-                fileSystem: this.fileSystem,
-                history: this.history,
-                saveFileSystemToCookie: this.saveFileSystemToCookie.bind(this),
-                addToHistory: this.addToHistory.bind(this),
-                clearConsole: this.clearConsole.bind(this),
-                updatePrompt: this.updatePrompt.bind(this),
-                getPseudoFromCookie: this.getPseudoFromCookie.bind(this),
-                // Utilitaires pour les nouvelles commandes
-                utils: {
-                    parseOptions: this.commands.parseOptions.bind(this),
-                    formatBytes: this.commands.formatBytes.bind(this),
-                    enDev: this.enDev.bind(this)
-                }
-            };
-
-            // Fonction pour enregistrer de nouvelles commandes
-            const registerCommand = (name, func) => {
-                if (typeof name !== 'string' || typeof func !== 'function') {
-                    throw new Error('registerCommand nécessite un nom (string) et une fonction');
-                }
-                if (this.commands[name]) {
-                    this.addOutput(`⚠️ La commande '${name}' existe déjà et sera remplacée`, 'system');
-                }
-                this.commands[name] = func.bind(this);
-                return true;
-            };
-
-            // Créer une fonction d'évaluation sécurisée
-            const evalInContext = new Function(
-                'context',
-                'registerCommand',
-                'console',
-                jsCode
-            );
-
-            // Exécuter le code avec le contexte
-            evalInContext(commandContext, registerCommand, console);
-
-            return true;
-        } catch (error) {
-            this.addOutput(`Erreur lors de l'importation des commandes: ${error.message}`, 'error');
-            console.error('Command import error:', error);
-            return false;
-        }
-    },
-    setupClickableCommands() {
-        // Remove existing listeners to avoid duplicates
-        document.querySelectorAll('.clickable-command').forEach(el => {
-            el.replaceWith(el.cloneNode(true));
-        });
-
-        // Add new listeners
-        document.querySelectorAll('.clickable-command').forEach(command => {
-            command.addEventListener('click', (e) => {
-                e.preventDefault();
-                const commandText = command.getAttribute('data-command');
-                if (commandText) {
-                    this.commandInputElement.value = commandText;
-                    this.commandInputElement.focus();
-                    // Place cursor at end
-                    this.commandInputElement.setSelectionRange(commandText.length, commandText.length);
-                }
-            });
-        });
-    },
 
     showChangelog(versionData) {
         const changelogContainer = document.getElementById('changelog-container');
@@ -4671,6 +6108,248 @@ ${bottomBorder}
         });
     },
 
+    setupClickableCommands() {
+        const clickableCommands = document.querySelectorAll('.clickable-command');
+        clickableCommands.forEach(element => {
+            element.addEventListener('click', (e) => {
+                e.preventDefault();
+                const command = element.getAttribute('data-command');
+                if (command) {
+                    this.commandInputElement.value = command;
+                    this.commandInputElement.focus();
+                    
+                    // Auto-execute si la commande se termine par un espace (commande complète)
+                    if (command.endsWith(' ')) {
+                        // Supprimer l'espace final et exécuter
+                        this.commandInputElement.value = command.trim();
+                        this.handleCommandSubmit();
+                    }
+                }
+            });
+        });
+    },
+
+    fullscreen() {
+        // Vérifier si l'API Fullscreen est supportée
+        if (!document.fullscreenEnabled && !document.webkitFullscreenEnabled && !document.mozFullScreenEnabled && !document.msFullscreenEnabled) {
+            this.showNotification({
+                type: 'error',
+                title: '❌ Pleine écran non supporté',
+                message: 'Votre navigateur ne supporte pas l\'API Fullscreen',
+                duration: 5000
+            });
+            return;
+        }
+
+        const isCurrentlyFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+
+        if (isCurrentlyFullscreen) {
+            // Sortir du mode pleine écran
+            this.exitFullscreen();
+        } else {
+            // Entrer en mode pleine écran
+            this.enterFullscreen();
+        }
+    },
+
+    enterFullscreen() {
+        const element = document.documentElement;
+        
+        const enterPromise = element.requestFullscreen ? element.requestFullscreen() :
+                            element.webkitRequestFullscreen ? element.webkitRequestFullscreen() :
+                            element.mozRequestFullScreen ? element.mozRequestFullScreen() :
+                            element.msRequestFullscreen ? element.msRequestFullscreen() : 
+                            Promise.reject('Fullscreen not supported');
+
+        enterPromise.then(() => {
+            // Mettre à jour l'icône du bouton fullscreen
+            this.updateFullscreenButton(true);
+            
+            this.showNotification({
+                type: 'success',
+                title: '⛶ Mode pleine écran activé',
+                message: 'Appuyez sur F11 ou Échap pour quitter',
+                duration: 4000,
+                actions: [
+                    {
+                        text: '🔲 Quitter',
+                        callback: () => this.exitFullscreen()
+                    }
+                ]
+            });
+
+            // Ajouter l'écouteur pour la touche Échap
+            this.addEscapeListener();
+        }).catch(error => {
+            console.error('Erreur lors de l\'entrée en pleine écran:', error);
+            this.showNotification({
+                type: 'error',
+                title: '❌ Erreur pleine écran',
+                message: 'Impossible d\'entrer en mode pleine écran',
+                duration: 3000
+            });
+        });
+    },
+
+    exitFullscreen() {
+        const exitPromise = document.exitFullscreen ? document.exitFullscreen() :
+                           document.webkitExitFullscreen ? document.webkitExitFullscreen() :
+                           document.mozCancelFullScreen ? document.mozCancelFullScreen() :
+                           document.msExitFullscreen ? document.msExitFullscreen() :
+                           Promise.reject('Exit fullscreen not supported');
+
+        exitPromise.then(() => {
+            // Mettre à jour l'icône du bouton fullscreen
+            this.updateFullscreenButton(false);
+            
+            this.showNotification({
+                type: 'info',
+                title: '🔲 Mode fenêtré activé',
+                message: 'Sortie du mode pleine écran',
+                duration: 3000
+            });
+
+            // Supprimer l'écouteur pour la touche Échap
+            this.removeEscapeListener();
+        }).catch(error => {
+            console.error('Erreur lors de la sortie de pleine écran:', error);
+        });
+    },
+
+    updateFullscreenButton(isFullscreen) {
+        // Chercher le bouton par son contenu ou sa fonction onclick
+        const fullscreenButtons = document.querySelectorAll('button');
+        let fullscreenButton = null;
+        
+        // Chercher le bon bouton par son contenu
+        fullscreenButtons.forEach(button => {
+            if (button.textContent.includes('Pleine écran') || 
+                button.textContent.includes('plein écran') ||
+                button.querySelector('svg')) {
+                const hasFullscreenText = button.innerHTML.includes('Pleine écran') || 
+                                        button.innerHTML.includes('plein écran');
+                if (hasFullscreenText) {
+                    fullscreenButton = button;
+                }
+            }
+        });
+
+        if (!fullscreenButton) return;
+
+        const svgElement = fullscreenButton.querySelector('svg');
+        if (!svgElement) return;
+
+        if (isFullscreen) {
+            // Icône pour sortir du pleine écran (compress/réduire)
+            svgElement.innerHTML = `
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                    d="M9 9V4.5M9 9H4.5M9 9L3.5 3.5M15 9h4.5M15 9V4.5M15 9l5.5-5.5M9 15v4.5M9 15H4.5M9 15l-5.5 5.5M15 15h4.5M15 15v4.5M15 15l5.5 5.5"/>
+            `;
+            
+            // Mettre à jour le texte du bouton
+            const textElement = fullscreenButton.querySelector('div');
+            if (textElement) {
+                textElement.textContent = '🔲 Quitter plein écran';
+            }
+            
+            fullscreenButton.title = "Quitter le pleine écran (Échap)";
+        } else {
+            // Icône pour entrer en pleine écran (expand/agrandir)
+            svgElement.innerHTML = `
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                    d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+            `;
+            
+            // Mettre à jour le texte du bouton
+            const textElement = fullscreenButton.querySelector('div');
+            if (textElement) {
+                textElement.textContent = '⛶ Pleine écran';
+            }
+            
+            fullscreenButton.title = "Pleine écran";
+        }
+    },
+
+    addEscapeListener() {
+        // Supprimer l'écouteur existant s'il y en a un
+        this.removeEscapeListener();
+        
+        this.escapeHandler = (e) => {
+            // Vérifier si la touche Échap est pressée
+            if (e.key === 'Escape' || e.keyCode === 27) {
+                const isCurrentlyFullscreen = !!(
+                    document.fullscreenElement || 
+                    document.webkitFullscreenElement || 
+                    document.mozFullScreenElement || 
+                    document.msFullscreenElement
+                );
+                
+                if (isCurrentlyFullscreen) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.exitFullscreen();
+                }
+            }
+        };
+        
+        // Ajouter l'écouteur avec capture pour s'assurer qu'il se déclenche en premier
+        document.addEventListener('keydown', this.escapeHandler, true);
+    },
+
+    removeEscapeListener() {
+        if (this.escapeHandler) {
+            document.removeEventListener('keydown', this.escapeHandler, true);
+            this.escapeHandler = null;
+        }
+    },
+
+    initFullscreenHandlers() {
+        // Gestionnaire pour les changements de pleine écran automatiques (F11, etc.)
+        const handleFullscreenChange = () => {
+            const isNowFullscreen = !!(
+                document.fullscreenElement || 
+                document.webkitFullscreenElement || 
+                document.mozFullScreenElement || 
+                document.msFullscreenElement
+            );
+            
+            console.log('Fullscreen state changed:', isNowFullscreen); // Debug
+            
+            // Mettre à jour l'icône du bouton
+            this.updateFullscreenButton(isNowFullscreen);
+            
+            if (isNowFullscreen) {
+                this.addEscapeListener();
+                console.log('Escape listener added'); // Debug
+            } else {
+                this.removeEscapeListener();
+                console.log('Escape listener removed'); // Debug
+            }
+            
+            // Mettre à jour l'affichage si nécessaire
+            this.updatePromptDisplay();
+        };
+
+        // Écouter les événements de changement de pleine écran (support multi-navigateur)
+        document.addEventListener('fullscreenchange', handleFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+        document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+        document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+        
+        // Vérifier l'état initial au cas où on serait déjà en pleine écran
+        const initialFullscreenState = !!(
+            document.fullscreenElement || 
+            document.webkitFullscreenElement || 
+            document.mozFullScreenElement || 
+            document.msFullscreenElement
+        );
+        
+        if (initialFullscreenState) {
+            this.updateFullscreenButton(true);
+            this.addEscapeListener();
+        }
+    },
+
     updatePromptDisplay() {
         const promptLabel = document.getElementById('prompt-label');
         const consoleName = document.getElementById('console-name');
@@ -4696,7 +6375,7 @@ ${bottomBorder}
                 
                 const formWidth = commandForm.getBoundingClientRect().width;
                 const inputMinWidth = 150;
-                const margin = 75;
+                const margin = 150;
                 
                 if (promptWidth + inputMinWidth + margin > formWidth) {
                     promptLabel.style.display = 'none';
@@ -4753,12 +6432,205 @@ ${bottomBorder}
                 smallScreenMessage.style.display = 'none';
             }
         }
-    }
+    },
+
+    // --- Fonction utilitaire pour créer des blocs d'information stylisés ---
+    createInfoBlock: function(options = {}) {
+        const config = {
+            title: 'Information',
+            icon: '📄',
+            color: 'text-gray-400',
+            bgColor: 'bg-gray-800/50',
+            borderColor: 'border-gray-600',
+            itemBgColor: 'bg-gray-700/30',
+            items: [], // Array of {label: string, value: string, color?: string}
+            collapsible: false,
+            collapsed: false,
+            id: null,
+            customHTML: null, // HTML personnalisé à ajouter après les items
+            ...options
+        };
+
+        // Générer un ID unique si non fourni
+        const blockId = config.id || `info-block-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+        // Construire le HTML des items
+        let itemsHTML = '';
+        if (config.items && config.items.length > 0) {
+            config.items.forEach(item => {
+                const itemColor = item.color || config.color;
+                const labelColor = item.labelColor || itemColor;
+                const valueColor = item.valueColor || 'text-white';
+                
+                itemsHTML += `
+                    <div class="flex justify-between p-2 ${item.bgColor || config.itemBgColor} rounded">
+                        <span class="${labelColor} font-medium">${item.label}:</span>
+                        <span class="${valueColor} font-mono">${item.value}</span>
+                    </div>
+                `;
+            });
+        }
+
+        // Ajouter le HTML personnalisé si fourni
+        if (config.customHTML) {
+            itemsHTML += config.customHTML;
+        }
+
+        // Créer le bloc collapsible ou normal
+        if (config.collapsible) {
+            return `
+                <div class="border ${config.borderColor} rounded-lg p-4 ${config.bgColor} mt-3">
+                    <div class="flex items-center justify-between cursor-pointer hover:bg-gray-700/30 transition-colors duration-200 p-2 rounded" onclick="
+                        const content = document.getElementById('${blockId}-content');
+                        const arrow = document.getElementById('${blockId}-arrow');
+                        if (content.style.display === 'none' || content.style.display === '') {
+                            content.style.display = 'block';
+                            arrow.innerHTML = '▼';
+                        } else {
+                            content.style.display = 'none';
+                            arrow.innerHTML = '▶';
+                        }
+                    ">
+                        <div class="flex items-center">
+                            <span class="text-lg mr-2">${config.icon}</span>
+                            <span class="font-bold ${config.color} text-lg">${config.title}</span>
+                        </div>
+                        <span id="${blockId}-arrow" class="text-gray-400 text-sm transition-transform">${config.collapsed ? '▶' : '▼'}</span>
+                    </div>
+                    
+                    <div id="${blockId}-content" style="display: ${config.collapsed ? 'none' : 'block'};" class="mt-3">
+                        <div class="space-y-2 text-sm">
+                            ${itemsHTML}
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            return `
+                <div class="border ${config.borderColor} rounded-lg p-4 ${config.bgColor} mt-3">
+                    <div class="flex items-center mb-3">
+                        <span class="text-lg mr-2">${config.icon}</span>
+                        <span class="font-bold ${config.color} text-lg">${config.title}</span>
+                    </div>
+                    <div class="space-y-2 text-sm">
+                        ${itemsHTML}
+                    </div>
+                </div>
+            `;
+        }
+    },
+
+    // --- Fonction utilitaire pour les animations de chargement ---
+    createLoadingAnimation: function(options = {}) {
+        const config = {
+            id: 'loading-animation-' + Date.now(),
+            title: 'Chargement en cours...',
+            progressBarColors: 'from-blue-500 to-green-500',
+            steps: [
+                { text: 'Initialisation...', color: 'text-blue-400', delay: 0 },
+                { text: 'Traitement des données...', color: 'text-yellow-400', delay: 300 },
+                { text: 'Finalisation...', color: 'text-green-400', delay: 600 }
+            ],
+            duration: 1000, // Durée totale approximative
+            ...options
+        };
+
+        // Créer le HTML de l'animation
+        const loadingHTML = `
+            <div id="${config.id}" class="mt-3 p-4 bg-gray-800/30 border border-gray-600 rounded-lg">
+                <div class="flex items-center justify-center space-x-3">
+                    <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-400"></div>
+                    <span class="text-blue-300 font-medium">${config.title}</span>
+                </div>
+                <div class="mt-3 space-y-2" id="${config.id}-steps">
+                    ${config.steps.map((step, index) => `
+                        <div class="flex items-center space-x-2 opacity-0 step-${index}" style="animation-delay: ${step.delay}ms">
+                            <div class="animate-pulse w-2 h-2 bg-${step.color.split('-')[1]}-400 rounded-full" style="animation-delay: ${step.delay}ms"></div>
+                            <span class="text-sm ${step.color}">${step.text}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="mt-3 bg-gray-700 rounded-full h-2">
+                    <div id="${config.id}-progress" class="bg-gradient-to-r ${config.progressBarColors} h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+        `;
+
+        // Ajouter directement au DOM sans passer par addOutput pour éviter la sauvegarde
+        const lineDiv = document.createElement('div');
+        lineDiv.innerHTML = loadingHTML;
+        lineDiv.classList.add('loading-animation'); // Classe spéciale pour identifier les animations
+        this.outputElement.insertBefore(lineDiv, this.consoleEndRefElement);
+        this.scrollToBottom();
+
+        // Animer les étapes
+        setTimeout(() => {
+            const stepsContainer = document.getElementById(`${config.id}-steps`);
+            if (stepsContainer) {
+                config.steps.forEach((step, index) => {
+                    setTimeout(() => {
+                        const stepElement = stepsContainer.querySelector(`.step-${index}`);
+                        if (stepElement) {
+                            stepElement.style.opacity = '1';
+                            stepElement.style.transition = 'opacity 0.3s ease-in-out';
+                        }
+                    }, step.delay);
+                });
+            }
+        }, 50);
+
+        // Animation de la barre de progression
+        let progress = 0;
+        const progressBar = document.getElementById(`${config.id}-progress`);
+        const progressInterval = setInterval(() => {
+            progress += Math.random() * 15 + 5;
+            if (progress > 95) progress = 95;
+            if (progressBar) {
+                progressBar.style.width = progress + '%';
+            }
+        }, 200);
+
+        // Retourner un objet pour contrôler l'animation
+        return {
+            complete: () => {
+                clearInterval(progressInterval);
+                if (progressBar) {
+                    progressBar.style.width = '100%';
+                }
+                setTimeout(() => {
+                    const loadingElement = document.getElementById(config.id);
+                    if (loadingElement && loadingElement.parentNode) {
+                        // Supprimer l'élément parent (lineDiv) qui contient l'animation
+                        const parentDiv = loadingElement.closest('.loading-animation');
+                        if (parentDiv && parentDiv.parentNode) {
+                            parentDiv.parentNode.removeChild(parentDiv);
+                        }
+                    }
+                }, 500);
+            },
+            updateProgress: (percent) => {
+                if (progressBar) {
+                    progressBar.style.width = percent + '%';
+                }
+            },
+            addStep: (text, color = 'text-gray-400') => {
+                const stepsContainer = document.getElementById(`${config.id}-steps`);
+                if (stepsContainer) {
+                    const stepDiv = document.createElement('div');
+                    stepDiv.className = 'flex items-center space-x-2';
+                    stepDiv.innerHTML = `
+                        <div class="animate-pulse w-2 h-2 bg-blue-400 rounded-full"></div>
+                        <span class="text-sm ${color}">${text}</span>
+                    `;
+                    stepsContainer.appendChild(stepDiv);
+                }
+            }
+        };
+    },
 
 };
-    // --- Initialize the App ---
 
-
+// --- Initialize the App ---
 document.addEventListener('DOMContentLoaded', function () {
     app.init();
     // Appel initial

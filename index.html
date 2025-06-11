@@ -2,12 +2,28 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <title>Console Linux Klaynight</title>
     <link rel="icon" type="image/svg" href="./contents/img/logo.svg">
     <link rel="stylesheet" href="./contents/css/styles.css">
+    <link rel="stylesheet" href="./contents/css/responsive.css">
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-up': 'slideUp 0.3s ease-out',
+                        'pulse-soft': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    backdropBlur: {
+                        'xs': '2px',
+                    }
+                }
+            }
+        }
+    </script>
 
     <!-- SEO Meta Tags -->
     <meta name="description" content="Console Linux Klaynight - Simulateur de terminal Linux interactif dans votre navigateur. Exécutez des commandes, apprenez Linux et explorez un environnement de terminal virtuel.">
@@ -30,121 +46,272 @@
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
-    <!-- Modifier les Twitter tags -->
     <meta property="twitter:title" content="Console Linux Klaynight - Simulateur de Terminal">
     <meta property="twitter:description" content="Console Linux interactive pour apprendre et pratiquer les commandes dans votre navigateur.">
     <meta property="twitter:image" content="./contents/img/logo.svg">
 
     <!-- Mobile Meta Tags -->
-    <meta name="theme-color" content="#1f2937">
+    <meta name="theme-color" content="#0f172a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Console Linux">
+    <meta name="mobile-web-app-capable" content="yes">
 
     <!-- Microsoft -->
-    <meta name="msapplication-TileColor" content="#1f2937">
+    <meta name="msapplication-TileColor" content="#0f172a">
     <meta name="msapplication-config" content="./contents/img/browserconfig.xml">
 
     <!-- Additional -->
     <meta name="format-detection" content="telephone=no">
     <meta name="application-name" content="Console Linux Web">
 </head>
-<body class="bg-gray-900 h-screen overflow-hidden">
-    <div id="app-container" class="main-container bg-gray-900 text-gray-100 font-mono p-4 shadow-lg h-full flex flex-col">
-        <div class="flex flex-col h-full">
-            <nav class="menu-bar bg-gray-800 p-2 rounded-t-lg flex items-center justify-between relative z-10 flex-shrink-0 border-b border-gray-700">
-                <div class="flex space-x-1 sm:space-x-4" id="menu-buttons">
-                    <div class="relative">
-                        <button id="file-menu-button" class="menu-button px-2 sm:px-3 py-1 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base">
-                            Fichier
-                        </button>
-                        <div id="file-menu-dropdown" class="hidden absolute top-full left-0 mt-1 w-48 bg-gray-700 rounded-md shadow-lg py-1 z-20">
-                            <button id="import-code-button" class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-sm sm:text-base">
-                                Importer du code...
-                            </button>
-                            <button class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-sm sm:text-base" onclick="app.addOutput('Fonctionnalité \"Nouveau fichier\" en cours de développement.'); app.closeAllMenus();">
-                                Nouveau fichier
-                            </button>
-                            <button class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-sm sm:text-base" onclick="app.addOutput('Fonctionnalité \"Enregistrer\" en cours de développement.'); app.closeAllMenus();">
-                                Enregistrer
-                            </button>
-                        </div>
+<body class="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 min-h-screen antialiased">
+    <div id="app-container" class="main-container text-slate-100 font-mono p-4 h-screen flex flex-col">
+        <div class="flex flex-col h-full bg-slate-900/30 backdrop-blur-xl rounded-3xl border border-slate-700/30 shadow-2xl overflow-hidden animate-fade-in">
+            
+            <!-- Header with enhanced glass morphism -->
+            <nav class="menu-bar bg-gradient-to-r from-slate-800/90 to-slate-700/90 backdrop-blur-2xl border-b border-slate-600/50 px-8 py-3 flex items-center justify-between relative z-10 flex-shrink-0">
+                <div class="flex items-center space-x-6">
+                    <!-- Enhanced Logo -->
+                    <div class="w-12 h-12 bg-gradient-to-br from-emerald-500 via-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20 ring-2 ring-white/10">
+                        <img src="./contents/img/logo.svg" alt="Logo" class="w-8 h-8">
                     </div>
-
-                    <div class="relative">
-                        <button id="tools-menu-button" class="menu-button px-2 sm:px-3 py-1 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base">
-                            Outils
-                        </button>
-                        <div id="tools-menu-dropdown" class="hidden absolute top-full left-0 mt-1 w-48 bg-gray-700 rounded-md shadow-lg py-1 z-20">
-                            <button class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-sm sm:text-base"
-                                onclick="document.getElementById('settings-modal').classList.remove('hidden'); app.closeAllMenus();">
-                                Paramètres
+                    
+                    <!-- Enhanced Menu Buttons -->
+                    <div class="flex space-x-3" id="menu-buttons">
+                        <div class="relative group">
+                            <button id="file-menu-button" class="menu-button px-5 py-2.5 rounded-2xl bg-slate-700/40 hover:bg-slate-600/50 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 text-sm font-medium transition-all duration-300 border border-slate-600/20 hover:border-slate-500/40 hover:shadow-lg group-hover:scale-105">
+                                <span class="flex items-center">
+                                    <div class="w-5 h-5 bg-emerald-500/20 rounded-lg flex items-center justify-center mr-2">
+                                        <svg class="w-3 h-3 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v6H8V5z"/>
+                                        </svg>
+                                    </div>
+                                    Fichier
+                                </span>
                             </button>
-                            <button class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-sm sm:text-base" onclick="(function(){ app.commands.clear.call(app); app.closeAllMenus(); })();">
-                                Vider la console (Ctrl+L)
-                            </button>
-                            <button id="show-history-button" class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-sm sm:text-base">
-                                Afficher l'historique
-                            </button>
+                            <div id="file-menu-dropdown" class="hidden absolute top-full left-0 mt-3 w-64 bg-slate-800/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-slate-600/40 py-3 z-20 animate-slide-up pr-4">
+                                <button id="import-code-button" class="block w-full text-left px-6 py-4 hover:bg-slate-700/50 text-sm transition-all duration-200 flex items-center group/item rounded-2xl mx-2">
+                                    <div class="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center mr-4 group-hover/item:bg-blue-500/30 transition-colors">
+                                        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium">Importer du code</div>
+                                        <div class="text-xs text-slate-400">Ajouter de nouvelles fonctionnalités</div>
+                                    </div>
+                                </button>
+                                <button class="block w-full text-left px-6 py-4 hover:bg-slate-700/50 text-sm transition-all duration-200 flex items-center group/item rounded-2xl mx-2" onclick="app.addOutput('Fonctionnalité \"Nouveau fichier\" en cours de développement.'); app.closeAllMenus();">
+                                    <div class="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center mr-4 group-hover/item:bg-green-500/30 transition-colors">
+                                        <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium">Nouveau fichier</div>
+                                        <div class="text-xs text-slate-400">Créer un nouveau document</div>
+                                    </div>
+                                </button>
+                                <button class="block w-full text-left px-6 py-4 hover:bg-slate-700/50 text-sm transition-all duration-200 flex items-center group/item rounded-2xl mx-2" onclick="app.addOutput('Fonctionnalité &quot;Enregistrer&quot; en cours de développement.'); app.closeAllMenus();">
+                                    <div class="w-10 h-10 bg-yellow-500/20 rounded-xl flex items-center justify-center mr-4 group-hover/item:bg-yellow-500/30 transition-colors">
+                                        <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium">Enregistrer</div>
+                                        <div class="text-xs text-slate-400">Sauvegarder les modifications</div>
+                                    </div>
+                                </button>
+                            </div>
                         </div>
-                    </div>
 
-                    <div class="relative">
-                        <button id="help-menu-button" class="menu-button px-2 sm:px-3 py-1 rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base">
-                            Aide
-                        </button>
-                        <div id="help-menu-dropdown" class="hidden absolute top-full left-0 mt-1 w-48 bg-gray-700 rounded-md shadow-lg py-1 z-20">
-                            <button class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-sm sm:text-base" onclick="app.commands.help.call(app); app.closeAllMenus();">
-                                Commandes
+                        <div class="relative group">
+                            <button id="tools-menu-button" class="menu-button px-5 py-2.5 rounded-2xl bg-slate-700/40 hover:bg-slate-600/50 focus:outline-none focus:ring-2 focus:ring-blue-400/50 text-sm font-medium transition-all duration-300 border border-slate-600/20 hover:border-slate-500/40 hover:shadow-lg group-hover:scale-105">
+                                <span class="flex items-center">
+                                    <div class="w-5 h-5 bg-blue-500/20 rounded-lg flex items-center justify-center mr-2">
+                                        <svg class="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        </svg>
+                                    </div>
+                                    Outils
+                                </span>
                             </button>
-                            <button class="block w-full text-left px-4 py-2 hover:bg-gray-600 text-sm sm:text-base" onclick="document.getElementById('about-modal').classList.remove('hidden'); app.closeAllMenus();">
-                                À propos
+                            <div id="tools-menu-dropdown" class="hidden absolute top-full left-0 mt-3 w-64 bg-slate-800/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-slate-600/40 py-3 z-20 animate-slide-up pr-4">
+                                <button class="block w-full text-left px-6 py-4 hover:bg-slate-700/50 text-sm transition-all duration-200 flex items-center group/item rounded-2xl mx-2"
+                                    onclick="document.getElementById('settings-modal').classList.remove('hidden'); app.closeAllMenus();">
+                                    <div class="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center mr-4 group-hover/item:bg-purple-500/30 transition-colors">
+                                        <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium">Paramètres</div>
+                                        <div class="text-xs text-slate-400">Personnaliser l'interface</div>
+                                    </div>
+                                </button>
+                                <button class="block w-full text-left px-6 py-4 hover:bg-slate-700/50 text-sm transition-all duration-200 flex items-center group/item rounded-2xl mx-2" onclick="(function(){ app.commands.clear.call(app); app.closeAllMenus(); })();">
+                                    <div class="w-10 h-10 bg-red-500/20 rounded-xl flex items-center justify-center mr-4 group-hover/item:bg-red-500/30 transition-colors">
+                                        <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium">Vider la console</div>
+                                        <div class="text-xs text-slate-400">Ctrl+L</div>
+                                    </div>
+                                </button>
+                                <button id="show-history-button" class="block w-full text-left px-6 py-4 hover:bg-slate-700/50 text-sm transition-all duration-200 flex items-center group/item rounded-2xl mx-2">
+                                    <div class="w-10 h-10 bg-amber-500/20 rounded-xl flex items-center justify-center mr-4 group-hover/item:bg-amber-500/30 transition-colors">
+                                        <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium">Afficher l'historique</div>
+                                        <div class="text-xs text-slate-400">Commandes précédentes</div>
+                                    </div>
+                                </button>
+                                <button onclick="app.fullscreen(); app.closeAllMenus();" class="block w-full text-left px-6 py-4 hover:bg-slate-700/50 text-sm transition-all duration-200 flex items-center group/item rounded-2xl mx-2">
+                                    <div class="w-10 h-10 bg-slate-500/20 rounded-xl flex items-center justify-center mr-4 group-hover/item:bg-slate-500/30 transition-colors">
+                                        <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium">Plein écran</div>
+                                        <div class="text-xs text-slate-400">Agrandir l'interface</div>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="relative group">
+                            <button id="help-menu-button" class="menu-button px-5 py-2.5 rounded-2xl bg-slate-700/40 hover:bg-slate-600/50 focus:outline-none focus:ring-2 focus:ring-cyan-400/50 text-sm font-medium transition-all duration-300 border border-slate-600/20 hover:border-slate-500/40 hover:shadow-lg group-hover:scale-105">
+                                <span class="flex items-center">
+                                    <div class="w-5 h-5 bg-cyan-500/20 rounded-lg flex items-center justify-center mr-2">
+                                        <svg class="w-3 h-3 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </div>
+                                    Aide
+                                </span>
                             </button>
+                            <div id="help-menu-dropdown" class="hidden absolute top-full left-0 mt-3 w-64 bg-slate-800/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-slate-600/40 py-3 z-20 animate-slide-up pr-4" >
+                                <button class="block w-full text-left px-6 py-4 hover:bg-slate-700/50 text-sm transition-all duration-200 flex items-center group/item rounded-2xl mx-2" onclick="if(app && app.commands && app.commands.help) { app.commands.help.call(app); } app.closeAllMenus();">
+                                    <div class="w-10 h-10 bg-cyan-500/20 rounded-xl flex items-center justify-center mr-4 group-hover/item:bg-cyan-500/30 transition-colors">
+                                        <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium">Commandes</div>
+                                        <div class="text-xs text-slate-400">Liste des commandes disponibles</div>
+                                    </div>
+                                </button>
+                                <button class="block w-full text-left px-6 py-4 hover:bg-slate-700/50 text-sm transition-all duration-200 flex items-center group/item rounded-2xl mx-2" onclick="document.getElementById('about-modal').classList.remove('hidden'); app.closeAllMenus();">
+                                    <div class="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center mr-4 group-hover/item:bg-indigo-500/30 transition-colors">
+                                        <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium">À propos</div>
+                                        <div class="text-xs text-slate-400">Informations sur l'application</div>
+                                    </div>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <span id="console-name" class="text-xs sm:text-sm text-gray-400 mr-3 select-none">Console Linux Klaynight</span>
+                
+                <div class="flex items-center space-x-6">
+                    <span id="console-name" class="text-sm text-slate-300 select-none font-medium tracking-wide">Console Linux Klaynight</span>
+                    <div class="flex items-center space-x-3">
+                        <div class="w-4 h-4 bg-red-500 rounded-full shadow-lg shadow-red-500/50 animate-pulse-soft"></div>
+                        <div class="w-4 h-4 bg-yellow-500 rounded-full shadow-lg shadow-yellow-500/50"></div>
+                        <div class="w-4 h-4 bg-green-500 rounded-full shadow-lg shadow-green-500/50"></div>
+                    </div>
+                </div>
             </nav>
-            <div id="console-output" class="flex-1 bg-gray-800 p-4 overflow-auto custom-scrollbar rounded-b-lg border border-gray-700 shadow-inner mb-3">
-                <div id="loading-llm-indicator" class="text-yellow-400 hidden animate-pulse">
-                    <span class="inline-block mr-2">⚡</span>Génération en cours...
-                </div>
-                <div id="console-end-ref"></div>
-            </div>
 
-            <form id="command-form" class="flex flex-shrink-0 bg-gray-800 p-2 rounded-lg border border-gray-700">
-                <label for="command-input" id="prompt-label" class="flex-shrink-0 text-green-400 mr-2 flex items-center select-none font-bold"></label>
-                </label>
-                <input
-                    id="command-input"
-                    type="text"
-                    class="command-prompt flex-grow bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-3 py-2 rounded-md transition-all duration-200 placeholder-gray-400"
-                    autocomplete="off"
-                    autocapitalize="off"
-                    spellcheck="false"
-                    placeholder="Tapez votre commande..."
-                />
-            </form>
+            <!-- Enhanced Tabs section -->
+            <div class="bg-gradient-to-r from-slate-800/40 to-slate-700/40 backdrop-blur-xl border-b border-slate-600/30 px-8 py-2 flex items-center justify-between">
+            <div class="flex items-center space-x-3 overflow-x-auto scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-transparent" id="tabs-container">
+                <!-- Tabs will be generated dynamically -->
+            </div>
+            <div class="flex items-center space-x-3">
+                <!-- Bouton pour basculer la taille des onglets -->
+                <!--<button id="toggle-tabs-size-button" class="flex-shrink-0 p-3 bg-gradient-to-br from-slate-700/60 to-slate-600/60 hover:from-slate-600/70 hover:to-slate-500/70 text-slate-300 hover:text-white rounded-2xl transition-all duration-300 border border-slate-600/30 hover:border-slate-500/50 shadow-lg hover:shadow-xl hover:scale-105" title="Basculer la taille des onglets">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path>
+                    </svg>
+                </button>-->
+                
+                <button id="new-tab-button" class="flex-shrink-0 p-3 bg-gradient-to-br from-slate-700/60 to-slate-600/60 hover:from-slate-600/70 hover:to-slate-500/70 text-slate-300 hover:text-white rounded-2xl transition-all duration-300 border border-slate-600/30 hover:border-slate-500/50 shadow-lg hover:shadow-xl hover:scale-105" title="Nouvel onglet">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+            
+            <!-- Enhanced Console output -->
+            <div class="flex-1 flex flex-col overflow-hidden">
+                <div id="console-output" class="flex-1 bg-gradient-to-br from-slate-900/20 via-slate-800/20 to-slate-900/20 backdrop-blur-sm p-8 overflow-auto custom-scrollbar border-b border-slate-600/20">
+                    <div id="loading-llm-indicator" class="text-yellow-400 hidden animate-pulse flex items-center bg-yellow-400/10 rounded-2xl p-4 mb-4 border border-yellow-400/20">
+                        <div class="w-6 h-6 bg-yellow-400 rounded-full mr-3 animate-bounce"></div>
+                        <span class="font-medium">Génération en cours...</span>
+                    </div>
+                    <div id="console-end-ref"></div>
+                </div>
+
+                <!-- Enhanced command input -->
+                <form id="command-form" class="flex flex-shrink-0 bg-gradient-to-r from-slate-800/40 to-slate-700/40 backdrop-blur-xl p-6 border-t border-slate-600/30">
+                    <label for="command-input" id="prompt-label" class="flex-shrink-0 text-emerald-400 mr-4 flex items-center select-none font-bold text-lg"></label>
+                    <input
+                        id="command-input"
+                        type="text"
+                        class="command-prompt flex-grow bg-slate-700/30 text-white border border-slate-600/40 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400/50 px-6 py-4 rounded-2xl transition-all duration-300 placeholder-slate-400 backdrop-blur-sm shadow-inner text-lg"
+                        autocomplete="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        placeholder="Tapez votre commande..."
+                    />
+                </form>
+            </div>
         </div>
 
-        <div id="code-import-modal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-20 p-4">
-            <div class="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-lg sm:w-11/12 md:w-1/2 lg:w-1/3">
-                <h2 class="text-xl font-bold mb-4 text-white">Importer du code</h2>
+        <!-- Enhanced Modals -->
+        <div id="code-import-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-6">
+            <div class="bg-slate-800/95 backdrop-blur-2xl p-10 rounded-3xl shadow-2xl w-full max-w-3xl border border-slate-600/40 animate-slide-up">
+                <h2 class="text-3xl font-bold mb-8 text-white flex items-center">
+                    <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mr-4 shadow-lg">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+                        </svg>
+                    </div>
+                    Importer du code
+                </h2>
                 <textarea
                     id="code-to-import-textarea"
-                    class="w-full h-48 bg-gray-700 text-white p-2 rounded-md focus:outline-none resize-none custom-scrollbar"
+                    class="w-full h-80 bg-slate-700/40 text-white p-6 rounded-3xl focus:outline-none focus:ring-2 focus:ring-blue-400/50 resize-none custom-scrollbar border border-slate-600/40 backdrop-blur-sm shadow-inner"
                     placeholder="Collez votre code ici (par exemple, une nouvelle commande JavaScript)..."
                 ></textarea>
-                <div class="mt-4 flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
+                <div class="mt-8 flex justify-end space-x-4">
                     <button
                         id="cancel-import-button"
-                        class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 w-full sm:w-auto"
+                        class="px-8 py-4 bg-slate-600/50 text-white rounded-2xl hover:bg-slate-500/60 focus:outline-none focus:ring-2 focus:ring-slate-400/50 transition-all duration-300 border border-slate-500/40 font-medium"
                     >
                         Annuler
                     </button>
                     <button
                         id="confirm-import-button"
-                        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full sm:w-auto"
+                        class="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-2xl hover:from-blue-500 hover:to-purple-500 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all duration-300 shadow-lg hover:shadow-xl font-medium"
                     >
                         Importer
                     </button>
@@ -152,148 +319,245 @@
             </div>
         </div>
 
-        <!-- Modal About -->
-        <div id="about-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 hidden">
-            <div class="bg-gray-800 rounded-lg p-6 shadow-lg max-w-lg w-full text-gray-100">
-                <h2 class="text-xl font-bold mb-2 flex items-center">
-                    <span class="mr-2">ℹ️</span>À propos
+        <!-- Enhanced About Modal -->
+        <div id="about-modal" class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 hidden p-6">
+            <div class="bg-slate-800/95 backdrop-blur-2xl rounded-3xl p-8 shadow-2xl max-w-2xl w-full text-slate-100 border border-slate-600/40 mx-4 animate-slide-up">
+                <h2 class="text-3xl font-bold mb-6 flex items-center">
+                    <div class="w-12 h-12 bg-gradient-to-br from-emerald-500 via-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mr-4 shadow-lg shadow-blue-500/20">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    À propos
                 </h2>
-                <div id="about-modal-content">
-                    <div class="bg-gray-900 p-3 rounded mb-3">
-                        <div class="font-bold text-lg text-blue-300 mb-1">Console Linux Klaynight</div>
-                        <div class="text-sm text-gray-300 space-y-1"></div>
-                            <div>Version: <span id="app-version" class="text-green-400 font-mono">1.3.0</span></div>
-                            <div>Build: <span id="build-date" class="text-yellow-400 font-mono">2025-06-04</span></div>
-                            <div>Développé par: <span class="text-purple-400">Klaynight</span></div>
-                            <div>Licence: <span class="text-blue-400">MIT</span></div>
+                <div id="about-modal-content" class="overflow-y-auto max-h-[70vh] custom-scrollbar">
+                    <div class="bg-slate-900/50 backdrop-blur-sm p-6 rounded-2xl mb-6 border border-slate-700/40">
+                        <div class="font-bold text-2xl bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent mb-4">Console Linux Klaynight</div>
+                        <div class="text-slate-300 space-y-3 grid grid-cols-2 gap-4">
+                            <div class="flex items-center bg-slate-800/40 p-3 rounded-xl">
+                                <span class="text-slate-400 mr-2 font-medium text-sm">Version:</span>
+                                <span id="app-version" class="text-emerald-400 font-mono font-bold">1.3.0</span>
+                            </div>
+                            <div class="flex items-center bg-slate-800/40 p-3 rounded-xl">
+                                <span class="text-slate-400 mr-2 font-medium text-sm">Build:</span>
+                                <span id="build-date" class="text-yellow-400 font-mono font-bold">2025-06-04</span>
+                            </div>
+                            <div class="flex items-center bg-slate-800/40 p-3 rounded-xl">
+                                <span class="text-slate-400 mr-2 font-medium text-sm">Développé par:</span>
+                                <span class="text-purple-400 font-semibold">Klaynight</span>
+                            </div>
+                            <div class="flex items-center bg-slate-800/40 p-3 rounded-xl">
+                                <span class="text-slate-400 mr-2 font-medium text-sm">Licence:</span>
+                                <span class="text-blue-400 font-semibold">MIT</span>
+                            </div>
                         </div>
                     </div>
-                    
-                </div>
-                <div class="bg-gray-900/50 rounded-lg p-4 mb-4 border border-gray-700">
-                    <h3 class="text-lg font-semibold text-blue-300 mb-3 flex items-center">
-                        <span class="mr-2">💡</span>Description
-                    </h3>
-                    <p class="text-sm text-gray-300 leading-relaxed mb-3">
-                        Cette application est une console Linux Web interactive, permettant d'exécuter des commandes et de simuler un environnement de terminal. Elle est conçue pour être utilisée à des fins éducatives et de divertissement.
-                    </p>
-                    <div class="flex items-center space-x-2 text-sm">
-                        <span class="text-gray-400">Besoin d'aide ?</span>
-                        <a href="https://github.com/Klaynight-dev/web_linux_console/issues" 
-                           class="inline-flex items-center text-blue-400 hover:text-blue-300 hover:underline transition-colors duration-200" 
-                           target="_blank">
-                            <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+
+                    <div class="bg-slate-900/30 backdrop-blur-sm rounded-2xl p-6 mb-6 border border-slate-700/40">
+                        <h3 class="text-xl font-semibold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-4 flex items-center">
+                            <svg class="w-6 h-6 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/>
                             </svg>
-                            Signaler un problème
-                        </a>
+                            Description du projet
+                        </h3>
+                        <div class="space-y-4 text-slate-300">
+                            <p class="text-sm leading-relaxed">
+                                Console Linux Klaynight est un simulateur de terminal Linux interactif conçu pour l'apprentissage et la pratique des commandes Unix/Linux directement dans votre navigateur.
+                            </p>
+                            <p class="text-sm leading-relaxed">
+                                Cette application offre une expérience authentique avec un système de fichiers virtuel, des commandes complètes et une interface moderne et intuitive.
+                            </p>
+                            
+                            <div class="bg-slate-800/50 rounded-xl p-4 border border-slate-600/30">
+                                <h4 class="font-semibold text-white mb-2 flex items-center">
+                                    <svg class="w-5 h-5 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                    Améliorations et suggestions
+                                </h4>
+                                <p class="text-sm text-slate-400 mb-3">
+                                    Vous avez des idées pour améliorer l'interface ou ajouter de nouvelles fonctionnalités ?
+                                </p>
+                                <a href="https://github.com/Klaynight-dev/Web_linux_console/issues/new?assignees=&labels=enhancement&template=feature_request.md&title=%5BFeature%5D+%5BTitre+de+l%27amélioration%5D" 
+                                   id="suggest-improvement-button" 
+                                   target="_blank" 
+                                   class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white text-sm font-medium rounded-lg transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                    </svg>
+                                    Proposer une amélioration
+                                </a>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div class="flex justify-between">
-                    <div class="text-center">
-                        <a href="https://github.com/Klaynight-dev/web_linux_console" 
-                            class="group inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-medium rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 ease-out" 
-                            target="_blank">
-                            <svg class="w-5 h-5 mr-2 group-hover:rotate-12 transition-transform duration-200" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 0C4.477 0 0 4.484 0 10.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0110 4.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.203 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.942.359.31.678.921.678 1.856 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0020 10.017C20 4.484 15.522 0 10 0z" clip-rule="evenodd"/>
-                            </svg>
-                            <span>Voir sur GitHub</span>
-                            <svg class="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
-                            </svg>
-                        </a>
+                    
+                    <div class="flex justify-center mt-5">
+                        <button 
+                            onclick="document.getElementById('about-modal').classList.add('hidden');"
+                            class="px-6 py-3 bg-gradient-to-r from-slate-700 to-slate-600 hover:from-slate-600 hover:to-slate-500 text-white rounded-2xl transition-all duration-300 font-medium shadow-lg hover:shadow-xl"
+                        >
+                            Fermer
+                        </button>
                     </div>
-                    
-                    <button id="close-about-modal" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors">
-                        Fermer
-                    </button>
-                    
                 </div>
             </div>
         </div>
 
+        <!-- Enhanced Settings Modal -->
+        <div id="settings-modal" class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 hidden p-6">
+            <div class="bg-slate-800/95 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl max-w-2xl w-full text-slate-100 border border-slate-600/40 animate-slide-up max-h-[90vh] flex flex-col">
+                <h2 class="text-2xl font-bold mb-6 flex items-center flex-shrink-0">
+                    <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center mr-3 shadow-lg">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                    </div>
+                    Paramètres
+                </h2>
 
-        <!-- Modal Historique des commandes -->
-<div id="history-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-  <div class="bg-gray-800 rounded-lg p-6 w-full max-w-lg shadow-lg">
-    <h2 class="text-xl font-bold mb-4 text-purple-300">Historique des commandes</h2>
-    <div id="history-list" class="bg-gray-900 rounded p-2 max-h-64 overflow-y-auto text-gray-200 text-sm mb-4"></div>
-    <div class="flex justify-between items-center mt-4">
-        <button id="clear-history-btn" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition">
-            Effacer l'historique
-        </button>
-        <button id="close-history-modal" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded">
-            Fermer
-        </button>
+                <div class="flex-1 overflow-y-auto custom-scrollbar pr-2">
+                    <form class="space-y-6">
+                    <div class="space-y-4">
+                        <!-- Thème -->
+                        <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700/40">
+                        <label class="block mb-3 font-semibold text-white">Thème</label>
+                        <select id="theme-select" class="w-full bg-slate-700/60 text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-400/50 border border-slate-600/40">
+                            <option value="dark">Sombre (par défaut)</option>
+                            <option value="light">Clair</option>
+                        </select>
+                        </div>
+                        
+                        <!-- Police et Taille de police sur la même ligne -->
+                        <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700/40">
+                            <div class="flex space-x-4">
+                                <!-- Police -->
+                                <div class="flex-1">
+                                    <label for="font-family-select" class="block mb-3 font-semibold text-white">Police</label>
+                                    <select id="font-family-select" class="w-full bg-slate-700/60 text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-400/50 border border-slate-600/40">
+                                        <option value="monospace">Monospace (défaut)</option>
+                                        <option value="Fira Mono, monospace">Fira Mono</option>
+                                        <option value="Consolas, monospace">Consolas</option>
+                                        <option value="Courier New, monospace">Courier New</option>
+                                        <option value="Arial, sans-serif">Arial</option>
+                                        <option value="Roboto Mono, monospace">Roboto Mono</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Taille de police -->
+                                <div class="flex-1">
+                                    <label class="block mb-3 font-semibold text-white">Taille de police</label>
+                                    <div class="flex items-center space-x-3">
+                                        <input type="range" id="font-size-range" min="12" max="24" value="16" class="flex-1 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer slider">
+                                        <span id="font-size-value" class="text-emerald-400 font-bold min-w-[50px]">16px</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Fond de la console et Taille de l'historique sur la même ligne -->
+                        <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700/40">
+                            <div class="flex space-x-4">
+                                <!-- Fond de la console -->
+                                <div class="flex-1">
+                                    <label for="console-bg-type" class="block mb-3 font-semibold text-white">Fond de la console</label>
+                                    <div class="space-y-3">
+                                        <select id="console-bg-type" class="w-full bg-slate-700/60 text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-400/50 border border-slate-600/40">
+                                        <option value="color" selected>Couleur</option>
+                                        <option value="image">Image</option>
+                                        </select>
+                                        <div class="flex items-center space-x-3">
+                                        <input type="color" id="console-bg-color" value="#1f2937" class="w-12 h-12 p-0 border-0 bg-transparent rounded-lg cursor-pointer">
+                                        <input type="text" id="console-bg-url" placeholder="URL de l'image" class="flex-1 bg-slate-700/60 text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-400/50 border border-slate-600/40 hidden">
+                                        </div>
+                                        <div id="console-bg-image-import-group" class="hidden">
+                                        <label for="console-bg-file" class="block mb-2 text-sm text-slate-300">Importer une image :</label>
+                                        <input type="file" id="console-bg-file" accept="image/*" class="w-full text-slate-300 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-purple-500 file:text-white hover:file:bg-purple-600">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Historique -->
+                                <div class="flex-1">
+                                    <label class="block mb-3 font-semibold text-white">Taille de l'historique</label>
+                                    <input type="number" id="history-size" min="10" max="200" value="50" class="w-full bg-slate-700/60 text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-400/50 border border-slate-600/40">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    </form>
+                </div>
+                
+                <div class="flex justify-end mt-6 space-x-3 flex-shrink-0">
+                    <button id="cancel-settings-modal" class="px-6 py-3 bg-slate-600/50 text-white rounded-xl hover:bg-slate-500/60 focus:outline-none focus:ring-2 focus:ring-slate-400/50 transition-all duration-300 border border-slate-500/40 font-medium">
+                    Annuler
+                    </button>
+                    <button id="save-settings-modal" class="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-500 hover:to-pink-500 focus:outline-none focus:ring-2 focus:ring-purple-400/50 transition-all duration-300 shadow-lg hover:shadow-xl font-medium">
+                    Enregistrer
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
-</div>
 
-<!-- Modal Paramètres -->
-<div id="settings-modal" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-  <div class="bg-gray-800 rounded-lg p-6 shadow-lg max-w-md w-full text-gray-100">
-    <h2 class="text-xl font-bold mb-4 text-blue-300">Paramètres</h2>
-    <form id="settings-form" class="space-y-4">
-      <!-- Thème -->
-      <div>
-        <label class="block mb-1 font-semibold">Thème :</label>
-        <select id="theme-select" class="w-full bg-gray-700 rounded p-2">
-          <option value="dark">Sombre (par défaut)</option>
-          <option value="light">Clair</option>
-        </select>
-      </div>
-      <!-- Police -->
-      <div>
-        <label for="font-family-select" class="block mb-1 font-semibold">Police :</label>
-        <select id="font-family-select" class="w-full bg-gray-700 rounded p-2">
-          <option value="monospace">Monospace (défaut)</option>
-          <option value="Fira Mono, monospace">Fira Mono</option>
-          <option value="Consolas, monospace">Consolas</option>
-          <option value="Courier New, monospace">Courier New</option>
-          <option value="Arial, sans-serif">Arial</option>
-          <option value="Roboto Mono, monospace">Roboto Mono</option>
-        </select>
-      </div>
-      <!-- Taille de police -->
-      <div>
-        <label class="block mb-1 font-semibold">Taille de police :</label>
-        <input type="range" id="font-size-range" min="12" max="24" value="16" class="w-full">
-        <span id="font-size-value" class="ml-2">16px</span>
-      </div>
-      <!-- Affichage du prompt -->
-      <div>
-        <label class="block mb-1 font-semibold">Afficher le chemin complet dans le prompt :</label>
-        <input type="checkbox" id="show-full-path" checked>
-      </div>
-      <!-- Historique -->
-      <div>
-        <label class="block mb-1 font-semibold">Taille de l'historique :</label>
-        <input type="number" id="history-size" min="10" max="200" value="50" class="w-20 bg-gray-700 rounded p-1">
-      </div>
-      <!-- Fond de la console -->
-    <div>
-      <label for="console-bg-type" class="block mb-1 font-semibold">Fond de la console :</label>
-      <select id="console-bg-type" class="w-full bg-gray-700 rounded p-2 mb-2">
-        <option value="color" selected>Couleur</option>
-        <option value="image">Image</option>
-      </select>
-    <input type="color" id="console-bg-color" value="#1f2934" class="mb-2 w-10 h-10 p-0 border-0 bg-transparent align-middle" style="display:inline-block;">
-      <input type="text" id="console-bg-url" placeholder="URL de l'image" class="w-full bg-gray-700 rounded p-2 mb-2" style="display:none;">
+    <!-- Enhanced History Modal -->
+    <div id="history-modal" class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 hidden p-6">
+        <div class="bg-slate-800/95 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl max-w-2xl w-full text-slate-100 border border-slate-600/40 mx-4 animate-slide-up">
+            <h2 class="text-2xl font-bold mb-4 flex items-center">
+                <div class="w-10 h-10 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center mr-3 shadow-lg shadow-amber-500/20">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                Historique des commandes
+            </h2>
+            
+            <div class="bg-slate-900/50 backdrop-blur-sm p-4 rounded-2xl mb-4 border border-slate-700/40">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-slate-300 font-medium text-sm">Commandes récentes</span>
+                    <button id="clear-history-button" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg transition-all duration-300 border border-red-500/20 hover:border-red-500/40 text-xs font-medium">
+                        <svg class="w-3 h-3 mr-1.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                        Vider
+                    </button>
+                </div>
+                
+                <div id="history-content" class="overflow-y-auto max-h-[40vh] custom-scrollbar">
+                    <div id="history-empty" class="text-center py-8 text-slate-400">
+                        <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                        </svg>
+                        <p class="font-medium">Aucune commande dans l'historique</p>
+                        <p class="text-xs mt-1">Commencez à taper des commandes</p>
+                    </div>
+                    <div id="history-list" class="space-y-1.5"></div>
+                </div>
+            </div>
+            
+            <div class="bg-slate-900/30 backdrop-blur-sm rounded-xl p-3 border border-slate-700/40 mb-4">
+                <div class="flex items-center text-xs text-slate-400">
+                    <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span>Cliquez sur une commande pour la réexécuter • Utilisez ↑/↓ pour naviguer</span>
+                </div>
+            </div>
+            
+            <div class="flex justify-center">
+                <button 
+                    onclick="document.getElementById('history-modal').classList.add('hidden');"
+                    class="px-5 py-2.5 bg-gradient-to-r from-slate-700 to-slate-600 hover:from-slate-600 hover:to-slate-500 text-white rounded-xl transition-all duration-300 font-medium shadow-lg hover:shadow-xl text-sm"
+                >
+                    Fermer
+                </button>
+            </div>
+        </div>
     </div>
-    <!-- À placer dans le modal paramètres, à côté de l'input URL -->
-<div class="mb-2" id="console-bg-image-import-group" style="display:none;">
-    <label for="console-bg-file" class="block mb-1">Importer une image :</label>
-    <input type="file" id="console-bg-file" accept="image/*">
-</div>
-    </form>
-    <div class="flex justify-end mt-6 space-x-2">
-      <button id="cancel-settings-modal" class="px-4 py-2 bg-gray-600 rounded hover:bg-gray-500">Annuler</button>
-      <button id="save-settings-modal" class="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700">Enregistrer</button>
-    </div>
-  </div>
-</div>
-    </div>
+    
     <script src="./contents/js/app.js"></script>
     <script src="./contents/js/cmdList.js"></script>
+    <script src="./contents/js/responsive.js"></script>
 </body>
 </html>

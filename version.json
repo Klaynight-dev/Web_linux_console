@@ -1,24 +1,204 @@
 {
-  "version": "2.0.9",
-  "date": "2025-06-05",
-  "changelog": "reboot cmd",
+  "version": "2.1.17",
+  "date": "2025-06-11",
+  "changelog": "Ajout de la commande de dev notify",
   "history": [
+    {
+      "version": "2.1.17",
+      "date": "2025-06-11",
+      "changelog": "Ajout de la commande de dev notify",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.16",
+      "date": "2025-06-11",
+      "changelog": "Fix notification qui ne se ferme pas",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.15",
+      "date": "2025-06-11",
+      "changelog": "Add more cmd for versioning",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.14",
+      "date": "2025-06-11",
+      "changelog": "more cmd for versioning",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.13",
+      "date": "2025-06-11",
+      "changelog": "Add more fonction for reduce app.js size",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.12",
+      "date": "2025-06-11",
+      "changelog": "Fix arrow history bug reload",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.11",
+      "date": "2025-06-11",
+      "changelog": "Use fonction for reset all caches",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.10",
+      "date": "2025-06-11",
+      "changelog": "Add update on versioning tool",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.9",
+      "date": "2025-06-11",
+      "changelog": "fix all ui size",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.8",
+      "date": "2025-06-11",
+      "changelog": "moove notify cmd to fonction",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.7",
+      "date": "2025-06-11",
+      "changelog": "fix notification close prbl",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.6",
+      "date": "2025-06-11",
+      "changelog": "Ajout dans outils d un outil de mise en pleine écrant",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.5",
+      "date": "2025-06-11",
+      "changelog": "Fix execute chaine cmd",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.4",
+      "date": "2025-06-11",
+      "changelog": "Add modular notify system",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.3",
+      "date": "2025-06-11",
+      "changelog": "Fix man and help clickable cmd",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.2",
+      "date": "2025-06-09",
+      "changelog": "modif modal is now popup right bottom side",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.1",
+      "date": "2025-06-09",
+      "changelog": "fix modal reset all caches bug",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.0",
+      "date": "2025-06-09",
+      "changelog": "All Better ui",
+      "type": "minor"
+    },
+    {
+      "version": "2.0.21",
+      "date": "2025-06-09",
+      "changelog": "fix paramettre modal size",
+      "type": "patch"
+    },
+    {
+      "version": "2.0.20",
+      "date": "2025-06-09",
+      "changelog": "fix history modal size",
+      "type": "patch"
+    },
+    {
+      "version": "2.0.19",
+      "date": "2025-06-09",
+      "changelog": "fix history modal bug",
+      "type": "patch"
+    },
+    {
+      "version": "2.0.18",
+      "date": "2025-06-09",
+      "changelog": "fix some tab bug",
+      "type": "patch"
+    },
+    {
+      "version": "2.0.17",
+      "date": "2025-06-09",
+      "changelog": "add rename dbl click rename tab",
+      "type": "patch"
+    },
+    {
+      "version": "2.0.16",
+      "date": "2025-06-09",
+      "changelog": "add nbr cmd tab name",
+      "type": "patch"
+    },
+    {
+      "version": "2.0.15",
+      "date": "2025-06-09",
+      "changelog": "add history channel cookie",
+      "type": "patch"
+    },
+    {
+      "version": "2.0.14",
+      "date": "2025-06-09",
+      "changelog": "add tab features",
+      "type": "patch"
+    },
+    {
+      "version": "2.0.13",
+      "date": "2025-06-09",
+      "changelog": "Better clear all caches ui and pass to modal element",
+      "type": "patch"
+    },
+    {
+      "version": "2.0.12",
+      "date": "2025-06-08",
+      "changelog": "Add say cmd = echo cmd",
+      "type": "patch"
+    },
+    {
+      "version": "2.0.11",
+      "date": "2025-06-08",
+      "changelog": "Add better ui for echo",
+      "type": "patch"
+    },
+    {
+      "version": "2.0.10",
+      "date": "2025-06-07",
+      "changelog": "fix cconnect and cdisconnect bug overflow",
+      "type": "patch"
+    },
     {
       "version": "2.0.9",
       "date": "2025-06-07",
-      "changelog": "reboot cmd",
+      "changelog": "add reboot cmd",
       "type": "patch"
     },
     {
       "version": "2.0.8",
       "date": "2025-06-07",
-      "changelog": "genpass cmd",
+      "changelog": "add genpass cmd",
       "type": "patch"
     },
     {
       "version": "2.0.7",
       "date": "2025-06-07",
-      "changelog": "Calc cmd",
+      "changelog": "add calc cmd",
       "type": "patch"
     },
     {
@@ -238,5 +418,5 @@
       "type": "patch"
     }
   ],
-  "buildDate": "2025-06-07"
+  "buildDate": "2025-06-11"
 }

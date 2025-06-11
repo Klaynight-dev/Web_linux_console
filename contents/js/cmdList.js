@@ -111,11 +111,14 @@ const COMMAND_METADATA = {
     // Utilitaires
     echo: {
         category: 'Utilitaires',
-        description: 'Affiche le texte donné',
+        description: 'Affiche un message dans la console',
         synopsis: 'echo',
-        helpOption: "<texte>",
-        options: [],
-        examples: ['echo "Hello World"', 'echo $HOME']
+        helpOption: "<message>",
+        options: [
+            '-o : affiche en version "old" (ancienne)',
+            '-- old : affiche en version "old" (ancienne)',
+        ],
+        examples: ['echo "Hello World"', 'echo -n "No newline"']
     },
     clear: {
         category: 'Utilitaires',
@@ -286,6 +289,14 @@ const COMMAND_METADATA = {
         ],
         examples: ['genpass', 'genpass -l 16', 'genpass -s']
     },
+    fullscreen: {
+        category: 'Utilitaires',
+        description: 'Bascule en mode plein écran',
+        synopsis: 'fullscreen',
+        helpOption: "None",
+        options: [],
+        examples: ['fullscreen']
+    },
 
     // Système & Processus
     ps: {
@@ -358,6 +369,28 @@ const COMMAND_METADATA = {
         options: [],
         examples: ['reboot']
     },
+    notify: {
+        category: 'Système & Processus',
+        description: 'Affiche une notification système',
+        synopsis: 'notify',
+        helpOption: "[options] <message>",
+        options: [
+            '-t, --type TYPE : type de notification (info, success, warning, error)',
+            '-T, --title TITRE : titre personnalisé de la notification',
+            '-d, --duration MS : durée d\'affichage en millisecondes (0 = permanent)',
+            '-p, --persistent : notification permanente (équivalent à -d 0)',
+            '-a, --action TEXT : ajouter un bouton d\'action',
+            '-h, --help : afficher cette aide et quitter'
+        ],
+        examples: [
+            'notify "Hello World"',
+            'notify -t success "Opération réussie"',
+            'notify -t error -T "Erreur" "Problème"',
+            'notify -p "Message permanent"',
+            'notify -d 10000 "10 secondes"',
+            'notify -a "OK" "Avec bouton"'
+        ]
+    },
 
     // Gestion Internet
     lshw: {
@@ -403,16 +436,6 @@ const COMMAND_METADATA = {
             '-v : mode verbeux'
         ],
         examples: ['curl https://api.example.com', 'curl -I https://google.com']
-    },
-
-    // Importation de commandes
-    listCommands: {
-        category: 'Importation de commandes',
-        description: 'Liste toutes les commandes disponibles',
-        synopsis: 'listCommands',
-        helpOption: "None",
-        options: [],
-        examples: ['listCommands']
     },
 
     // Gestion du cache
@@ -473,7 +496,75 @@ const COMMAND_METADATA = {
         helpOption: "None",
         options: ['q : quitter la simulation'],
         examples: ['cmatrix']
-    }
+    },
+
+
+    // Interface
+    newtab: {
+        category: 'Interface',
+        description: 'Créer un nouvel onglet',
+        synopsis: 'newtab [titre]',
+        helpOption: '--help',
+        options: [
+            '[titre] - titre optionnel pour le nouvel onglet'
+        ],
+        examples: [
+            'newtab',
+            'newtab "Serveur Web"',
+            'newtab Development'
+        ]
+    },
+    
+    closetab: {
+        category: 'Interface',
+        description: 'Fermer un onglet',
+        synopsis: 'closetab [numéro]',
+        helpOption: '--help',
+        options: [
+            '[numéro] - numéro de l\'onglet à fermer (par défaut: onglet actuel)'
+        ],
+        examples: [
+            'closetab',
+            'closetab 2'
+        ]
+    },
+    
+    renametab: {
+        category: 'Interface',
+        description: 'Renommer l\'onglet actuel',
+        synopsis: 'renametab <nouveau nom>',
+        helpOption: '--help',
+        options: [
+            '<nouveau nom> - nouveau nom pour l\'onglet'
+        ],
+        examples: [
+            'renametab "Mon Terminal"',
+            'renametab Production'
+        ]
+    },
+    
+    listtabs: {
+        category: 'Interface',
+        description: 'Lister tous les onglets',
+        synopsis: 'listtabs',
+        helpOption: '--help',
+        options: [],
+        examples: ['listtabs']
+    },
+    
+    switchtab: {
+        category: 'Interface',
+        description: 'Basculer vers un onglet spécifique',
+        synopsis: 'switchtab <numéro>',
+        helpOption: '--help',
+        options: [
+            '<numéro> - numéro de l\'onglet (1-N)'
+        ],
+        examples: [
+            'switchtab 1',
+            'switchtab 3'
+        ]
+    },
 };
 
 // --- Helper Functions for Command Display ---
@@ -503,6 +594,7 @@ const commandHelpers = {
     // Ordre des catégories pour l'affichage
     getCategoryOrder() {
         return [
+            'Interface',
             'Navigation',
             'Fichiers & Dossiers', 
             'Utilitaires',
@@ -517,6 +609,7 @@ const commandHelpers = {
     // Icônes pour les catégories
     getCategoryIcon(category) {
         const icons = {
+            'Interface': '🖱️',
             'Navigation': '🗂️',
             'Fichiers & Dossiers': '📁',
             'Utilitaires': '🛠️',
