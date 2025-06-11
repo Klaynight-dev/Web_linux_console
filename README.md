@@ -59,7 +59,7 @@ Console Linux Web (CLK) est une console Linux interactive entièrement développ
 
 ## 🎮 Démo en ligne
 
-Essayez la console directement : [Demo Live](https://votre-demo-url.com)
+Essayez la console directement : [Demo Live](http://console.klaynight.fr/)
 
 ## 📥 Installation
 
