@@ -1,8 +1,14 @@
 {
-  "version": "2.1.21",
+  "version": "2.1.22",
   "date": "2025-06-12",
-  "changelog": "Fix versioning bug",
+  "changelog": "New logo",
   "history": [
+    {
+      "version": "2.1.22",
+      "date": "2025-06-12",
+      "changelog": "New logo",
+      "type": "patch"
+    },
     {
       "version": "2.1.21",
       "date": "2025-06-12",
