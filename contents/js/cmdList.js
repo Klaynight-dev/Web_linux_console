@@ -391,6 +391,14 @@ const COMMAND_METADATA = {
             'notify -a "OK" "Avec bouton"'
         ]
     },
+    checkFile: {
+        category: 'Système & Processus',
+        description: 'Vérifie l\'existence d\'un fichier',
+        synopsis: 'checkFile',
+        helpOption: "<fichier>",
+        options: [],
+        examples: ['checkFile mon_fichier.txt', 'checkFile /chemin/vers/fichier']
+    },
 
     // Gestion Internet
     lshw: {

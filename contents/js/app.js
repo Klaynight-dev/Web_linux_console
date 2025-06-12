@@ -125,6 +125,8 @@ const app = {
         // Charger les onglets depuis les cookies
         this.loadTabsFromCookie();
 
+        this.initFileSystem();
+
         if (this.newTabButton) {
             this.newTabButton.addEventListener('click', this.createNewTab.bind(this));
         }
@@ -1768,6 +1770,7 @@ const app = {
                 this.addOutput('edit: manque un nom de fichier', 'error');
                 return;
             }
+            
             const fileName = args[0].trim();
             const targetPath = this.resolvePath(fileName);
             const targetNode = this.getPath(targetPath);
@@ -1781,115 +1784,7 @@ const app = {
                 return;
             }
 
-            // Crée le modal si pas déjà présent
-            let modal = document.getElementById('edit-modal');
-            if (!modal) {
-                modal = document.createElement('div');
-                modal.id = 'edit-modal';
-                modal.className = 'fixed inset-0 flex items-center justify-center bg-black bg-opacity-60 z-50';
-                modal.innerHTML = `
-            <div class="bg-gray-900 rounded-xl shadow-2xl p-8 w-full max-w-2xl relative border border-blue-700">
-                <button id="edit-close-x" class="absolute top-3 right-4 text-gray-400 hover:text-white text-2xl font-bold transition-colors duration-150">&times;</button>
-                <div class="mb-4 flex flex-wrap gap-2 items-center">
-                <button type="button" id="edit-bold-btn" class="px-3 py-1 bg-blue-700 text-white rounded-lg shadow hover:bg-blue-600 transition">Gras</button>
-                <button type="button" id="edit-italic-btn" class="px-3 py-1 bg-blue-700 text-white rounded-lg shadow hover:bg-blue-600 transition">Italique</button>
-                <button type="button" id="edit-underline-btn" class="px-3 py-1 bg-blue-700 text-white rounded-lg shadow hover:bg-blue-600 transition">Souligné</button>
-                <button type="button" id="edit-removeformat-btn" class="px-3 py-1 bg-gray-700 text-white rounded-lg shadow hover:bg-gray-600 transition">Effacer format</button>
-                <input type="color" id="edit-color-picker" title="Couleur du texte" class="w-8 h-8 align-middle ml-3 border-2 border-blue-700 rounded-full shadow">
-                <select id="edit-font-size-picker" class="ml-2 px-2 py-1 rounded-lg bg-gray-800 text-white border border-blue-700 shadow">
-                    <option value="2">Petit</option>
-                    <option value="3" selected>Moyen</option>
-                    <option value="4">Grand</option>
-                    <option value="5">Très grand</option>
-                </select>
-                </div>
-                <div id="edit-rich-text-editor" contenteditable="true" class="bg-gray-950 text-white border border-blue-700 rounded-lg p-4 h-60 mb-6 focus:outline-none shadow-inner transition overflow-y-auto resize-none"></div>
-                <div class="flex gap-3 justify-end">
-                <button id="edit-save-btn" class="px-5 py-2 bg-gradient-to-r from-blue-600 to-blue-400 text-white rounded-lg shadow-lg hover:from-blue-700 hover:to-blue-500 font-semibold transition">💾 Enregistrer</button>
-                <button id="edit-exit-btn" class="px-5 py-2 bg-gray-700 text-white rounded-lg shadow hover:bg-gray-600 font-semibold transition">Quitter</button>
-                </div>
-            </div>
-            `;
-                document.body.appendChild(modal);
-            }
-            modal.classList.remove('hidden');
-
-            // Remplit l'éditeur avec le contenu du fichier
-            document.getElementById('edit-rich-text-editor').innerHTML = targetNode.content;
-
-            // Ajoute les fonctionnalités avancées
-            setTimeout(() => {
-                const editor = document.getElementById('edit-rich-text-editor');
-                const colorPicker = document.getElementById('edit-color-picker');
-                const fontSizePicker = document.getElementById('edit-font-size-picker');
-
-                document.getElementById('edit-bold-btn').onclick = (ev) => {
-                    ev.preventDefault();
-                    document.execCommand('bold', false, null);
-                };
-                document.getElementById('edit-italic-btn').onclick = (ev) => {
-                    ev.preventDefault();
-                    document.execCommand('italic', false, null);
-                };
-                document.getElementById('edit-underline-btn').onclick = (ev) => {
-                    ev.preventDefault();
-                    document.execCommand('underline', false, null);
-                };
-                document.getElementById('edit-removeformat-btn').onclick = (ev) => {
-                    ev.preventDefault();
-                    document.execCommand('removeFormat', false, null);
-                };
-
-                colorPicker.addEventListener('input', function () {
-                    const color = this.value;
-                    if (window.getSelection) {
-                        const sel = window.getSelection();
-                        if (sel.rangeCount) {
-                            const range = sel.getRangeAt(0);
-                            const span = document.createElement('span');
-                            span.style.color = color;
-                            span.appendChild(range.extractContents());
-                            range.insertNode(span);
-                        }
-                    }
-                });
-
-                fontSizePicker.addEventListener('change', function () {
-                    const sizeMap = { '2': '12px', '3': '16px', '4': '20px', '5': '24px' };
-                    const size = sizeMap[this.value] || '16px';
-                    if (window.getSelection) {
-                        const sel = window.getSelection();
-                        if (sel.rangeCount) {
-                            const range = sel.getRangeAt(0);
-                            const span = document.createElement('span');
-                            span.style.fontSize = size;
-                            span.appendChild(range.extractContents());
-                            range.insertNode(span);
-                        }
-                    }
-                });
-
-                // Save
-                document.getElementById('edit-save-btn').onclick = () => {
-                    targetNode.content = editor.innerHTML;
-                    app.saveFileSystemToCookie();
-                    modal.classList.add('hidden');
-                    app.addOutput(`Fichier <span class="text-blue-400">${fileName}</span> enregistré.`, 'system');
-                    app.updatePrompt();
-                    app.commandInputElement.focus();
-                };
-                // Exit
-                const closeModal = () => {
-                    modal.classList.add('hidden');
-                    app.addOutput('Édition annulée.', 'system');
-                    app.updatePrompt();
-                    app.commandInputElement.focus();
-                };
-                document.getElementById('edit-exit-btn').onclick = closeModal;
-                document.getElementById('edit-close-x').onclick = closeModal;
-
-                editor.focus();
-            }, 0);
+            this.openRichTextEditor(fileName, targetNode);
         },
         github: async function () {
             const loadingAnimation = this.createLoadingAnimation({
@@ -5347,8 +5242,457 @@ ${bottomBorder}
             // Confirmer dans la console
             const durationText = duration === 0 ? 'permanente' : `${duration}ms`;
             this.addOutput(`📱 Notification ${notificationType} affichée (durée: ${durationText})`, 'system');
+        },
+
+        checkfile(args) {
+            if (!args || args.length === 0) {
+                this.addOutput('checkfile: manque un nom de fichier', 'error');
+                return;
+            }
+            
+            const fileName = args[0].trim();
+            this.checkFileContent(fileName);
+        },
+
+    },
+
+    // Nouvelle fonction helper pour l'éditeur
+    openRichTextEditor(fileName, targetNode) {
+        let modal = document.getElementById('edit-modal');
+        if (!modal) {
+        modal = this.createEditorModal();
+        document.body.appendChild(modal);
+        }
+        
+        modal.classList.remove('hidden');
+        this.setupEditorContent(fileName, targetNode);
+        
+        // Setup handlers with safety check
+        this.setupFormattingButtons();
+        
+        // Check if setupActionButtons exists before calling it
+        if (typeof this.setupActionButtons === 'function') {
+            this.setupActionButtons(fileName, targetNode, modal);
+        } else {
+            console.error('setupActionButtons n\'est pas définie');
+            // Fallback pour les boutons
+            const saveBtn = document.getElementById('edit-save-btn');
+            const exitBtn = document.getElementById('edit-exit-btn');
+            const closeBtn = document.getElementById('edit-close-x');
+            
+            if (saveBtn) {
+                saveBtn.onclick = () => {
+                    const editor = document.getElementById('edit-rich-text-editor');
+                    if (editor) {
+                        targetNode.content = editor.innerHTML;
+                        this.saveFileSystemToCookie();
+                        this.saveCurrentTabState();
+                        this.addOutput(`✅ Fichier "${fileName}" sauvegardé`, 'system');
+                        modal.classList.add('hidden');
+                        this.commandInputElement.focus();
+                    }
+                };
+            }
+            
+            // Fallback for close buttons
+            const closeEditor = () => {
+                modal.classList.add('hidden');
+                this.commandInputElement.focus();
+            };
+            
+            if (exitBtn) exitBtn.onclick = closeEditor;
+            if (closeBtn) closeBtn.onclick = closeEditor;
+        }
+        
+        // Setup keyboard shortcuts
+        this.setupKeyboardShortcuts(fileName, targetNode, modal);
+        
+        // Focus the editor
+        const editor = document.getElementById('edit-rich-text-editor');
+        if (editor) {
+            editor.focus();
+        }
+    },
+
+    // Fonction pour créer le modal d'éditeur
+    createEditorModal() {
+        const modal = document.createElement('div');
+        modal.id = 'edit-modal';
+        modal.className = 'fixed inset-0 flex items-center justify-center bg-black/70 backdrop-blur-sm z-50 p-4';
+        modal.innerHTML = this.getEditorModalHTML();
+        return modal;
+    },
+
+    // HTML du modal (séparé pour plus de lisibilité)
+    getEditorModalHTML() {
+        return `
+        <div class="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl p-6 w-full max-w-4xl relative border border-gray-600/50 backdrop-blur-md">
+            ${this.createEditorHeader()}
+            ${this.createEditorToolbar()}
+            ${this.createEditorTextArea()}
+            ${this.createEditorFooter()}
+        </div>
+        `;
+    },
+
+    // Header de l'éditeur
+    createEditorHeader() {
+        return `
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+            </div>
+            <div>
+                <h2 class="text-xl font-bold text-white">Éditeur de texte</h2>
+                <p class="text-gray-400 text-sm" id="edit-filename-display">Modifiez votre fichier</p>
+            </div>
+            </div>
+            <button id="edit-close-x" class="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-700/50 hover:bg-red-500/20 text-gray-400 hover:text-red-400 transition-all duration-200">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+            </button>
+        </div>
+        `;
+    },
+
+    // Toolbar de l'éditeur
+    createEditorToolbar() {
+        const tools = [
+        { id: 'bold', icon: 'B', title: 'Gras (Ctrl+B)', class: 'font-bold' },
+        { id: 'italic', icon: 'I', title: 'Italique (Ctrl+I)', class: 'italic' },
+        { id: 'underline', icon: 'U', title: 'Souligné (Ctrl+U)', class: 'underline' }
+        ];
+
+        const toolButtons = tools.map(tool => `
+        <button type="button" id="edit-${tool.id}-btn" title="${tool.title}" 
+            class="px-3 py-2 text-gray-300 hover:text-white hover:bg-blue-600 rounded-md transition-all duration-200 ${tool.class}">
+            ${tool.icon}
+        </button>
+        `).join('');
+
+        return `
+        <div class="bg-gray-800/50 rounded-xl p-3 mb-4 border border-gray-600/30">
+            <div class="flex flex-wrap gap-2 items-center">
+            <div class="flex items-center bg-gray-700/50 rounded-lg p-1 space-x-1">
+                ${toolButtons}
+            </div>
+            <div class="w-px h-6 bg-gray-600"></div>
+            ${this.createColorAndSizeControls()}
+            <div class="w-px h-6 bg-gray-600"></div>
+            <button type="button" id="edit-removeformat-btn" title="Effacer le formatage" 
+                class="px-3 py-2 bg-gray-700/50 hover:bg-red-500/20 text-gray-300 hover:text-red-400 rounded-lg transition-all duration-200">
+                🗑️ Effacer
+            </button>
+            </div>
+        </div>
+        `;
+    },
+
+    // Contrôles de couleur et taille
+    createColorAndSizeControls() {
+        return `
+        <div class="flex items-center space-x-2">
+            <label class="text-gray-400 text-sm">Couleur:</label>
+            <input type="color" id="edit-color-picker" value="#ffffff" 
+            class="w-8 h-8 rounded border border-gray-600 cursor-pointer">
+        </div>
+        <div class="flex items-center space-x-2">
+            <label class="text-gray-400 text-sm">Taille:</label>
+            <select id="edit-font-size-picker" class="px-2 py-1 rounded bg-gray-700 text-white border border-gray-600 text-sm">
+            <option value="1">Petit</option>
+            <option value="3" selected>Normal</option>
+            <option value="5">Grand</option>
+            </select>
+        </div>
+        `;
+    },
+
+    // Zone de texte de l'éditeur
+    createEditorTextArea() {
+        return `
+        <div class="relative mb-4">
+            <div id="edit-rich-text-editor" contenteditable="true" 
+            class="bg-gray-900/50 text-white border border-gray-600/50 rounded-xl p-4 h-64 focus:outline-none focus:border-blue-500 transition-all duration-200 overflow-y-auto"
+            style="min-height: 256px; line-height: 1.5;">
+            </div>
+            <div class="absolute bottom-2 right-2 bg-gray-800/80 rounded px-2 py-1 text-xs text-gray-400">
+            <span id="edit-char-count">0 caractères</span>
+            </div>
+        </div>
+        `;
+    },
+
+    // Footer avec boutons
+    createEditorFooter() {
+        return `
+        <div class="flex justify-between items-center">
+            <div class="text-xs text-gray-400 flex items-center space-x-1">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <span>Ctrl+S pour sauvegarder • Échap pour quitter</span>
+            </div>
+            <div class="flex gap-2">
+            <button id="edit-exit-btn" 
+                class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all duration-200">
+                ❌ Annuler
+            </button>
+            <button id="edit-save-btn" 
+                class="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition-all duration-200">
+                💾 Enregistrer
+            </button>
+            </div>
+        </div>
+        `;
+    },
+
+    // Configuration du contenu de l'éditeur
+    setupEditorContent(fileName, targetNode) {
+        const editor = document.getElementById('edit-rich-text-editor');
+        const filenameDisplay = document.getElementById('edit-filename-display');
+        const charCount = document.getElementById('edit-char-count');
+
+        editor.innerHTML = targetNode.content;
+        filenameDisplay.textContent = `Édition de: ${fileName}`;
+        
+        // Compteur de caractères
+        const updateCharCount = () => {
+        const text = editor.textContent || editor.innerText || '';
+        charCount.textContent = `${text.length} caractères`;
+        };
+        
+        editor.addEventListener('input', updateCharCount);
+        updateCharCount();
+    },
+
+    // Configuration des gestionnaires d'événements
+    setupEditorHandlers(fileName, targetNode, modal) {
+        const editor = document.getElementById('edit-rich-text-editor');
+        
+        // Boutons de formatage
+        this.setupFormattingButtons();
+        
+        // Boutons d'action
+        this.setupActionButtons(fileName, targetNode, modal);
+        
+        // Raccourcis clavier
+        this.setupKeyboardShortcuts(fileName, targetNode, modal);
+        
+        editor.focus();
+    },
+
+    // Configuration des boutons de formatage
+    setupFormattingButtons() {
+        const buttons = [
+        { id: 'edit-bold-btn', command: 'bold' },
+        { id: 'edit-italic-btn', command: 'italic' },
+        { id: 'edit-underline-btn', command: 'underline' },
+        { id: 'edit-removeformat-btn', command: 'removeFormat' }
+        ];
+
+        buttons.forEach(({ id, command }) => {
+        const btn = document.getElementById(id);
+        if (btn) {
+            btn.onclick = (e) => {
+            e.preventDefault();
+            document.execCommand(command, false, null);
+            };
+        }
+        });
+
+        // Gestion des couleurs et tailles
+        this.setupColorAndSizeHandlers();
+    },
+
+    // Gestion couleur et taille
+    setupColorAndSizeHandlers() {
+        const colorPicker = document.getElementById('edit-color-picker');
+        const fontSizePicker = document.getElementById('edit-font-size-picker');
+
+        if (colorPicker) {
+        colorPicker.addEventListener('change', function() {
+            document.execCommand('foreColor', false, this.value);
+        });
         }
 
+        if (fontSizePicker) {
+        fontSizePicker.addEventListener('change', function() {
+            document.execCommand('fontSize', false, this.value);
+        });
+        }
+    },
+
+    saveFileSystemToLocalStorage() {
+        try {
+            const fileSystemData = JSON.stringify(this.fileSystem);
+            localStorage.setItem('console_linux_filesystem', fileSystemData);
+            localStorage.setItem('console_linux_filesystem_timestamp', Date.now().toString());
+            console.log('Système de fichiers sauvegardé dans localStorage');
+            return true;
+        } catch (error) {
+            console.error('Erreur lors de la sauvegarde dans localStorage:', error);
+            return false;
+        }
+    },
+
+    loadFileSystemFromLocalStorage() {
+        try {
+            const fileSystemData = localStorage.getItem('console_linux_filesystem');
+            if (fileSystemData) {
+                this.fileSystem = JSON.parse(fileSystemData);
+                console.log('Système de fichiers chargé depuis localStorage');
+                return true;
+            }
+        } catch (error) {
+            console.error('Erreur lors du chargement depuis localStorage:', error);
+        }
+        return false;
+    },
+
+    // Boutons d'action (Sauvegarder/Annuler)
+    setupActionButtons(fileName, targetNode, modal) {
+        const saveBtn = document.getElementById('edit-save-btn');
+        const exitBtn = document.getElementById('edit-exit-btn');
+        const closeBtn = document.getElementById('edit-close-x');
+
+        const saveFile = () => {
+            const editor = document.getElementById('edit-rich-text-editor');
+            if (!editor) {
+                console.error('Éditeur non trouvé');
+                return;
+            }
+
+            // CORRECTION: Sauvegarder le contenu dans le nœud
+            targetNode.content = editor.innerHTML;
+            
+            // CORRECTION: Sauvegarder immédiatement dans le localStorage/cookie
+            this.saveFileSystemToLocalStorage();
+            
+            // CORRECTION: Sauvegarder aussi dans les cookies comme backup
+            this.saveFileSystemToCookie();
+            
+            // Notification de succès
+            this.showNotification({
+                type: 'success',
+                title: '💾 Fichier sauvegardé',
+                message: `${fileName} a été enregistré avec succès`,
+                duration: 3000
+            });
+            
+            // Confirmer dans la console
+            this.addOutput(`<span class="text-green-400">✅ Fichier "${fileName}" sauvegardé avec succès</span>`, 'system');
+            
+            this.closeEditor(modal);
+        };
+
+        const closeEditor = () => {
+            this.closeEditor(modal);
+            this.addOutput('Édition annulée.', 'system');
+        };
+
+        // CORRECTION: Supprimer les doublons - utiliser seulement onclick OU addEventListener, pas les deux
+        if (saveBtn) {
+            saveBtn.onclick = saveFile;
+            // SUPPRIMER cette ligne qui crée le doublon :
+            // saveBtn.addEventListener('click', saveFile);
+        }
+        if (exitBtn) {
+            exitBtn.onclick = closeEditor;
+            // SUPPRIMER cette ligne qui crée le doublon :
+            // exitBtn.addEventListener('click', closeEditor);
+        }
+        if (closeBtn) {
+            closeBtn.onclick = closeEditor;
+            // SUPPRIMER cette ligne qui crée le doublon :
+            // closeBtn.addEventListener('click', closeEditor);
+        }
+    },
+    
+    // Raccourcis clavier
+    setupKeyboardShortcuts(fileName, targetNode, modal) {
+        const handleKeydown = (e) => {
+            if (e.ctrlKey || e.metaKey) {
+                switch (e.key.toLowerCase()) {
+                    case 's':
+                        e.preventDefault();
+                        // CORRECTION: Déclencher la sauvegarde via le bouton pour assurer la cohérence
+                        const saveBtn = document.getElementById('edit-save-btn');
+                        if (saveBtn) {
+                            saveBtn.click();
+                        }
+                        break;
+                    case 'b':
+                        e.preventDefault();
+                        document.getElementById('edit-bold-btn').click();
+                        break;
+                    case 'i':
+                        e.preventDefault();
+                        document.getElementById('edit-italic-btn').click();
+                        break;
+                    case 'u':
+                        e.preventDefault();
+                        document.getElementById('edit-underline-btn').click();
+                        break;
+                }
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                document.getElementById('edit-exit-btn').click();
+            }
+        };
+
+        document.addEventListener('keydown', handleKeydown);
+        
+        // Nettoyer l'écouteur quand le modal se ferme
+        modal.addEventListener('transitionend', () => {
+            if (modal.classList.contains('hidden')) {
+                document.removeEventListener('keydown', handleKeydown);
+            }
+        });
+    },
+
+    initFileSystem() {
+        // Essayer de charger depuis localStorage d'abord
+        if (this.loadFileSystemFromLocalStorage()) {
+            console.log('Système de fichiers chargé depuis localStorage');
+            return;
+        }
+        
+        // Sinon essayer les cookies
+        if (this.loadFileSystemFromCookie()) {
+            console.log('Système de fichiers chargé depuis les cookies');
+            return;
+        }
+        
+        console.log('Utilisation du système de fichiers par défaut');
+    },
+
+    checkFileContent(fileName) {
+        const targetPath = this.resolvePath(fileName);
+        const targetNode = this.getPath(targetPath);
+        
+        if (targetNode && targetNode.type === 'file') {
+            this.addOutput(`<div class="bg-blue-900/20 border border-blue-500 rounded-lg p-3 mt-2">
+                <div class="text-blue-400 font-bold mb-2">📄 Contenu actuel de "${fileName}":</div>
+                <div class="bg-gray-800/50 p-2 rounded text-sm">
+                    ${targetNode.content || '<span class="text-gray-400">Fichier vide</span>'}
+                </div>
+            </div>`, 'system');
+        } else {
+            this.addOutput(`Fichier "${fileName}" non trouvé`, 'error');
+        }
+    },
+
+    
+
+    // Fermeture de l'éditeur
+    closeEditor(modal) {
+        modal.classList.add('hidden');
+        this.updatePrompt();
+        this.commandInputElement.focus();
     },
 
     // --- Système de notifications popup à droite ---
@@ -5939,7 +6283,32 @@ ${bottomBorder}
         }
     },
     saveFileSystemToCookie() {
-        document.cookie = `filesystem=${encodeURIComponent(JSON.stringify(this.fileSystem))};path=/;max-age=31536000`;
+        try {
+            const fileSystemData = JSON.stringify(this.fileSystem);
+            const compressedData = btoa(fileSystemData);
+            
+            // Diviser en chunks si trop gros
+            const maxCookieSize = 4000; // Limite de sécurité pour les cookies
+            const chunks = [];
+            
+            for (let i = 0; i < compressedData.length; i += maxCookieSize) {
+                chunks.push(compressedData.slice(i, i + maxCookieSize));
+            }
+            
+            // Sauvegarder le nombre de chunks
+            document.cookie = `console_filesystem_chunks=${chunks.length};path=/;max-age=${365*24*60*60}`;
+            
+            // Sauvegarder chaque chunk
+            chunks.forEach((chunk, index) => {
+                document.cookie = `console_filesystem_${index}=${chunk};path=/;max-age=${365*24*60*60}`;
+            });
+            
+            console.log(`Système de fichiers sauvegardé dans ${chunks.length} cookies`);
+            return true;
+        } catch (error) {
+            console.error('Erreur lors de la sauvegarde dans les cookies:', error);
+            return false;
+        }
     },
     loadFileSystemFromCookie() {
         const match = document.cookie.match(/(?:^|;\s*)filesystem=([^;]*)/);

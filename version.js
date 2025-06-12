@@ -8,7 +8,7 @@ function createVersionFileIfNotExists() {
     if (!fs.existsSync(versionFile)) {
         const initialVersion = {
             version: '1.0.0',
-            buildDate: new Date().toISOString().split('T')[0],
+            date: new Date().toISOString().split('T')[0],
             changelog: 'Version initiale',
             history: [{
                 version: '1.0.0',
@@ -55,7 +55,7 @@ function updateVersion(type = 'patch', changelog) {
     // Mettre à jour version.json avec le changelog
     const currentDate = new Date().toISOString().split('T')[0];
     versionData.version = newVersion;
-    versionData.buildDate = currentDate;
+    versionData.date = currentDate; // Changé de buildDate à date
     versionData.changelog = changelog;
     
     // Ajouter l'historique des versions

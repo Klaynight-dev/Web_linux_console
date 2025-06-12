@@ -1,8 +1,32 @@
 {
-  "version": "2.1.17",
-  "date": "2025-06-11",
-  "changelog": "Ajout de la commande de dev notify",
+  "version": "2.1.21",
+  "date": "2025-06-12",
+  "changelog": "Fix versioning bug",
   "history": [
+    {
+      "version": "2.1.21",
+      "date": "2025-06-12",
+      "changelog": "Fix versioning bug",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.20",
+      "date": "2025-06-12",
+      "changelog": "Fix link html prblm",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.19",
+      "date": "2025-06-12",
+      "changelog": "Fix edit save file prblm",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.18",
+      "date": "2025-06-12",
+      "changelog": "Better UI for edit",
+      "type": "patch"
+    },
     {
       "version": "2.1.17",
       "date": "2025-06-11",
@@ -418,5 +442,5 @@
       "type": "patch"
     }
   ],
-  "buildDate": "2025-06-11"
+  "buildDate": "2025-06-12"
 }
