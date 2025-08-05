@@ -247,7 +247,6 @@ const app = {
 
         // Charger les informations de version
         this.loadVersionInfo();
-        this.populateBinDirectory();
         this.updateWindowTitle();
 
         // Initialiser la gestion de l'écran pour mobile
@@ -266,6 +265,13 @@ const app = {
         
         // Charger les commandes désactivées
         this.loadDisabledCommands();
+        
+        // Peupler le répertoire bin après que tous les imports soient chargés
+        // Utiliser un délai plus long pour s'assurer que tous les modules sont chargés
+        setTimeout(() => {
+            console.log('Attempting to populate bin directory...');
+            this.populateBinDirectory();
+        }, 100);
     },
 
     // Méthodes pour gérer les commandes désactivées
@@ -311,6 +317,17 @@ const app = {
 
     // Modal pour gérer les commandes
     showCommandManagerModal() {
+        // Vérifier si COMMAND_METADATA est disponible
+        if (typeof COMMAND_METADATA === 'undefined' || !COMMAND_METADATA) {
+            this.showNotification({
+                type: 'error',
+                title: 'Erreur',
+                message: 'Les métadonnées des commandes ne sont pas encore chargées. Veuillez réessayer dans quelques instants.',
+                duration: 3000
+            });
+            return;
+        }
+        
         // Collecter toutes les commandes disponibles
         const allCommands = new Map();
         
@@ -586,6 +603,17 @@ const app = {
     },
 
     showCommandInfoModal(commandName) {
+        // Vérifier si COMMAND_METADATA est disponible
+        if (typeof COMMAND_METADATA === 'undefined' || !COMMAND_METADATA) {
+            this.showNotification({
+                type: 'error',
+                title: 'Erreur',
+                message: 'Les métadonnées des commandes ne sont pas encore chargées. Veuillez réessayer dans quelques instants.',
+                duration: 3000
+            });
+            return;
+        }
+        
         // Obtenir les métadonnées de la commande
         let metadata = COMMAND_METADATA[commandName];
         let isPluginCommand = false;
@@ -816,27 +844,49 @@ const app = {
     },
 
     generateBinCommands() {
-        const commands = COMMAND_METADATA;
-        const binCommands = {};
+        // Vérifier si COMMAND_METADATA est disponible
+        if (typeof COMMAND_METADATA === 'undefined' || !COMMAND_METADATA) {
+            console.warn('COMMAND_METADATA not available yet, skipping bin commands generation');
+            return {};
+        }
         
-        Object.keys(commands).forEach(commandName => {
-            binCommands[commandName] = {
-                type: 'file',
-                content: `Executable: ${commandName}`
-            };
-        });
-        
-        return binCommands;
+        try {
+            const commands = COMMAND_METADATA;
+            const binCommands = {};
+            
+            Object.keys(commands).forEach(commandName => {
+                binCommands[commandName] = {
+                    type: 'file',
+                    content: `Executable: ${commandName}`
+                };
+            });
+            
+            return binCommands;
+        } catch (error) {
+            console.error('Error generating bin commands:', error);
+            return {};
+        }
     },
 
     populateBinDirectory() {
-        const binCommands = this.generateBinCommands();
-        const binPath = this.getPath('/bin');
+        // Vérifier si COMMAND_METADATA est disponible
+        if (typeof COMMAND_METADATA === 'undefined' || !COMMAND_METADATA) {
+            console.warn('COMMAND_METADATA not available yet, bin directory not populated');
+            return;
+        }
         
-        if (binPath && binPath.type === 'directory') {
-            Object.keys(binCommands).forEach(commandName => {
-                binPath.children[commandName] = binCommands[commandName];
-            });
+        try {
+            const binCommands = this.generateBinCommands();
+            const binPath = this.getPath('/bin');
+            
+            if (binPath && binPath.type === 'directory') {
+                Object.keys(binCommands).forEach(commandName => {
+                    binPath.children[commandName] = binCommands[commandName];
+                });
+                console.log('Bin directory populated with', Object.keys(binCommands).length, 'commands');
+            }
+        } catch (error) {
+            console.error('Error populating bin directory:', error);
         }
     },
 
@@ -8461,12 +8511,22 @@ ${bottomBorder}
 // Rendre l'objet app accessible globalement
 window.app = app;
 
+// Log pour vérifier que app est bien défini
+console.log('App object defined and exposed globally:', typeof window.app !== 'undefined');
+
 // --- Initialize the App ---
 document.addEventListener('DOMContentLoaded', function () {
-    app.init();
-    // Appel initial
-    app.updatePromptDisplay();
+    console.log('DOM loaded, initializing app...');
+    try {
+        app.init();
+        // Appel initial
+        app.updatePromptDisplay();
 
-    // Écoute du redimensionnement
-    window.addEventListener('resize', () => app.updatePromptDisplay());
+        // Écoute du redimensionnement
+        window.addEventListener('resize', () => app.updatePromptDisplay());
+        
+        console.log('App initialized successfully');
+    } catch (error) {
+        console.error('Error initializing app:', error);
+    }
 });
