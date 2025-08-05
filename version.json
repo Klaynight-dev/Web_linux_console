@@ -1,8 +1,26 @@
 {
-  "version": "2.2.6",
+  "version": "2.2.9",
   "date": "2025-08-05",
-  "changelog": "Fix bug man avec les plugins",
+  "changelog": "Fix bug catégorie ouverte mais visuel fermer par default",
   "history": [
+    {
+      "version": "2.2.9",
+      "date": "2025-08-05",
+      "changelog": "Fix bug catégorie ouverte mais visuel fermer par default",
+      "type": "patch"
+    },
+    {
+      "version": "2.2.8",
+      "date": "2025-08-05",
+      "changelog": "Ajout des boutons désactivé tout et activé tout pour chaque catégorie dans le modal gestion des cmds",
+      "type": "patch"
+    },
+    {
+      "version": "2.2.7",
+      "date": "2025-08-05",
+      "changelog": "Ajout des catégorie colapse dans la gestions des cmds",
+      "type": "patch"
+    },
     {
       "version": "2.2.6",
       "date": "2025-08-05",

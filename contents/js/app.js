@@ -370,16 +370,43 @@ const app = {
         let categoriesHtml = '';
         Object.keys(commandsByCategory).sort().forEach(category => {
             const commands = commandsByCategory[category].sort((a, b) => a.name.localeCompare(b.name));
+            const categoryId = category.replace(/\s+/g, '_').toLowerCase();
+            const enabledCommandsInCategory = commands.filter(cmd => this.isCommandEnabled(cmd.name)).length;
+            const totalCommandsInCategory = commands.length;
             
             categoriesHtml += `
-                <div class="mb-6">
-                    <h3 class="text-lg font-bold text-white mb-3 flex items-center">
-                        <svg class="w-5 h-5 mr-2 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
-                        </svg>
-                        ${category}
-                    </h3>
-                    <div class="grid gap-2">
+                <div class="mb-6 category-section" data-category="${category}">
+                    <div class="category-header bg-slate-700/40 border border-slate-600/40 rounded-xl p-4 cursor-pointer hover:bg-slate-600/40 transition-colors" data-target="category-${categoryId}">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <svg class="category-chevron w-5 h-5 mr-3 text-slate-400 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                </svg>
+                                <svg class="w-5 h-5 mr-2 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
+                                </svg>
+                                <h3 class="text-lg font-bold text-white">${category}</h3>
+                                <span class="ml-3 px-2 py-1 bg-slate-600/40 text-slate-300 rounded-lg text-xs font-medium category-count">
+                                    ${enabledCommandsInCategory}/${totalCommandsInCategory}
+                                </span>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button class="category-disable-btn px-3 py-1.5 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg transition-colors text-xs font-medium border border-red-500/30 hover:border-red-500/50" data-category="${category}" title="Désactiver toute la catégorie">
+                                    <svg class="w-3 h-3 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636M5.636 18.364l12.728-12.728"></path>
+                                    </svg>
+                                    Désactiver tout
+                                </button>
+                                <button class="category-enable-btn px-3 py-1.5 bg-green-600/20 hover:bg-green-600/30 text-green-400 rounded-lg transition-colors text-xs font-medium border border-green-500/30 hover:border-green-500/50" data-category="${category}" title="Activer toute la catégorie">
+                                    <svg class="w-3 h-3 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    Activer tout
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="category-${categoryId}" class="category-content mt-3 grid gap-2">
                         ${commands.map(cmd => {
                             const isEnabled = this.isCommandEnabled(cmd.name);
                             const typeColor = cmd.type === 'native' ? 'bg-blue-600/20 text-blue-300 border-blue-500/30' : 'bg-purple-600/20 text-purple-300 border-purple-500/30';
@@ -488,6 +515,19 @@ const app = {
             enabledCountSpan.textContent = allCommands.size - this.disabledCommands.size;
         };
         
+        // Fonction pour mettre à jour le compteur d'une catégorie
+        const updateCategoryCount = (categoryElement) => {
+            const category = categoryElement.dataset.category;
+            const commandItems = categoryElement.querySelectorAll('.command-item');
+            const enabledItems = Array.from(commandItems).filter(item => {
+                const toggle = item.querySelector('.command-toggle');
+                return toggle.classList.contains('enabled');
+            });
+            
+            const countElement = categoryElement.querySelector('.category-count');
+            countElement.textContent = `${enabledItems.length}/${commandItems.length}`;
+        };
+        
         const closeModal = () => {
             modal.remove();
         };
@@ -528,6 +568,9 @@ const app = {
                     textSpan.className = 'text-xs text-red-400 font-medium';
                 }
                 
+                // Mettre à jour le compteur de la catégorie
+                const categoryElement = toggle.closest('.category-section');
+                updateCategoryCount(categoryElement);
                 updateEnabledCount();
                 
                 this.showNotification({
@@ -571,6 +614,11 @@ const app = {
                     textSpan.className = 'text-xs text-green-400 font-medium';
                 });
                 
+                // Mettre à jour tous les compteurs de catégories
+                modal.querySelectorAll('.category-section').forEach(categoryElement => {
+                    updateCategoryCount(categoryElement);
+                });
+                
                 updateEnabledCount();
                 
                 this.showNotification({
@@ -580,6 +628,120 @@ const app = {
                     duration: 2000
                 });
             }
+        });
+        
+        // Gestionnaires pour l'ouverture/fermeture des catégories
+        modal.querySelectorAll('.category-header').forEach(header => {
+            header.addEventListener('click', (e) => {
+                // Ne pas fermer si on clique sur les boutons d'action
+                if (e.target.closest('.category-disable-btn') || e.target.closest('.category-enable-btn')) {
+                    return;
+                }
+                
+                const targetId = header.dataset.target;
+                const content = document.getElementById(targetId);
+                const chevron = header.querySelector('.category-chevron');
+                
+                if (content.style.display === 'none' || content.style.display === '') {
+                    // Ouvrir
+                    content.style.display = 'grid';
+                    chevron.style.transform = 'rotate(90deg)';
+                } else {
+                    // Fermer
+                    content.style.display = 'none';
+                    chevron.style.transform = 'rotate(0deg)';
+                }
+            });
+        });
+        
+        // Gestionnaire pour désactiver toute une catégorie
+        modal.querySelectorAll('.category-disable-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const category = btn.dataset.category;
+                const categoryElement = btn.closest('.category-section');
+                
+                if (confirm(`Êtes-vous sûr de vouloir désactiver toutes les commandes de la catégorie "${category}" ?`)) {
+                    const commandToggles = categoryElement.querySelectorAll('.command-toggle');
+                    
+                    commandToggles.forEach(toggle => {
+                        const commandName = toggle.dataset.command;
+                        this.toggleCommandEnabled(commandName, false);
+                        toggle.classList.remove('enabled');
+                        
+                        // Mettre à jour l'affichage
+                        const commandItem = toggle.closest('.command-item');
+                        const statusContainer = commandItem.querySelector('.flex.items-center.space-x-3.flex-shrink-0 .flex.items-center.space-x-2');
+                        const iconSpan = statusContainer.children[0];
+                        const textSpan = statusContainer.children[1];
+                        
+                        iconSpan.textContent = '✗';
+                        iconSpan.className = 'text-lg text-red-400';
+                        textSpan.textContent = 'DÉSACTIVÉE';
+                        textSpan.className = 'text-xs text-red-400 font-medium';
+                    });
+                    
+                    updateCategoryCount(categoryElement);
+                    updateEnabledCount();
+                    
+                    this.showNotification({
+                        type: 'info',
+                        title: 'Catégorie désactivée',
+                        message: `Toutes les commandes de "${category}" ont été désactivées.`,
+                        duration: 2000
+                    });
+                }
+            });
+        });
+        
+        // Gestionnaire pour activer toute une catégorie
+        modal.querySelectorAll('.category-enable-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const category = btn.dataset.category;
+                const categoryElement = btn.closest('.category-section');
+                const commandToggles = categoryElement.querySelectorAll('.command-toggle');
+                
+                commandToggles.forEach(toggle => {
+                    const commandName = toggle.dataset.command;
+                    this.toggleCommandEnabled(commandName, true);
+                    toggle.classList.add('enabled');
+                    
+                    // Mettre à jour l'affichage
+                    const commandItem = toggle.closest('.command-item');
+                    const statusContainer = commandItem.querySelector('.flex.items-center.space-x-3.flex-shrink-0 .flex.items-center.space-x-2');
+                    const iconSpan = statusContainer.children[0];
+                    const textSpan = statusContainer.children[1];
+                    
+                    iconSpan.textContent = '✓';
+                    iconSpan.className = 'text-lg text-green-400';
+                    textSpan.textContent = 'ACTIVÉE';
+                    textSpan.className = 'text-xs text-green-400 font-medium';
+                });
+                
+                updateCategoryCount(categoryElement);
+                updateEnabledCount();
+                
+                this.showNotification({
+                    type: 'success',
+                    title: 'Catégorie activée',
+                    message: `Toutes les commandes de "${category}" ont été activées.`,
+                    duration: 2000
+                });
+            });
+        });
+        
+        // Mettre à jour les compteurs de catégories et configurer l'état d'ouverture/fermeture
+        modal.querySelectorAll('.category-section').forEach((categoryElement, index) => {
+            updateCategoryCount(categoryElement);
+            
+            const categoryId = categoryElement.querySelector('.category-header').dataset.target;
+            const content = document.getElementById(categoryId);
+            const chevron = categoryElement.querySelector('.category-chevron');
+            
+            // Fermer toutes les catégories par défaut
+            content.style.display = 'none';
+            chevron.style.transform = 'rotate(0deg)';
         });
         
         closeBtn.addEventListener('click', closeModal);
