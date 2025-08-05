@@ -23,6 +23,93 @@
             }
         }
     </script>
+    
+    <style>
+        /* Styles pour le gestionnaire de plugins */
+        .plugin-tab.active-tab {
+            background: linear-gradient(135deg, rgb(147 51 234 / 0.3), rgb(59 130 246 / 0.2));
+            border-color: rgb(147 51 234 / 0.5);
+            color: rgb(196 181 253);
+        }
+        
+        .plugin-content {
+            display: block;
+        }
+        
+        .plugin-content.hidden {
+            display: none;
+        }
+        
+        .plugin-item {
+            transition: all 0.3s ease;
+        }
+        
+        .plugin-item:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.4);
+        }
+        
+        .plugin-toggle {
+            position: relative;
+            width: 48px;
+            height: 24px;
+            background-color: rgb(71 85 105);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        .plugin-toggle.enabled {
+            background-color: rgb(34 197 94);
+        }
+        
+        .plugin-toggle::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.3s ease;
+        }
+        
+        .plugin-toggle.enabled::before {
+            transform: translateX(24px);
+        }
+        
+        /* Styles pour le gestionnaire de commandes */
+        .command-toggle {
+            position: relative;
+            width: 48px;
+            height: 24px;
+            background-color: rgb(71 85 105);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        
+        .command-toggle.enabled {
+            background-color: rgb(34 197 94);
+        }
+        
+        .command-toggle::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.3s ease;
+        }
+        
+        .command-toggle.enabled::before {
+            transform: translateX(24px);
+        }
+    </style>
 
     <!-- SEO Meta Tags -->
     <meta name="description" content="Console Linux Klaynight - Simulateur de terminal Linux interactif dans votre navigateur. Exécutez des commandes, apprenez Linux et explorez un environnement de terminal virtuel.">
@@ -91,18 +178,18 @@
                                 </span>
                             </button>
                             <div id="file-menu-dropdown" class="hidden absolute top-full left-0 mt-3 w-64 bg-slate-800/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-slate-600/40 py-3 z-20 animate-slide-up pr-4">
-                                <button id="import-code-button" class="block w-full text-left px-6 py-4 hover:bg-slate-700/50 text-sm transition-all duration-200 flex items-center group/item rounded-2xl mx-2">
-                                    <div class="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center mr-4 group-hover/item:bg-blue-500/30 transition-colors">
-                                        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+                                <button id="plugin-manager-button" class="block w-full text-left px-6 py-4 hover:bg-slate-700/50 text-sm transition-all duration-200 flex items-center group/item rounded-2xl mx-2">
+                                    <div class="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center mr-4 group-hover/item:bg-purple-500/30 transition-colors">
+                                        <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
                                         </svg>
                                     </div>
                                     <div>
-                                        <div class="font-medium">Importer du code</div>
-                                        <div class="text-xs text-slate-400">Ajouter de nouvelles fonctionnalités</div>
+                                        <div class="font-medium">Gestionnaire de plugins</div>
+                                        <div class="text-xs text-slate-400">Gérer vos extensions personnalisées</div>
                                     </div>
                                 </button>
-                                <button class="block w-full text-left px-6 py-4 hover:bg-slate-700/50 text-sm transition-all duration-200 flex items-center group/item rounded-2xl mx-2" onclick="app.addOutput('Fonctionnalité \"Nouveau fichier\" en cours de développement.'); app.closeAllMenus();">
+                                <button class="block w-full text-left px-6 py-4 hover:bg-slate-700/50 text-sm transition-all duration-200 flex items-center group/item rounded-2xl mx-2" onclick="app.addOutput('Fonctionnalité &quot;Nouveau fichier&quot; en cours de développement.'); app.closeAllMenus();">
                                     <div class="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center mr-4 group-hover/item:bg-green-500/30 transition-colors">
                                         <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
@@ -201,18 +288,18 @@
                                 </span>
                             </button>
                             <div id="help-menu-dropdown" class="hidden absolute top-full left-0 mt-3 w-64 bg-slate-800/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-slate-600/40 py-3 z-20 animate-slide-up pr-4" >
-                                <button class="block w-full text-left px-6 py-4 hover:bg-slate-700/50 text-sm transition-all duration-200 flex items-center group/item rounded-2xl mx-2" onclick="if(app && app.commands && app.commands.help) { app.commands.help.call(app); } app.closeAllMenus();">
-                                    <div class="w-10 h-10 bg-cyan-500/20 rounded-xl flex items-center justify-center mr-4 group-hover/item:bg-cyan-500/30 transition-colors">
-                                        <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                <button class="block w-full text-left px-6 py-4 hover:bg-slate-700/50 text-sm transition-all duration-200 flex items-center group/item rounded-2xl mx-2" onclick="app.showCommandManagerModal(); app.closeAllMenus();">
+                                    <div class="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center mr-4 group-hover/item:bg-green-500/30 transition-colors">
+                                        <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
                                         </svg>
                                     </div>
                                     <div>
-                                        <div class="font-medium">Commandes</div>
-                                        <div class="text-xs text-slate-400">Liste des commandes disponibles</div>
+                                        <div class="font-medium">Gestionnaire de commandes</div>
+                                        <div class="text-xs text-slate-400">Activer/désactiver les commandes</div>
                                     </div>
                                 </button>
-                                <button class="block w-full text-left px-6 py-4 hover:bg-slate-700/50 text-sm transition-all duration-200 flex items-center group/item rounded-2xl mx-2" onclick="document.getElementById('about-modal').classList.remove('hidden'); app.closeAllMenus();">
+                                <button class="block w-full text-left px-6 py-4 hover:bg-slate-700/50 text-sm transition-all duration-200 flex items-center group/item rounded-2xl mx-2" onclick="app.openAboutModal();">
                                     <div class="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center mr-4 group-hover/item:bg-indigo-500/30 transition-colors">
                                         <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -318,6 +405,141 @@
             </div>
         </div>
 
+        <!-- Plugin Manager Modal -->
+        <div id="plugin-manager-modal" class="hidden fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-6">
+            <div class="bg-slate-800/95 backdrop-blur-2xl rounded-3xl shadow-2xl w-full max-w-6xl h-[90vh] border border-slate-600/40 animate-slide-up overflow-hidden">
+                <div class="h-full flex flex-col">
+                    <!-- Header -->
+                    <div class="p-6 border-b border-slate-600/40">
+                        <div class="flex items-center justify-between">
+                            <h2 class="text-2xl font-bold text-white flex items-center">
+                                <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl flex items-center justify-center mr-3 shadow-lg">
+                                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                                    </svg>
+                                </div>
+                                Gestionnaire de Plugins
+                            </h2>
+                            <button id="close-plugin-manager" class="w-8 h-8 bg-slate-600/50 rounded-lg flex items-center justify-center hover:bg-slate-500/60 transition-colors">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Content -->
+                    <div class="flex-1 flex overflow-hidden">
+                        <!-- Sidebar -->
+                        <div class="w-80 bg-slate-700/30 border-r border-slate-600/40 p-4 overflow-y-auto">
+                            <div class="space-y-3">
+                                <button id="plugin-tab-import" class="w-full text-left px-4 py-3 rounded-xl bg-purple-600/20 text-purple-300 border border-purple-500/30 font-medium plugin-tab active-tab">
+                                    📥 Importer un Plugin
+                                </button>
+                                <button id="plugin-tab-manage" class="w-full text-left px-4 py-3 rounded-xl bg-slate-600/20 text-slate-300 border border-slate-500/30 font-medium plugin-tab hover:bg-slate-600/30 transition-colors">
+                                    ⚙️ Gérer les Plugins
+                                </button>
+                                <button id="plugin-tab-export" class="w-full text-left px-4 py-3 rounded-xl bg-slate-600/20 text-slate-300 border border-slate-500/30 font-medium plugin-tab hover:bg-slate-600/30 transition-colors">
+                                    📤 Exporter/Importer Config
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Main Content -->
+                        <div class="flex-1 p-6 overflow-y-auto">
+                            <!-- Import Plugin Tab -->
+                            <div id="plugin-content-import" class="plugin-content">
+                                <div class="mb-6">
+                                    <h3 class="text-xl font-bold text-white mb-2">Importer un nouveau plugin</h3>
+                                    <p class="text-slate-400">Collez le code JavaScript de votre plugin ci-dessous. Le plugin doit exporter des commandes au format CLK.</p>
+                                </div>
+                                
+                                <div class="space-y-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-300 mb-2">Nom du plugin</label>
+                                        <input type="text" id="plugin-name-input" class="w-full bg-slate-700/50 text-white px-4 py-3 rounded-xl border border-slate-600/50 focus:outline-none focus:ring-2 focus:ring-purple-400/50" placeholder="mon_plugin_personnalise">
+                                    </div>
+                                    
+                                    <div>
+                                        <label class="block text-sm font-medium text-slate-300 mb-2">Code du plugin</label>
+                                        <textarea id="plugin-code-input" class="w-full h-64 bg-slate-700/50 text-white p-4 rounded-xl border border-slate-600/50 focus:outline-none focus:ring-2 focus:ring-purple-400/50 resize-none font-mono text-sm" placeholder="module.exports = {
+                                        maCommande: {
+                                            name: 'maCommande',
+                                            description: 'Description de ma commande',
+                                            execute: function(args) {
+                                            // Votre code ici
+                                            this.addOutput('Hello World!');
+                                            }
+                                        }
+                                        };"></textarea>
+                                    </div>
+                                    
+                                    <div class="flex space-x-3">
+                                        <button id="import-plugin-btn" class="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:from-purple-500 hover:to-blue-500 focus:outline-none focus:ring-2 focus:ring-purple-400/50 transition-all duration-300 shadow-lg font-medium">
+                                            Importer le Plugin
+                                        </button>
+                                        <button id="clear-plugin-code-btn" class="px-6 py-3 bg-slate-600/50 text-white rounded-xl hover:bg-slate-500/60 focus:outline-none focus:ring-2 focus:ring-slate-400/50 transition-all duration-300 font-medium">
+                                            Effacer
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Manage Plugins Tab -->
+                            <div id="plugin-content-manage" class="plugin-content hidden">
+                                <div class="mb-6">
+                                    <h3 class="text-xl font-bold text-white mb-2">Plugins installés</h3>
+                                    <p class="text-slate-400">Gérez l'état et les paramètres de vos plugins.</p>
+                                </div>
+                                
+                                <div id="plugins-list" class="space-y-3">
+                                    <!-- Les plugins seront ajoutés dynamiquement ici -->
+                                </div>
+                            </div>
+
+                            <!-- Export/Import Config Tab -->
+                            <div id="plugin-content-export" class="plugin-content hidden">
+                                <div class="mb-6">
+                                    <h3 class="text-xl font-bold text-white mb-2">Configuration des plugins</h3>
+                                    <p class="text-slate-400">Sauvegardez ou restaurez votre configuration de plugins.</p>
+                                </div>
+                                
+                                <div class="space-y-6">
+                                    <div>
+                                        <h4 class="text-lg font-medium text-white mb-3">Exporter la configuration</h4>
+                                        <p class="text-slate-400 text-sm mb-3">Téléchargez un fichier JSON contenant tous vos plugins et paramètres.</p>
+                                        <button id="export-config-btn" class="px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-500 hover:to-emerald-500 focus:outline-none focus:ring-2 focus:ring-green-400/50 transition-all duration-300 shadow-lg font-medium">
+                                            📤 Exporter Configuration
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="border-t border-slate-600/40 pt-6">
+                                        <h4 class="text-lg font-medium text-white mb-3">Importer une configuration</h4>
+                                        <p class="text-slate-400 text-sm mb-3">Chargez une configuration depuis un fichier JSON ou collez le contenu directement.</p>
+                                        
+                                        <div class="space-y-3">
+                                            <input type="file" id="config-file-input" accept=".json" class="hidden">
+                                            <button id="import-config-file-btn" class="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-500 hover:to-purple-500 focus:outline-none focus:ring-2 focus:ring-blue-400/50 transition-all duration-300 shadow-lg font-medium">
+                                                📂 Choisir un fichier
+                                            </button>
+                                            
+                                            <div class="text-slate-400 text-center text-sm">ou</div>
+                                            
+                                            <textarea id="config-json-input" class="w-full h-32 bg-slate-700/50 text-white p-4 rounded-xl border border-slate-600/50 focus:outline-none focus:ring-2 focus:ring-blue-400/50 resize-none font-mono text-sm" placeholder="Collez votre configuration JSON ici..."></textarea>
+                                            
+                                            <button id="import-config-json-btn" class="px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-500 hover:to-red-500 focus:outline-none focus:ring-2 focus:ring-orange-400/50 transition-all duration-300 shadow-lg font-medium">
+                                                🔄 Importer depuis JSON
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Enhanced About Modal -->
         <div id="about-modal" class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 hidden p-6">
             <div class="bg-slate-800/95 backdrop-blur-2xl rounded-3xl p-8 shadow-2xl max-w-2xl w-full text-slate-100 border border-slate-600/40 mx-4 animate-slide-up">
@@ -335,11 +557,11 @@
                         <div class="text-slate-300 space-y-3 grid grid-cols-2 gap-4">
                             <div class="flex items-center bg-slate-800/40 p-3 rounded-xl">
                                 <span class="text-slate-400 mr-2 font-medium text-sm">Version:</span>
-                                <span id="app-version" class="text-emerald-400 font-mono font-bold">1.3.0</span>
+                                <span id="app-version" class="text-emerald-400 font-mono font-bold">Chargement...</span>
                             </div>
                             <div class="flex items-center bg-slate-800/40 p-3 rounded-xl">
                                 <span class="text-slate-400 mr-2 font-medium text-sm">Build:</span>
-                                <span id="build-date" class="text-yellow-400 font-mono font-bold">2025-06-04</span>
+                                <span id="build-date" class="text-yellow-400 font-mono font-bold">Chargement...</span>
                             </div>
                             <div class="flex items-center bg-slate-800/40 p-3 rounded-xl">
                                 <span class="text-slate-400 mr-2 font-medium text-sm">Développé par:</span>
@@ -387,6 +609,20 @@
                                     Proposer une amélioration
                                 </a>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Section Changelog -->
+                    <div class="bg-slate-900/30 backdrop-blur-sm rounded-2xl p-6 mb-6 border border-slate-700/40">
+                        <h3 class="text-xl font-semibold bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent mb-4 flex items-center">
+                            <svg class="w-6 h-6 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                            Journal des modifications
+                        </h3>
+                        <div id="changelog-container" class="max-h-64 overflow-y-auto custom-scrollbar">
+                            <!-- Le changelog sera chargé dynamiquement ici -->
+                            <div class="text-slate-400 text-center py-4">Chargement du changelog...</div>
                         </div>
                     </div>
                 </div>
@@ -554,8 +790,8 @@
             </div>
         </div>
     </div>
-    
-    <script src="./contents/js/app.js"></script>
-    <script src="./contents/js/cmdList.js"></script>
+
+    <script type="module" src="contents/js/app.js"></script>
+
 </body>
 </html>

@@ -1,36 +1,204 @@
 {
-  "version": "2.1.22",
-  "date": "2025-06-12",
-  "changelog": "New logo",
+  "version": "2.2.6",
+  "date": "2025-08-05",
+  "changelog": "Fix bug man avec les plugins",
   "history": [
+    {
+      "version": "2.2.6",
+      "date": "2025-08-05",
+      "changelog": "Fix bug man avec les plugins",
+      "type": "patch"
+    },
+    {
+      "version": "2.2.5",
+      "date": "2025-08-05",
+      "changelog": "Ajout du i pour les infos de la commandes",
+      "type": "patch"
+    },
+    {
+      "version": "2.2.4",
+      "date": "2025-08-05",
+      "changelog": "Ajout d'un bouton réinitialisé",
+      "type": "patch"
+    },
+    {
+      "version": "2.2.3",
+      "date": "2025-08-05",
+      "changelog": "Fix de la suppression du svg de la commandes",
+      "type": "patch"
+    },
+    {
+      "version": "2.2.2",
+      "date": "2025-08-05",
+      "changelog": "Fix des activer/désactivé mal mis et switch",
+      "type": "patch"
+    },
+    {
+      "version": "2.2.1",
+      "date": "2025-08-05",
+      "changelog": "Fix de SVG bugger",
+      "type": "patch"
+    },
+    {
+      "version": "2.2.0",
+      "date": "2025-08-05",
+      "changelog": "Ajout de la gestion des commandes (on/off)",
+      "type": "minor"
+    },
+    {
+      "version": "2.1.43",
+      "date": "2025-08-05",
+      "changelog": "Correction notifications doublons : import/export plugins - séparation console/UI",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.42",
+      "date": "2025-08-05",
+      "changelog": "Correction suppression du modal plugin manager dupliqué dans index.html",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.41",
+      "date": "2025-08-05",
+      "changelog": "Amélioration gestion plugins désactivés : visibles dans le menu, non-accessibles en commandes",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.40",
+      "date": "2025-08-05",
+      "changelog": "Ajout des raccourcis clavier pour la gestion des plugins",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.39",
+      "date": "2025-08-05",
+      "changelog": "Implémentation du design responsive pour le modal de gestion des plugins",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.38",
+      "date": "2025-08-05",
+      "changelog": "Ajout de la validation et des vérifications de sécurité des plugins",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.37",
+      "date": "2025-08-05",
+      "changelog": "Optimisation des performances de chargement des plugins",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.36",
+      "date": "2025-08-05",
+      "changelog": "Amélioration de la gestion d'erreurs dans le gestionnaire de plugins",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.35",
+      "date": "2025-08-05",
+      "changelog": "Ajout de la documentation complète du système de plugins",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.34",
+      "date": "2025-08-05",
+      "changelog": "Mise à jour du plugin exemple avec syntaxe compatible navigateur",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.33",
+      "date": "2025-08-05",
+      "changelog": "Intégration de l'exécution des plugins avec le système de commandes console",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.32",
+      "date": "2025-08-05",
+      "changelog": "Ajout de la fonctionnalité d'export et import de configuration des plugins",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.31",
+      "date": "2025-08-05",
+      "changelog": "Implémentation des fonctionnalités de basculement et gestion d'état des plugins",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.30",
+      "date": "2025-08-05",
+      "changelog": "Ajout des commandes console plugins et importplugin",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.29",
+      "date": "2025-08-05",
+      "changelog": "Création de l'interface utilisateur moderne du gestionnaire de plugins avec interface à onglets",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.28",
+      "date": "2025-08-05",
+      "changelog": "Ajout de la persistance de configuration des plugins basée sur les cookies",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.27",
+      "date": "2025-08-05",
+      "changelog": "Implémentation de la classe PluginManager compatible navigateur",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.26",
+      "date": "2025-08-05",
+      "changelog": "Ajout de l'infrastructure du système de gestion des plugins",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.25",
+      "date": "2025-08-05",
+      "changelog": "Ajout de l'infrastructure du système de gestion des plugins",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.24",
+      "date": "2025-07-03",
+      "changelog": "Fix matrix affichage bug",
+      "type": "patch"
+    },
+    {
+      "version": "2.1.23",
+      "date": "2025-06-12",
+      "changelog": "Ajout du générateur de QR code",
+      "type": "patch"
+    },
     {
       "version": "2.1.22",
       "date": "2025-06-12",
-      "changelog": "New logo",
+      "changelog": "Nouveau logo",
       "type": "patch"
     },
     {
       "version": "2.1.21",
       "date": "2025-06-12",
-      "changelog": "Fix versioning bug",
+      "changelog": "Correction du bug de versioning",
       "type": "patch"
     },
     {
       "version": "2.1.20",
       "date": "2025-06-12",
-      "changelog": "Fix link html prblm",
+      "changelog": "Correction du problème de lien html",
       "type": "patch"
     },
     {
       "version": "2.1.19",
       "date": "2025-06-12",
-      "changelog": "Fix edit save file prblm",
+      "changelog": "Correction du problème de sauvegarde d'édition de fichier",
       "type": "patch"
     },
     {
       "version": "2.1.18",
       "date": "2025-06-12",
-      "changelog": "Better UI for edit",
+      "changelog": "Amélioration de l'interface utilisateur pour l'édition",
       "type": "patch"
     },
     {
@@ -48,367 +216,367 @@
     {
       "version": "2.1.15",
       "date": "2025-06-11",
-      "changelog": "Add more cmd for versioning",
+      "changelog": "Ajout de plus de commandes pour le versioning",
       "type": "patch"
     },
     {
       "version": "2.1.14",
       "date": "2025-06-11",
-      "changelog": "more cmd for versioning",
+      "changelog": "Plus de commandes pour le versioning",
       "type": "patch"
     },
     {
       "version": "2.1.13",
       "date": "2025-06-11",
-      "changelog": "Add more fonction for reduce app.js size",
+      "changelog": "Ajout de plus de fonctions pour réduire la taille d'app.js",
       "type": "patch"
     },
     {
       "version": "2.1.12",
       "date": "2025-06-11",
-      "changelog": "Fix arrow history bug reload",
+      "changelog": "Correction du bug de rechargement de l'historique des flèches",
       "type": "patch"
     },
     {
       "version": "2.1.11",
       "date": "2025-06-11",
-      "changelog": "Use fonction for reset all caches",
+      "changelog": "Utilisation de fonction pour réinitialiser tous les caches",
       "type": "patch"
     },
     {
       "version": "2.1.10",
       "date": "2025-06-11",
-      "changelog": "Add update on versioning tool",
+      "changelog": "Ajout de mise à jour sur l'outil de versioning",
       "type": "patch"
     },
     {
       "version": "2.1.9",
       "date": "2025-06-11",
-      "changelog": "fix all ui size",
+      "changelog": "Correction de toutes les tailles d'interface utilisateur",
       "type": "patch"
     },
     {
       "version": "2.1.8",
       "date": "2025-06-11",
-      "changelog": "moove notify cmd to fonction",
+      "changelog": "Déplacement de la commande notify vers fonction",
       "type": "patch"
     },
     {
       "version": "2.1.7",
       "date": "2025-06-11",
-      "changelog": "fix notification close prbl",
+      "changelog": "Correction du problème de fermeture de notification",
       "type": "patch"
     },
     {
       "version": "2.1.6",
       "date": "2025-06-11",
-      "changelog": "Ajout dans outils d un outil de mise en pleine écrant",
+      "changelog": "Ajout dans outils d'un outil de mise en plein écran",
       "type": "patch"
     },
     {
       "version": "2.1.5",
       "date": "2025-06-11",
-      "changelog": "Fix execute chaine cmd",
+      "changelog": "Correction de l'exécution de chaîne de commandes",
       "type": "patch"
     },
     {
       "version": "2.1.4",
       "date": "2025-06-11",
-      "changelog": "Add modular notify system",
+      "changelog": "Ajout du système de notification modulaire",
       "type": "patch"
     },
     {
       "version": "2.1.3",
       "date": "2025-06-11",
-      "changelog": "Fix man and help clickable cmd",
+      "changelog": "Correction des commandes cliquables man et help",
       "type": "patch"
     },
     {
       "version": "2.1.2",
       "date": "2025-06-09",
-      "changelog": "modif modal is now popup right bottom side",
+      "changelog": "Modification du modal maintenant popup côté droit en bas",
       "type": "patch"
     },
     {
       "version": "2.1.1",
       "date": "2025-06-09",
-      "changelog": "fix modal reset all caches bug",
+      "changelog": "Correction du bug de réinitialisation de tous les caches du modal",
       "type": "patch"
     },
     {
       "version": "2.1.0",
       "date": "2025-06-09",
-      "changelog": "All Better ui",
+      "changelog": "Amélioration globale de l'interface utilisateur",
       "type": "minor"
     },
     {
       "version": "2.0.21",
       "date": "2025-06-09",
-      "changelog": "fix paramettre modal size",
+      "changelog": "Correction de la taille du modal paramètres",
       "type": "patch"
     },
     {
       "version": "2.0.20",
       "date": "2025-06-09",
-      "changelog": "fix history modal size",
+      "changelog": "Correction de la taille du modal historique",
       "type": "patch"
     },
     {
       "version": "2.0.19",
       "date": "2025-06-09",
-      "changelog": "fix history modal bug",
+      "changelog": "Correction du bug du modal historique",
       "type": "patch"
     },
     {
       "version": "2.0.18",
       "date": "2025-06-09",
-      "changelog": "fix some tab bug",
+      "changelog": "Correction de certains bugs d'onglets",
       "type": "patch"
     },
     {
       "version": "2.0.17",
       "date": "2025-06-09",
-      "changelog": "add rename dbl click rename tab",
+      "changelog": "Ajout du renommage par double-clic sur l'onglet",
       "type": "patch"
     },
     {
       "version": "2.0.16",
       "date": "2025-06-09",
-      "changelog": "add nbr cmd tab name",
+      "changelog": "Ajout du nombre de commandes dans le nom de l'onglet",
       "type": "patch"
     },
     {
       "version": "2.0.15",
       "date": "2025-06-09",
-      "changelog": "add history channel cookie",
+      "changelog": "Ajout du cookie de canal d'historique",
       "type": "patch"
     },
     {
       "version": "2.0.14",
       "date": "2025-06-09",
-      "changelog": "add tab features",
+      "changelog": "Ajout des fonctionnalités d'onglets",
       "type": "patch"
     },
     {
       "version": "2.0.13",
       "date": "2025-06-09",
-      "changelog": "Better clear all caches ui and pass to modal element",
+      "changelog": "Amélioration de l'interface de vidage de tous les caches et passage à l'élément modal",
       "type": "patch"
     },
     {
       "version": "2.0.12",
       "date": "2025-06-08",
-      "changelog": "Add say cmd = echo cmd",
+      "changelog": "Ajout de la commande say = commande echo",
       "type": "patch"
     },
     {
       "version": "2.0.11",
       "date": "2025-06-08",
-      "changelog": "Add better ui for echo",
+      "changelog": "Amélioration de l'interface utilisateur pour echo",
       "type": "patch"
     },
     {
       "version": "2.0.10",
       "date": "2025-06-07",
-      "changelog": "fix cconnect and cdisconnect bug overflow",
+      "changelog": "Correction du bug de débordement cconnect et cdisconnect",
       "type": "patch"
     },
     {
       "version": "2.0.9",
       "date": "2025-06-07",
-      "changelog": "add reboot cmd",
+      "changelog": "Ajout de la commande reboot",
       "type": "patch"
     },
     {
       "version": "2.0.8",
       "date": "2025-06-07",
-      "changelog": "add genpass cmd",
+      "changelog": "Ajout de la commande genpass",
       "type": "patch"
     },
     {
       "version": "2.0.7",
       "date": "2025-06-07",
-      "changelog": "add calc cmd",
+      "changelog": "Ajout de la commande calc",
       "type": "patch"
     },
     {
       "version": "2.0.6",
       "date": "2025-06-07",
-      "changelog": "Fix responsive UI err",
+      "changelog": "Correction de l'erreur d'interface utilisateur responsive",
       "type": "patch"
     },
     {
       "version": "2.0.5",
       "date": "2025-06-06",
-      "changelog": "Ajout de version cmd",
+      "changelog": "Ajout de la commande version",
       "type": "patch"
     },
     {
       "version": "2.0.4",
       "date": "2025-06-06",
-      "changelog": "Better cdisconnect et cconnect UI",
+      "changelog": "Amélioration de l'interface utilisateur cdisconnect et cconnect",
       "type": "patch"
     },
     {
       "version": "2.0.3",
       "date": "2025-06-06",
-      "changelog": "Fix icon SEO",
+      "changelog": "Correction de l'icône SEO",
       "type": "patch"
     },
     {
       "version": "2.0.2",
       "date": "2025-06-06",
-      "changelog": "Add icon SEO",
+      "changelog": "Ajout de l'icône SEO",
       "type": "patch"
     },
     {
       "version": "2.0.1",
       "date": "2025-06-06",
-      "changelog": "SEO Meta Tags",
+      "changelog": "Balises méta SEO",
       "type": "patch"
     },
     {
       "version": "2.0.0",
       "date": "2025-06-05",
-      "changelog": "Structure and Better UI Update",
+      "changelog": "Mise à jour de la structure et amélioration de l'interface utilisateur",
       "type": "Major"
     },
     {
       "version": "1.2.27",
       "date": "2025-06-05",
-      "changelog": "Better tree ui",
+      "changelog": "Amélioration de l'interface utilisateur tree",
       "type": "patch"
     },
     {
       "version": "1.2.26",
       "date": "2025-06-05",
-      "changelog": "Add Cookies for all informations about it",
+      "changelog": "Ajout de cookies pour toutes les informations à ce sujet",
       "type": "patch"
     },
     {
       "version": "1.2.25",
       "date": "2025-06-05",
-      "changelog": "Better lshw ui",
+      "changelog": "Amélioration de l'interface utilisateur lshw",
       "type": "patch"
     },
     {
       "version": "1.2.24",
       "date": "2025-06-05",
-      "changelog": "Better ifconfig ui",
+      "changelog": "Amélioration de l'interface utilisateur ifconfig",
       "type": "patch"
     },
     {
       "version": "1.2.23",
       "date": "2025-06-05",
-      "changelog": "Better date cmd",
+      "changelog": "Amélioration de la commande date",
       "type": "patch"
     },
     {
       "version": "1.2.22",
       "date": "2025-06-05",
-      "changelog": "Better Bin/ cmd load with populateBinDirectory and generateBinCommands",
+      "changelog": "Amélioration du chargement des commandes Bin/ avec populateBinDirectory et generateBinCommands",
       "type": "patch"
     },
     {
       "version": "1.2.21",
       "date": "2025-06-05",
-      "changelog": "Better man load",
+      "changelog": "Amélioration du chargement de man",
       "type": "patch"
     },
     {
       "version": "1.2.20",
       "date": "2025-06-05",
-      "changelog": "Better help load",
+      "changelog": "Amélioration du chargement de help",
       "type": "patch"
     },
     {
       "version": "1.2.19",
       "date": "2025-06-05",
-      "changelog": "New stockage for cmd data",
+      "changelog": "Nouveau stockage pour les données de commandes",
       "type": "patch"
     },
     {
       "version": "1.2.18",
       "date": "2025-06-05",
-      "changelog": "Ajout listCommands",
+      "changelog": "Ajout de listCommands",
       "type": "patch"
     },
     {
       "version": "1.2.17",
       "date": "2025-06-05",
-      "changelog": "better delAllCahches -> resetAllCaches",
+      "changelog": "Amélioration delAllCaches -> resetAllCaches",
       "type": "patch"
     },
     {
       "version": "1.2.16",
       "date": "2025-06-05",
-      "changelog": "Ajout better ping",
+      "changelog": "Amélioration de ping",
       "type": "patch"
     },
     {
       "version": "1.2.15",
       "date": "2025-06-05",
-      "changelog": "Ajout de clickable help et man",
+      "changelog": "Ajout de help et man cliquables",
       "type": "patch"
     },
     {
       "version": "1.2.14",
       "date": "2025-06-05",
-      "changelog": "test fix all ui bug part 2",
+      "changelog": "Test de correction de tous les bugs d'interface utilisateur partie 2",
       "type": "patch"
     },
     {
       "version": "1.2.13",
       "date": "2025-06-05",
-      "changelog": "test fix all ui bug",
+      "changelog": "Test de correction de tous les bugs d'interface utilisateur",
       "type": "patch"
     },
     {
       "version": "1.2.12",
       "date": "2025-06-05",
-      "changelog": "fix heigh console + responsive",
+      "changelog": "Correction de la hauteur de console + responsive",
       "type": "patch"
     },
     {
       "version": "1.2.11",
       "date": "2025-06-05",
-      "changelog": "fix heigh console + input prblm",
+      "changelog": "Correction de la hauteur de console + problème d'input",
       "type": "patch"
     },
     {
       "version": "1.2.10",
       "date": "2025-06-04",
-      "changelog": "better matrix view",
+      "changelog": "Amélioration de la vue matrix",
       "type": "patch"
     },
     {
       "version": "1.2.9",
       "date": "2025-06-04",
-      "changelog": "fix settings cancel bug",
+      "changelog": "Correction du bug d'annulation des paramètres",
       "type": "patch"
     },
     {
       "version": "1.2.8",
       "date": "2025-06-04",
-      "changelog": "Better about",
+      "changelog": "Amélioration de à propos",
       "type": "patch"
     },
     {
       "version": "1.2.7",
       "date": "2025-06-04",
-      "changelog": "fix color default bg",
+      "changelog": "Correction de la couleur par défaut de l'arrière-plan",
       "type": "patch"
     },
     {
       "version": "1.2.6",
       "date": "2025-06-04",
-      "changelog": "fix version load about",
+      "changelog": "Correction du chargement de version à propos",
       "type": "patch"
     },
     {
       "version": "1.2.5",
       "date": "2025-06-04",
-      "changelog": "fix console name",
+      "changelog": "Correction du nom de la console",
       "type": "patch"
     },
     {
@@ -438,15 +606,15 @@
     {
       "version": "1.2.0",
       "date": "2025-06-04",
-      "changelog": "add more cmd + change ui, file management, parameters, modal management, better help, history cmd & cookie pseudo management",
+      "changelog": "Ajout de plus de commandes + changement d'interface utilisateur, gestion de fichiers, paramètres, gestion modale, aide améliorée, historique des commandes et gestion de cookies pseudo",
       "type": "minor"
     },
     {
       "version": "1.1.1",
       "date": "2025-06-03",
-      "changelog": "ajout du versionning + modul de modif json",
+      "changelog": "Ajout du versioning + module de modification json",
       "type": "patch"
     }
   ],
-  "buildDate": "2025-06-12"
+  "buildDate": "2025-08-05"
 }

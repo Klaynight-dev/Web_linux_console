@@ -209,6 +209,36 @@ const COMMAND_METADATA = {
         options: [],
         examples: ['version']
     },
+    versionbump: {
+        category: 'Utilitaires',
+        description: 'Incrémente la version (patch par défaut)',
+        synopsis: 'versionbump',
+        helpOption: "[type] [changelog]",
+        options: [
+            'major : incrémente la version majeure (x.0.0)',
+            'minor : incrémente la version mineure (x.y.0)',
+            'patch : incrémente la version patch (x.y.z) - par défaut'
+        ],
+        examples: ['versionbump "Correction de bugs"', 'versionbump major "Nouvelle version majeure"', 'versionbump minor "Nouvelles fonctionnalités"']
+    },
+    changelog: {
+        category: 'Utilitaires',
+        description: 'Affiche ou modifie le changelog actuel',
+        synopsis: 'changelog',
+        helpOption: "[nouveau_changelog]",
+        options: [],
+        examples: ['changelog', 'changelog "Nouveau message de changelog"']
+    },
+    versionhistory: {
+        category: 'Utilitaires',
+        description: 'Affiche l\'historique des versions',
+        synopsis: 'versionhistory',
+        helpOption: "[nombre]",
+        options: [
+            'nombre : limite le nombre de versions affichées'
+        ],
+        examples: ['versionhistory', 'versionhistory 5']
+    },
     wc: {
         category: 'Utilitaires',
         description: 'Compte les lignes, mots et caractères',
@@ -296,6 +326,26 @@ const COMMAND_METADATA = {
         helpOption: "None",
         options: [],
         examples: ['fullscreen']
+    },
+    qrcode: {
+        description: "Génère un QR Code à partir d'un texte",
+        category: "Outils",
+        synopsis: "qrcode [OPTIONS] <texte>",
+        helpOption: "-h, --help",
+        options: [
+            "-s, --size <taille>     Taille du QR Code en pixels (50-1000, défaut: 200)",
+            "-c, --color <couleur>   Couleur du QR Code en hexadécimal (défaut: 000000)",
+            "-b, --bgcolor <couleur> Couleur de fond en hexadécimal (défaut: ffffff)",
+            "-f, --format <format>   Format de sortie: png, jpg, gif, svg (défaut: png)",
+            "-e, --error-level <lvl> Niveau de correction d'erreur: L, M, Q, H (défaut: M)",
+            "-h, --help              Affiche cette aide"
+        ],
+        examples: [
+            "qrcode \"https://example.com\"",
+            "qrcode -s 300 -c ff0000 \"Mon texte\"",
+            "qrcode -f svg -e H \"Texte important\""
+        ],
+        seeAlso: ["base64", "curl", "wget"]
     },
 
     // Système & Processus
@@ -511,8 +561,8 @@ const COMMAND_METADATA = {
     newtab: {
         category: 'Interface',
         description: 'Créer un nouvel onglet',
-        synopsis: 'newtab [titre]',
-        helpOption: '--help',
+        synopsis: 'newtab',
+        helpOption: '[titre]',
         options: [
             '[titre] - titre optionnel pour le nouvel onglet'
         ],
@@ -526,8 +576,8 @@ const COMMAND_METADATA = {
     closetab: {
         category: 'Interface',
         description: 'Fermer un onglet',
-        synopsis: 'closetab [numéro]',
-        helpOption: '--help',
+        synopsis: 'closetab',
+        helpOption: '[numéro]',
         options: [
             '[numéro] - numéro de l\'onglet à fermer (par défaut: onglet actuel)'
         ],
@@ -540,8 +590,8 @@ const COMMAND_METADATA = {
     renametab: {
         category: 'Interface',
         description: 'Renommer l\'onglet actuel',
-        synopsis: 'renametab <nouveau nom>',
-        helpOption: '--help',
+        synopsis: 'renametab',
+        helpOption: '[nouveau nom]',
         options: [
             '<nouveau nom> - nouveau nom pour l\'onglet'
         ],
@@ -555,7 +605,7 @@ const COMMAND_METADATA = {
         category: 'Interface',
         description: 'Lister tous les onglets',
         synopsis: 'listtabs',
-        helpOption: '--help',
+        helpOption: '',
         options: [],
         examples: ['listtabs']
     },
@@ -563,8 +613,8 @@ const COMMAND_METADATA = {
     switchtab: {
         category: 'Interface',
         description: 'Basculer vers un onglet spécifique',
-        synopsis: 'switchtab <numéro>',
-        helpOption: '--help',
+        synopsis: 'switchtab',
+        helpOption: '[numéro]',
         options: [
             '<numéro> - numéro de l\'onglet (1-N)'
         ],
@@ -630,3 +680,5 @@ const commandHelpers = {
         return icons[category] || '📋';
     }
 };
+
+export { COMMAND_METADATA, commandHelpers };

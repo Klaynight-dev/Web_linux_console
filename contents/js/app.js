@@ -1,3 +1,7 @@
+import { COMMAND_METADATA, commandHelpers } from './assets/cmdList.js';
+import TabManager from './assets/tabs.js';
+import { PluginManager } from './assets/plugin-manager.js';
+
 // --- Application Core ---
 const app = {
     // --- DOM Elements ---
@@ -17,6 +21,12 @@ const app = {
     helpMenuButton: document.getElementById('help-menu-button'),
     helpMenuDropdown: document.getElementById('help-menu-dropdown'),
     openImportModalButton: document.getElementById('import-code-button'),
+    toggleTabsSizeButton: document.getElementById('toggle-tabs-size-button'),
+    
+    // Plugin Elements
+    pluginManagerModal: document.getElementById('plugin-manager-modal'),
+    pluginManagerButton: document.getElementById('plugin-manager-button'),
+    closePluginManagerButton: document.getElementById('close-plugin-manager'),
 
     // Modal Elements
     codeImportModal: document.getElementById('code-import-modal'),
@@ -25,6 +35,8 @@ const app = {
     confirmImportButton: document.getElementById('confirm-import-button'),
     aboutModal: document.getElementById('about-modal'),
     closeAboutModalButton: document.getElementById('close-about-modal'),
+    cancelSettingsModal: document.getElementById('cancel-settings-modal'),
+    saveSettingsModal: document.getElementById('save-settings-modal'),
 
     // History Modal Elements
     historyModal: document.getElementById('history-modal'),
@@ -33,20 +45,27 @@ const app = {
     showHistoryButton: document.getElementById('show-history-button'),
     clearHistoryBtn: document.getElementById('clear-history-button'),
 
+    // Settings Elements
+    fontSizeRange: document.getElementById('font-size-range'),
+    fontSizeValue: document.getElementById('font-size-value'),
+    consoleOutput: document.getElementById('console-output'),
+    themeSelect: document.getElementById('theme-select'),
+    fontSelect: document.getElementById('font-family-select'),
+
+    // Fond console
+    bgType : document.getElementById('console-bg-type'),
+    bgColor : document.getElementById('console-bg-color'),
+    bgUrl : document.getElementById('console-bg-url'),
+    bgFile : document.getElementById('console-bg-file'),
+    bgImageImportGroup : document.getElementById('console-bg-image-import-group'),
+
     // --- État ---
     currentDir: '/home/user',
     fileSystem: {'/':{type:'directory',children:{'bin':{type:'directory',children:{}},'home':{type:'directory',children:{'user':{type:'directory',children:{'welcome.txt':{type:'file',content:'Bienvenue sur votre console Linux web!'},'notes.txt':{type:'file',content:'Ceci est un fichier de notes. Utilisez "cat notes.txt" pour le lire.'}}}}},'etc':{type:'directory',children:{'motd':{type:'file',get content(){const mots=["Message du jour : Amusez-vous bien !","Message du jour : Apprenez quelque chose de nouveau aujourd'hui.","Message du jour : La persévérance paie toujours.","Message du jour : Codez avec passion.","Message du jour : Prenez une pause et respirez.","Message du jour : La curiosité est une qualité.","Message du jour : Essayez une nouvelle commande.","Message du jour : Partagez vos connaissances.","Message du jour : La simplicité est la sophistication suprême.","Message du jour : Un bug aujourd'hui, une solution demain.","Message du jour : La créativité commence par une idée.","Message du jour : Osez sortir de votre zone de confort.","Message du jour : La collaboration fait la force.","Message du jour : Chaque jour est une nouvelle opportunité.","Message du jour : L'échec est le début du succès.","Message du jour : Prenez soin de vous.","Message du jour : La patience est une vertu.","Message du jour : Faites de votre mieux.","Message du jour : Le partage, c'est la vie."];const now=new Date();const start=new Date(now.getFullYear(),0,0);const diff=now-start;const oneDay=1000*60*60*24;const dayOfYear=Math.floor(diff/oneDay);return mots[dayOfYear%mots.length];}}}}}}},
     history: [],
     historyIndex: -1,
     isLoadingLLM: false,
-
-    // --- Tabs ---
-    tabs: [],
-    tabsContainer: null,
-    newTabButton: null,
-    activeTabId: null,
-    nextTabId: 1,
-    compactTabs: false,
+    disabledCommands: new Set(), // Commandes désactivées
 
     // 'file', 'tools', 'help', ou null
     awaitingPseudo: false,
@@ -67,98 +86,54 @@ const app = {
 
     // --- Initialization ---
     init() {
-        this.loadHistoryFromCookie();
-        this.loadFileSystemFromCookie();
+        // Initialiser le gestionnaire de plugins
+        this.pluginManager = new PluginManager();
+        
+        // Initialiser le gestionnaire d'onglets EN PREMIER
+        TabManager.init(this);
         
         // Event Listeners for command input - vérification de sécurité
-        if (this.commandFormElement) {
-            this.commandFormElement.addEventListener('submit', this.handleCommandSubmit.bind(this));
-        }
-        if (this.commandInputElement) {
-            this.commandInputElement.addEventListener('keydown', this.handleKeyDown.bind(this));
-        }
+        if (this.commandFormElement) {this.commandFormElement.addEventListener('submit', this.handleCommandSubmit.bind(this));}
+        if (this.commandInputElement) {this.commandInputElement.addEventListener('keydown', this.handleKeyDown.bind(this));}
 
         // Event Listeners for Menus - vérification de sécurité
-        if (this.fileMenuButton) {
-            this.fileMenuButton.addEventListener('click', () => this.toggleMenu('file'));
-        }
-        if (this.toolsMenuButton) {
-            this.toolsMenuButton.addEventListener('click', () => this.toggleMenu('tools'));
-        }
-        if (this.helpMenuButton) {
-            this.helpMenuButton.addEventListener('click', () => this.toggleMenu('help'));
-        }
+        if (this.fileMenuButton) {this.fileMenuButton.addEventListener('click', () => this.toggleMenu('file'));}
+        if (this.toolsMenuButton) {this.toolsMenuButton.addEventListener('click', () => this.toggleMenu('tools'));}
+        if (this.helpMenuButton) {this.helpMenuButton.addEventListener('click', () => this.toggleMenu('help'));}
         document.addEventListener('mousedown', this.handleClickOutsideMenu.bind(this));
 
         // Event Listeners for Modal - vérification de sécurité
-        if (this.openImportModalButton) {
-            this.openImportModalButton.addEventListener('click', this.openCodeImportModal.bind(this));
+        if (this.cancelImportButton) {this.cancelImportButton.addEventListener('click', this.closeCodeImportModal.bind(this));}
+        if (this.confirmImportButton) {this.confirmImportButton.addEventListener('click', this.handleCodeImport.bind(this));}
+        if (this.closeAboutModalButton) {this.closeAboutModalButton.addEventListener('click', this.closeAboutModal.bind(this));}
+
+        // Event Listeners for Plugin Manager Modal
+        if (this.pluginManagerButton) {
+            this.pluginManagerButton.addEventListener('click', () => {
+                this.closeAllMenus();
+                this.openPluginManager();
+            });
         }
-        if (this.cancelImportButton) {
-            this.cancelImportButton.addEventListener('click', this.closeCodeImportModal.bind(this));
-        }
-        if (this.confirmImportButton) {
-            this.confirmImportButton.addEventListener('click', this.handleCodeImport.bind(this));
-        }
-        if (this.closeAboutModalButton) {
-            this.closeAboutModalButton.addEventListener('click', this.closeAboutModal.bind(this));
-        }
+        if (this.closePluginManagerButton) {this.closePluginManagerButton.addEventListener('click', this.closePluginManager.bind(this));}
 
         // Event Listeners for History Modal - vérification de sécurité
-        if (this.showHistoryButton) {
-            this.showHistoryButton.addEventListener('click', this.openHistoryModal.bind(this));
-        }
-        if (this.closeHistoryModalButton) {
-            this.closeHistoryModalButton.addEventListener('click', this.closeHistoryModal.bind(this));
-        }
+        if (this.showHistoryButton) {this.showHistoryButton.addEventListener('click', this.openHistoryModal.bind(this));}
+        if (this.closeHistoryModalButton) {this.closeHistoryModalButton.addEventListener('click', this.closeHistoryModal.bind(this));}
 
         // Drag and Drop - vérification de sécurité
         if (this.appContainer) {
             this.appContainer.addEventListener('dragover', this.handleDragOver.bind(this));
             this.appContainer.addEventListener('drop', this.handleDrop.bind(this));
         }
-
-        // Tab Management
-        this.tabsContainer = document.getElementById('tabs-container');
-        this.newTabButton = document.getElementById('new-tab-button');
-
-        // Charger les onglets depuis les cookies
-        this.loadTabsFromCookie();
-
-        this.initFileSystem();
-
-        if (this.newTabButton) {
-            this.newTabButton.addEventListener('click', this.createNewTab.bind(this));
-        }
-
-        const toggleTabsSizeButton = document.getElementById('toggle-tabs-size-button');
-        if (toggleTabsSizeButton) {
-            toggleTabsSizeButton.addEventListener('click', this.toggleTabsSize.bind(this));
-        }
+        if (this.toggleTabsSizeButton) {this.toggleTabsSizeButton.addEventListener('click', this.toggleTabsSize.bind(this));}
 
         this.updatePrompt();
-        if (this.commandInputElement) {
-            this.commandInputElement.focus();
-        }
 
-        // Gestion de la taille de police (avec vérification)
-        const fontSizeRange = document.getElementById('font-size-range');
-        const fontSizeValue = document.getElementById('font-size-value');
-        const consoleOutput = document.getElementById('console-output');
-        
-        if (fontSizeRange && fontSizeValue && consoleOutput) {
-            fontSizeRange.addEventListener('input', function () {
-                fontSizeValue.textContent = this.value + 'px';
-                consoleOutput.style.fontSize = this.value + 'px';
-            });
-        }
+        if (this.commandInputElement) {this.commandInputElement.focus();}
 
-        // Gestion du modal paramètres
-        const cancelSettingsModal = document.getElementById('cancel-settings-modal');
-        const saveSettingsModal = document.getElementById('save-settings-modal');
-        
-        if (cancelSettingsModal) {
-            cancelSettingsModal.onclick = function () {
+        // Initialiser les boutons de la modal de paramètres
+        if (this.cancelSettingsModal) {
+            this.cancelSettingsModal.onclick = function () {
                 const settingsModal = document.getElementById('settings-modal');
                 if (settingsModal) {
                     settingsModal.classList.add('hidden');
@@ -166,31 +141,36 @@ const app = {
             };
         }
 
-        if (saveSettingsModal) {
-            saveSettingsModal.onclick = function () {
+        if (this.saveSettingsModal) {
+                this.saveSettingsModal.onclick = function () {
                 const settingsModal = document.getElementById('settings-modal');
                 if (settingsModal) {
                     settingsModal.classList.add('hidden');
                 }
-                // Ajoute ici la logique de sauvegarde des paramètres si besoin
+            // Ajoute ici la logique de sauvegarde des paramètres si besoin
             };
         }
 
         this.loadTheme();
 
         // Gestion du changement de thème
-        const themeSelect = document.getElementById('theme-select');
-        if (themeSelect) {
-            themeSelect.addEventListener('change', function () {
+        if (this.themeSelect) {
+            this.themeSelect.addEventListener('change', function () {
                 app.applyTheme(this.value);
             });
         }
 
         // Gestion du changement de police
-        const fontSelect = document.getElementById('font-family-select');
-        if (fontSelect) {
-            fontSelect.addEventListener('change', function () {
+        if (this.fontSelect) {
+            this.fontSelect.addEventListener('change', function () {
                 app.applyFontFamily(this.value);
+            });
+        }
+        // Gestion de la taille de la police
+        if (this.fontSizeRange && this.fontSizeValue && this.consoleOutput) {
+            this.fontSizeRange.addEventListener('input', function () {
+                this.fontSizeValue.textContent = this.value + 'px';
+                this.consoleOutput.style.fontSize = this.value + 'px';
             });
         }
 
@@ -198,58 +178,53 @@ const app = {
         this.loadFontSize();
         this.loadConsoleBackground();
 
-        // Fond console
-        const bgType = document.getElementById('console-bg-type');
-        const bgColor = document.getElementById('console-bg-color');
-        const bgUrl = document.getElementById('console-bg-url');
-        const bgFile = document.getElementById('console-bg-file');
-        const bgImageImportGroup = document.getElementById('console-bg-image-import-group');
-        
-        if (bgType && bgColor && bgUrl && bgFile && bgImageImportGroup) {
-            bgType.addEventListener('change', function () {
+        // Gestion de l'arrière-plan de la console
+        if (this.bgType && this.bgColor && this.bgUrl && this.bgFile && this.bgImageImportGroup) {
+            this.bgType.addEventListener('change', function () {
                 if (this.value === 'color') {
-                    bgColor.style.display = 'inline-block';
-                    bgUrl.style.display = 'none';
-                    bgImageImportGroup.style.display = 'none';
+                    this.bgColor.style.display = 'inline-block';
+                    this.bgUrl.style.display = 'none';
+                    this.bgImageImportGroup.style.display = 'none';
                     // Restaure la dernière couleur utilisée
                     const lastColor = localStorage.getItem('console_bg_last_color') || '#1f2937';
-                    bgColor.value = lastColor;
+                    this.bgColor.value = lastColor;
                     app.applyConsoleBackground('color', lastColor);
                 } else {
-                    bgColor.style.display = 'none';
-                    bgUrl.style.display = 'inline-block';
-                    bgImageImportGroup.style.display = 'block';
+                    this.bgColor.style.display = 'none';
+                    this.bgUrl.style.display = 'inline-block';
+                    this.bgImageImportGroup.style.display = 'block';
                     // Restaure la dernière image utilisée
                     const lastImage = localStorage.getItem('console_bg_last_image') || '';
-                    bgUrl.value = lastImage;
+                    this.bgUrl.value = lastImage;
                     app.applyConsoleBackground('image', lastImage);
                 }
             });
 
-            bgColor.addEventListener('input', function () {
-                if (bgType.value === 'color') {
+            this.bgColor.addEventListener('input', function () {
+                if (this.bgType.value === 'color') {
                     app.applyConsoleBackground('color', this.value);
                 }
             });
-            
-            bgUrl.addEventListener('input', function () {
-                if (bgType.value === 'image') {
+
+            this.bgUrl.addEventListener('input', function () {
+                if (this.bgType.value === 'image') {
                     app.applyConsoleBackground('image', this.value);
                 }
             });
-            
-            bgFile.addEventListener('change', function () {
-                if (bgType.value === 'image' && this.files && this.files[0]) {
+
+            this.bgFile.addEventListener('change', function () {
+                if (this.bgType.value === 'image' && this.files && this.files[0]) {
                     const reader = new FileReader();
                     reader.onload = function (e) {
                         app.applyConsoleBackground('image', e.target.result);
                         // Met à jour l'input URL pour garder la cohérence
-                        bgUrl.value = e.target.result;
+                        this.bgUrl.value = e.target.result;
                     };
                     reader.readAsDataURL(this.files[0]);
                 }
             });
         }
+
         if (this.clearHistoryBtn) {
             this.clearHistoryBtn.addEventListener('click', () => {
                 this.history = [];
@@ -267,6 +242,9 @@ const app = {
             });
         }
 
+        this.loadHistoryFromCookie();
+        this.initFileSystem();
+
         // Charger les informations de version
         this.loadVersionInfo();
         this.populateBinDirectory();
@@ -278,523 +256,528 @@ const app = {
 
         // Initialiser les gestionnaires de plein écran
         this.initFullscreenHandlers();
-    },
-
-    saveTabsToCookie() {
-        const tabsData = {
-            tabs: this.tabs.map(tab => ({
-                id: tab.id,
-                title: tab.title,
-                currentDir: tab.currentDir,
-                outputHistory: tab.outputHistory || [],
-                isActive: tab.isActive,
-                history: tab.history || [], // CORRIGER : Sauvegarder l'historique
-                historyIndex: tab.historyIndex || -1, // AJOUTER : Sauvegarder l'index
-                commandCount: tab.commandCount || 0
-            })),
-            activeTabId: this.activeTabId,
-            nextTabId: this.nextTabId
-        };
         
-        try {
-            const jsonString = JSON.stringify(tabsData);
-            localStorage.setItem('console_tabs', jsonString);
-            
-            const essentialData = {
-                activeTabId: this.activeTabId,
-                nextTabId: this.nextTabId,
-                tabCount: this.tabs.length
-            };
-            document.cookie = `console_tabs_backup=${encodeURIComponent(JSON.stringify(essentialData))};path=/;max-age=31536000`;
-        } catch (error) {
-            console.error('Erreur lors de la sauvegarde des onglets:', error);
-            this.addOutput('❌ Erreur de sauvegarde des onglets', 'error');
+        // Charger les plugins au démarrage
+        if (this.pluginManager) {
+            this.pluginManager.loadAllPlugins().catch(error => {
+                console.warn('Erreur lors du chargement des plugins:', error);
+            });
         }
+        
+        // Charger les commandes désactivées
+        this.loadDisabledCommands();
     },
 
-    loadTabsFromCookie() {
+    // Méthodes pour gérer les commandes désactivées
+    loadDisabledCommands() {
         try {
-            const savedData = localStorage.getItem('console_tabs');
-            if (savedData) {
-                const tabsData = JSON.parse(savedData);
-                
-                if (tabsData.tabs && Array.isArray(tabsData.tabs) && tabsData.tabs.length > 0) {
-                    this.tabs = tabsData.tabs.map(tab => ({
-                        id: tab.id || this.nextTabId++,
-                        title: tab.title || `Terminal ${tab.id}`,
-                        currentDir: tab.currentDir || '/home/user',
-                        outputHistory: tab.outputHistory || [],
-                        isActive: false, // Sera défini après
-                        history: tab.history || [], // CORRIGER : S'assurer que l'historique est chargé
-                        historyIndex: tab.historyIndex || -1, // AJOUTER : Charger l'index d'historique
-                        commandCount: tab.commandCount || 0
-                    }));
-                    
-                    this.nextTabId = tabsData.nextTabId || this.tabs.length + 1;
-                    this.activeTabId = tabsData.activeTabId || this.tabs[0]?.id || null;
-                    
-                    // Mettre à jour l'état actif
-                    this.tabs.forEach(tab => {
-                        tab.isActive = tab.id === this.activeTabId;
-                    });
-                    
-                    this.renderTabs();
-                    this.loadTabState(this.activeTabId);
-                    return;
-                }
-            }
-            
-            // Fallback vers les cookies si localStorage échoue
-            const cookieMatch = document.cookie.match(/(?:^|;\s*)console_tabs_backup=([^;]*)/);
-            if (cookieMatch) {
-                const backupData = JSON.parse(decodeURIComponent(cookieMatch[1]));
-                if (backupData.tabCount > 0) {
-                    this.nextTabId = backupData.nextTabId || 2;
-                    for (let i = 1; i <= backupData.tabCount; i++) {
-                        this.tabs.push({
-                            id: i,
-                            title: `Terminal ${i}`,
-                            currentDir: '/home/user',
-                            outputHistory: [],
-                            isActive: i === backupData.activeTabId,
-                            history: [], // AJOUTER : Initialiser l'historique vide
-                            historyIndex: -1, // AJOUTER : Initialiser l'index
-                            commandCount: 0
-                        });
-                    }
-                    this.activeTabId = backupData.activeTabId || 1;
-                    this.renderTabs();
-                    
-                    // AJOUTER : Charger l'historique global si pas d'onglets sauvegardés
-                    this.loadHistoryFromCookie();
-                    
-                    this.addOutput(this.defaultMessage, 'system');
-                    return;
-                }
+            const savedDisabled = localStorage.getItem('clk_disabled_commands');
+            if (savedDisabled) {
+                this.disabledCommands = new Set(JSON.parse(savedDisabled));
             }
         } catch (error) {
-            console.error('Erreur lors du chargement des onglets:', error);
+            console.warn('Erreur lors du chargement des commandes désactivées:', error);
+            this.disabledCommands = new Set();
         }
-        
-        // Si aucune sauvegarde trouvée, créer le premier onglet
-        this.createFirstTab();
     },
 
-    createFirstTab() {
-        // AJOUTER : Charger l'historique global existant
-        this.loadHistoryFromCookie();
-        
-        const firstTab = {
-            id: this.nextTabId++,
-            title: 'Terminal 1',
-            currentDir: '/home/user',
-            outputHistory: [],
-            isActive: true,
-            history: [...this.history], // CORRIGER : Utiliser l'historique global
-            historyIndex: this.historyIndex || -1, // AJOUTER : Utiliser l'index actuel
-            commandCount: 0
-        };
-        
-        this.tabs.push(firstTab);
-        this.activeTabId = firstTab.id;
-        this.renderTabs();
-        this.saveTabsToCookie();
-        
-        // Ajouter le message de bienvenue seulement pour le premier onglet
-        this.addOutput(this.defaultMessage, 'system');
-    },
-
-    createNewTab() {
-        const newTab = {
-            id: this.nextTabId++,
-            title: `Terminal ${this.nextTabId - 1}`,
-            currentDir: '/home/user',
-            outputHistory: [],
-            isActive: false,
-            history: [],
-            commandCount: 0  // AJOUTER cette ligne
-        };
-        
-        // Sauvegarder l'état actuel avant de créer le nouvel onglet
-        this.saveCurrentTabState();
-        
-        this.tabs.push(newTab);
-        this.switchToTab(newTab.id);
-        this.renderTabs();
-        
-        // Sauvegarder immédiatement
-        this.saveTabsToCookie();
-    },
-
-    saveCurrentTabState() {
-        const activeTab = this.tabs.find(tab => tab.id === this.activeTabId);
-        if (!activeTab) return;
-
-        // CORRIGER : Sauvegarder le répertoire courant
-        activeTab.currentDir = this.currentDir;
-        
-        // CORRIGER : Sauvegarder l'historique et l'index de l'onglet actuel
-        activeTab.history = [...this.history];
-        activeTab.historyIndex = this.historyIndex;
-        
-        // Sauvegarder l'output de manière plus efficace en excluant les animations de chargement
-        const outputElements = Array.from(this.outputElement.children)
-            .filter(child => 
-                child.id !== 'loading-llm-indicator' && 
-                child.id !== 'console-end-ref' &&
-                !child.classList.contains('loading-animation') // Exclure les animations de chargement
-            );
-        
-        // Limiter à 100 éléments pour éviter les problèmes de taille
-        const limitedElements = outputElements.slice(-100);
-        
-        activeTab.outputHistory = limitedElements.map(child => ({
-            html: child.innerHTML,
-            className: child.className || ''
-        }));
-
-        // Remettre les éléments système si nécessaire
-        if (this.loadingLLMIndicator && !this.outputElement.contains(this.loadingLLMIndicator)) {
-            this.outputElement.appendChild(this.loadingLLMIndicator);
+    saveDisabledCommands() {
+        try {
+            localStorage.setItem('clk_disabled_commands', JSON.stringify([...this.disabledCommands]));
+        } catch (error) {
+            console.warn('Erreur lors de la sauvegarde des commandes désactivées:', error);
         }
-
-        if (this.consoleEndRefElement && !this.outputElement.contains(this.consoleEndRefElement)) {
-            this.outputElement.appendChild(this.consoleEndRefElement);
-        }
-
-        // Sauvegarder immédiatement
-        this.saveTabsToCookie();
-        
-        // Re-rendre les onglets pour s'assurer que les compteurs sont à jour
-        this.renderTabs();
     },
 
-    loadTabState(tabId) {
-        const tab = this.tabs.find(t => t.id === tabId);
-        if (!tab) return;
-
-        // CORRIGER : Charger le répertoire courant
-        this.currentDir = tab.currentDir || '/home/user';
+    toggleCommandEnabled(commandName, enabled = null) {
+        const isCurrentlyDisabled = this.disabledCommands.has(commandName);
+        const newState = enabled !== null ? enabled : isCurrentlyDisabled;
         
-        // CORRIGER : Charger l'historique de l'onglet OU l'historique global
-        if (tab.history && tab.history.length > 0) {
-            // Si l'onglet a son propre historique, l'utiliser
-            this.history = [...tab.history];
-            this.historyIndex = tab.historyIndex || -1;
+        if (newState) {
+            // Activer la commande (la retirer des désactivées)
+            this.disabledCommands.delete(commandName);
         } else {
-            // Sinon, charger l'historique global
-            this.loadHistoryFromCookie();
-            this.historyIndex = -1;
+            // Désactiver la commande
+            this.disabledCommands.add(commandName);
         }
-
-        this.clearConsoleKeepIndicators();
         
-        if (tab.outputHistory && tab.outputHistory.length > 0) {
-            tab.outputHistory.forEach(item => {
-                const div = document.createElement('div');
-                div.innerHTML = item.html;
-                if (item.className) {
-                    div.className = item.className;
-                }
-                this.outputElement.insertBefore(div, this.consoleEndRefElement);
-            });
-        } else {
-            // Si pas d'historique, afficher le message par défaut
-            this.addOutput(this.defaultMessage, 'system');
-        }
-
-        this.updatePrompt();
-        this.scrollToBottom();
+        this.saveDisabledCommands();
+        return newState;
     },
 
-    clearConsoleKeepIndicators() {
-        const toKeep = [this.loadingLLMIndicator, this.consoleEndRefElement];
-        Array.from(this.outputElement.childNodes).forEach(child => {
-            if (!toKeep.includes(child)) {
-                this.outputElement.removeChild(child);
-            }
-        });
+    isCommandEnabled(commandName) {
+        return !this.disabledCommands.has(commandName);
     },
 
-    renameTab(tabId, newTitle) {
-        const tab = this.tabs.find(t => t.id === tabId);
-        if (tab) {
-            tab.title = newTitle;
-            this.renderTabs();
-            this.saveTabsToCookie();
-        }
-    },
-
-    renderTabs() {
-        if (!this.tabsContainer) return;
-
-        this.tabsContainer.innerHTML = '';
-
-        this.tabs.forEach(tab => {
-            const tabElement = document.createElement('div');
-            tabElement.className = `group relative flex items-center px-3 py-2 cursor-pointer transition-all duration-150 ease-out
-                ${tab.isActive 
-                    ? 'bg-gradient-to-b from-gray-800 to-gray-900 text-white border-t-2 border-blue-400 shadow-xl shadow-blue-400/10' 
-                    : 'bg-gradient-to-b from-gray-900/80 to-gray-950/60 text-gray-400 hover:bg-gradient-to-b hover:from-gray-800/90 hover:to-gray-900/70 hover:text-gray-200 hover:shadow-lg'
-                } border-r border-gray-700/30 backdrop-blur-sm rounded-lg relative overflow-hidden`;
-
-            // Indicateur d'activité animé à gauche
-            const activityIndicator = tab.isActive 
-                ? '<div class="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 via-blue-500 to-blue-600 rounded-r-full shadow-lg shadow-blue-400/50 animate-pulse"></div>'
-                : '';
-
-            // Badge de notification pour les nouvelles activités
-            const hasNewActivity = (tab.commandCount && tab.commandCount > 0 && !tab.isActive) || (tab.outputHistory && tab.outputHistory.length > 0 && !tab.isActive);
-            const notificationBadge = hasNewActivity
-                ? '<div class="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-bounce shadow-lg"></div>'
-                : '';
-
-            tabElement.innerHTML = `
-                ${activityIndicator}
-                ${notificationBadge}
-                
-                <div class="flex items-center min-w-0 flex-1 relative">
-                    <!-- Icône du terminal avec animation -->
-                    <div class="flex-shrink-0 mr-3 p-1.5 rounded-lg transition-all duration-150 ${
-                        tab.isActive 
-                            ? 'bg-gradient-to-br from-blue-500/30 to-blue-600/20 text-blue-400 shadow-inner shadow-blue-400/20' 
-                            : 'bg-gradient-to-br from-gray-700/40 to-gray-800/30 text-gray-500 group-hover:bg-gradient-to-br group-hover:from-gray-600/50 group-hover:to-gray-700/40 group-hover:text-gray-400'
-                    }">
-                        <svg class="w-4 h-4 transition-transform duration-150 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 9l3 3-3 3m5 0h3"/>
-                        </svg>
-                    </div>
-                    
-                    <!-- Titre de l'onglet avec effet de typing -->
-                    <span class="truncate text-sm font-semibold select-none pointer-events-none flex-1 min-w-0 relative ${
-                        tab.isActive ? 'text-white' : 'text-gray-300'
-                    }" title="${tab.title}">
-                        ${tab.title}
-                        <!-- Curseur clignotant pour l'onglet actif -->
-                        ${tab.isActive ? '<span class="inline-block w-px h-4 ml-1 bg-blue-400 animate-pulse"></span>' : ''}
-                    </span>
-                    
-                    <!-- Badge moderne avec le nombre de commandes actualisé en temps réel -->
-                    ${tab.commandCount && tab.commandCount > 0 ? `
-                        <div class="flex-shrink-0 ml-2 px-2 py-1 text-xs rounded-full font-medium transition-all duration-150 ${
-                            tab.isActive 
-                                ? 'bg-gradient-to-r from-blue-500/25 to-blue-600/20 text-blue-300 border border-blue-400/30 shadow-inner' 
-                                : 'bg-gradient-to-r from-gray-700/40 to-gray-800/30 text-gray-500 border border-gray-600/30 group-hover:bg-gradient-to-r group-hover:from-gray-600/50 group-hover:to-gray-700/40'
-                        }">
-                            <span class="flex items-center">
-                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
-                                </svg>
-                                ${tab.commandCount}
-                            </span>
-                        </div>
-                    ` : ''}
-                </div>
-                
-                <!-- Bouton de fermeture moderne avec animations -->
-                ${this.tabs.length > 1 ? `
-                    <button class="close-tab-btn flex-shrink-0 ml-3 w-7 h-7 rounded-lg 
-                                transition-all duration-150 flex items-center justify-center text-xs
-                                opacity-0 group-hover:opacity-100 transform translate-x-2 group-hover:translate-x-0
-                                bg-gradient-to-br from-gray-700/0 to-gray-800/0
-                                hover:from-red-500/20 hover:to-red-600/10 hover:text-red-400 hover:scale-110 hover:shadow-lg
-                                focus:opacity-100 focus:from-red-500/20 focus:to-red-600/10 focus:text-red-400 focus:ring-2 focus:ring-red-400/50
-                                active:scale-95
-                                ${tab.isActive ? 'text-gray-400' : 'text-gray-500'}" 
-                            data-tab-id="${tab.id}" 
-                            title="Fermer l'onglet (Ctrl+W)">
-                        <svg class="w-4 h-4 transition-all duration-150" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
-                ` : ''}
-                
-                <!-- Bordure inférieure animée pour l'onglet actif -->
-                ${tab.isActive ? `
-                    <div class="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-400 via-blue-500 to-blue-600 
-                                shadow-lg shadow-blue-400/50 animate-pulse"></div>
-                ` : ''}
-                
-                <!-- Indicateur de status à droite -->
-                <div class="absolute right-1 top-1 w-2 h-2 rounded-full transition-all duration-150 ${
-                    tab.isActive 
-                        ? 'bg-green-400 shadow-lg shadow-green-400/50 animate-pulse' 
-                        : 'bg-gray-600 group-hover:bg-gray-500'
-                }"></div>
-            `;
-
-            // Variables pour gérer les clics
-            let clickTimeout = null;
-            let clickCount = 0;
-
-            // Gestionnaire unifié pour tous les clics
-            tabElement.addEventListener('click', (e) => {
-                if (e.target.closest('.close-tab-btn')) return;
-                
-                e.preventDefault();
-                e.stopPropagation();
-                
-                clickCount++;
-                
-                if (clickCount === 1) {
-                    // Premier clic - programmer l'action de clic simple
-                    clickTimeout = setTimeout(() => {
-                        // Clic simple - changer d'onglet
-                        this.switchToTab(tab.id);
-                        clickCount = 0;
-                    }, 250); // Délai pour détecter le double-clic
-                } else if (clickCount === 2) {
-                    // Double-clic détecté - annuler le clic simple et exécuter le renommage
-                    clearTimeout(clickTimeout);
-                    this.startTabRename(tab.id, tabElement);
-                    clickCount = 0;
-                }
-            });
-
-            // Gestionnaire pour le bouton de fermeture
-            const closeBtn = tabElement.querySelector('.close-tab-btn');
-            if (closeBtn) {
-                closeBtn.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    this.closeTab(tab.id);
+    // Modal pour gérer les commandes
+    showCommandManagerModal() {
+        // Collecter toutes les commandes disponibles
+        const allCommands = new Map();
+        
+        // Commandes natives
+        Object.keys(this.commands).forEach(cmd => {
+            if (COMMAND_METADATA[cmd]) {
+                allCommands.set(cmd, {
+                    name: cmd,
+                    description: COMMAND_METADATA[cmd].description,
+                    category: COMMAND_METADATA[cmd].category,
+                    type: 'native'
                 });
             }
-
-            // Support des raccourcis clavier
-            tabElement.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    this.switchToTab(tab.id);
-                } else if (e.key === 'Delete' && this.tabs.length > 1) {
-                    e.preventDefault();
-                    this.closeTab(tab.id);
-                } else if (e.key === 'F2') {
-                    e.preventDefault();
-                    this.startTabRename(tab.id, tabElement);
-                }
+        });
+        
+        // Commandes des plugins
+        if (this.pluginManager) {
+            const pluginCommands = this.pluginManager.getAllCommands();
+            pluginCommands.forEach(cmd => {
+                allCommands.set(cmd.name, {
+                    name: cmd.name,
+                    description: cmd.description,
+                    category: cmd.category || 'Plugin',
+                    type: 'plugin'
+                });
             });
-
-            // Accessibilité avec compteur mis à jour
-            tabElement.setAttribute('tabindex', '0');
-            tabElement.setAttribute('role', 'tab');
-            tabElement.setAttribute('aria-selected', tab.isActive);
-            tabElement.setAttribute('aria-label', `Onglet ${tab.title}, ${tab.commandCount || 0} commandes. Double-clic pour renommer, F2 pour renommer.`);
-
-            this.tabsContainer.appendChild(tabElement);
-        });
-
-        // Délimiteur final simplifié
-        const delimiter = document.createElement('div');
-        delimiter.className = 'flex-1 bg-gradient-to-r from-gray-900/50 via-gray-800/30 to-gray-900/20 border-b border-gray-700/20';
-        this.tabsContainer.appendChild(delimiter);
-    },
-
-    startTabRename(tabId, tabElement) {
-        const tab = this.tabs.find(t => t.id === tabId);
-        if (!tab) return;
-
-        const titleSpan = tabElement.querySelector('span');
-        if (!titleSpan) return;
+        }
         
-        const currentTitle = tab.title;
-
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.value = currentTitle;
-        input.className = 'bg-gray-600 text-white px-1 py-0 rounded text-sm border-none outline-none focus:ring-1 focus:ring-blue-500';
-        input.style.width = '100px';
-        input.style.minWidth = '80px';
-        input.style.maxWidth = '150px';
-
-        titleSpan.style.display = 'none';
-        titleSpan.parentNode.insertBefore(input, titleSpan);
-
-        input.focus();
-        input.select();
-
-        const finishRename = () => {
-            const newTitle = input.value.trim() || currentTitle;
-            
-            // Échapper le HTML pour éviter l'interprétation
-            const escapedTitle = newTitle.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-            
-            if (input.parentNode) {
-                input.parentNode.removeChild(input);
+        // Grouper par catégorie
+        const commandsByCategory = {};
+        allCommands.forEach(cmd => {
+            const category = cmd.category || 'Autre';
+            if (!commandsByCategory[category]) {
+                commandsByCategory[category] = [];
             }
-            titleSpan.style.display = '';
+            commandsByCategory[category].push(cmd);
+        });
+        
+        // Construire le HTML du modal
+        let categoriesHtml = '';
+        Object.keys(commandsByCategory).sort().forEach(category => {
+            const commands = commandsByCategory[category].sort((a, b) => a.name.localeCompare(b.name));
             
-            this.renameTab(tabId, escapedTitle);
+            categoriesHtml += `
+                <div class="mb-6">
+                    <h3 class="text-lg font-bold text-white mb-3 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
+                        </svg>
+                        ${category}
+                    </h3>
+                    <div class="grid gap-2">
+                        ${commands.map(cmd => {
+                            const isEnabled = this.isCommandEnabled(cmd.name);
+                            const typeColor = cmd.type === 'native' ? 'bg-blue-600/20 text-blue-300 border-blue-500/30' : 'bg-purple-600/20 text-purple-300 border-purple-500/30';
+                            
+                            return `
+                                <div class="command-item bg-slate-700/30 border border-slate-600/40 rounded-lg p-3 flex items-center justify-between">
+                                    <div class="flex items-center space-x-3 flex-1 min-w-0">
+                                        <div class="w-8 h-8 bg-green-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                                            <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3"></path>
+                                            </svg>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center space-x-2 mb-1">
+                                                <span class="text-white font-mono font-medium">${cmd.name}</span>
+                                                <span class="px-2 py-1 rounded text-xs ${typeColor} border">${cmd.type === 'native' ? 'Native' : 'Plugin'}</span>
+                                            </div>
+                                            <p class="text-slate-400 text-sm truncate">${cmd.description}</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-3 flex-shrink-0">
+                                        <div class="flex items-center space-x-2">
+                                            <span class="text-lg ${isEnabled ? 'text-green-400' : 'text-red-400'}">
+                                                ${isEnabled ? '✓' : '✗'}
+                                            </span>
+                                            <span class="text-xs ${isEnabled ? 'text-green-400' : 'text-red-400'} font-medium">
+                                                ${isEnabled ? 'ACTIVÉE' : 'DÉSACTIVÉE'}
+                                            </span>
+                                        </div>
+                                        <button class="command-info-btn w-7 h-7 bg-blue-600/30 hover:bg-blue-500/40 text-blue-300 rounded-full flex items-center justify-center transition-colors text-xs font-bold" data-command="${cmd.name}" title="Voir les détails de la commande">
+                                            i
+                                        </button>
+                                        <div class="command-toggle ${isEnabled ? 'enabled' : ''}" data-command="${cmd.name}"></div>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        });
+        
+        const modalHtml = `
+        <div id="command-manager-modal" class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-6">
+            <div class="bg-slate-800/95 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl max-w-4xl w-full text-slate-100 border border-slate-600/40 animate-slide-up max-h-[90vh] flex flex-col">
+                <div class="flex items-center justify-between mb-6 flex-shrink-0">
+                    <h2 class="text-2xl font-bold flex items-center">
+                        <div class="w-10 h-10 bg-gradient-to-br from-green-500 to-blue-500 rounded-2xl flex items-center justify-center mr-3 shadow-lg">
+                            <svg class="w-5 h-5 text-green-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                            </svg>
+                        </div>
+                        Gestionnaire de Commandes
+                    </h2>
+                    <button id="close-command-manager-modal" class="w-8 h-8 bg-slate-600/50 text-slate-300 rounded-full flex items-center justify-center hover:bg-slate-500/60 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="mb-4 p-4 bg-blue-900/20 border border-blue-500/30 rounded-xl">
+                    <div class="flex items-center mb-2">
+                        <svg class="w-5 h-5 mr-2 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span class="text-blue-300 font-medium">Information</span>
+                    </div>
+                    <p class="text-slate-300 text-sm">
+                        Gérez la visibilité des commandes dans l'aide et les manuels. Les commandes désactivées restent fonctionnelles mais n'apparaissent plus dans <code class="bg-slate-700 px-1 rounded">help</code> et <code class="bg-slate-700 px-1 rounded">man</code>.
+                    </p>
+                </div>
+
+                <div class="flex-1 overflow-y-auto custom-scrollbar pr-2">
+                    ${categoriesHtml}
+                </div>
+                
+                <div class="flex justify-between items-center mt-6 pt-4 border-t border-slate-600/40 flex-shrink-0">
+                    <div class="text-sm text-slate-400">
+                        <span id="enabled-count">${allCommands.size - this.disabledCommands.size}</span> / ${allCommands.size} commandes activées
+                    </div>
+                    <div class="flex space-x-3">
+                        <button id="reset-commands-btn" class="px-4 py-2 bg-yellow-600/20 text-yellow-300 border border-yellow-500/30 rounded-lg hover:bg-yellow-600/30 transition-colors text-sm">
+                            Réinitialiser
+                        </button>
+                        <button id="close-command-manager-btn" class="px-6 py-2 bg-slate-600/50 text-white rounded-lg hover:bg-slate-500/60 transition-colors font-medium">
+                            Fermer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+
+        // Ajouter le modal au body
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Gestionnaires d'événements
+        const modal = document.getElementById('command-manager-modal');
+        const closeBtn = document.getElementById('close-command-manager-modal');
+        const closeBtnBottom = document.getElementById('close-command-manager-btn');
+        const resetBtn = document.getElementById('reset-commands-btn');
+        const enabledCountSpan = document.getElementById('enabled-count');
+        
+        const updateEnabledCount = () => {
+            enabledCountSpan.textContent = allCommands.size - this.disabledCommands.size;
         };
-
-        const cancelRename = () => {
-            if (input.parentNode) {
-                input.parentNode.removeChild(input);
-            }
-            titleSpan.style.display = '';
+        
+        const closeModal = () => {
+            modal.remove();
         };
-
-        input.addEventListener('blur', finishRename);
         
-        input.addEventListener('keydown', (e) => {
-            e.stopPropagation();
-            
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                finishRename();
-            } else if (e.key === 'Escape') {
-                e.preventDefault();
-                cancelRename();
+        // Gestionnaires pour les toggles de commandes
+        modal.querySelectorAll('.command-toggle').forEach(toggle => {
+            toggle.addEventListener('click', () => {
+                const commandName = toggle.dataset.command;
+                const isEnabled = toggle.classList.contains('enabled');
+                const newState = !isEnabled;
+                
+                this.toggleCommandEnabled(commandName, newState);
+                
+                // Mettre à jour l'affichage du toggle
+                if (newState) {
+                    toggle.classList.add('enabled');
+                } else {
+                    toggle.classList.remove('enabled');
+                }
+                
+                // Mettre à jour l'icône et le texte de statut
+                const commandItem = toggle.closest('.command-item');
+                const statusContainer = commandItem.querySelector('.flex.items-center.space-x-3.flex-shrink-0 .flex.items-center.space-x-2');
+                const iconSpan = statusContainer.children[0]; // Premier enfant = icône
+                const textSpan = statusContainer.children[1]; // Deuxième enfant = texte
+                
+                if (newState) {
+                    // Commande activée
+                    iconSpan.textContent = '✓';
+                    iconSpan.className = 'text-lg text-green-400';
+                    textSpan.textContent = 'ACTIVÉE';
+                    textSpan.className = 'text-xs text-green-400 font-medium';
+                } else {
+                    // Commande désactivée
+                    iconSpan.textContent = '✗';
+                    iconSpan.className = 'text-lg text-red-400';
+                    textSpan.textContent = 'DÉSACTIVÉE';
+                    textSpan.className = 'text-xs text-red-400 font-medium';
+                }
+                
+                updateEnabledCount();
+                
+                this.showNotification({
+                    type: 'info',
+                    title: 'Commande ' + (newState ? 'activée' : 'désactivée'),
+                    message: `La commande "${commandName}" a été ${newState ? 'activée' : 'désactivée'}.`,
+                    duration: 2000
+                });
+            });
+        });
+
+        // Gestionnaires pour les boutons d'information
+        modal.querySelectorAll('.command-info-btn').forEach(infoBtn => {
+            infoBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Empêcher la propagation du clic
+                const commandName = infoBtn.dataset.command;
+                this.showCommandInfoModal(commandName);
+            });
+        });
+        
+        // Réinitialiser toutes les commandes
+        resetBtn.addEventListener('click', () => {
+            if (confirm('Êtes-vous sûr de vouloir réactiver toutes les commandes ?')) {
+                this.disabledCommands.clear();
+                this.saveDisabledCommands();
+                
+                // Mettre à jour l'affichage de tous les toggles
+                modal.querySelectorAll('.command-toggle').forEach(toggle => {
+                    toggle.classList.add('enabled');
+                    
+                    // Mettre à jour l'icône et le texte de statut
+                    const commandItem = toggle.closest('.command-item');
+                    const statusContainer = commandItem.querySelector('.flex.items-center.space-x-3.flex-shrink-0 .flex.items-center.space-x-2');
+                    const iconSpan = statusContainer.children[0]; // Premier enfant = icône
+                    const textSpan = statusContainer.children[1]; // Deuxième enfant = texte
+                    
+                    // Commande activée
+                    iconSpan.textContent = '✓';
+                    iconSpan.className = 'text-lg text-green-400';
+                    textSpan.textContent = 'ACTIVÉE';
+                    textSpan.className = 'text-xs text-green-400 font-medium';
+                });
+                
+                updateEnabledCount();
+                
+                this.showNotification({
+                    type: 'success',
+                    title: 'Commandes réinitialisées',
+                    message: 'Toutes les commandes ont été réactivées.',
+                    duration: 2000
+                });
             }
         });
-
-        input.addEventListener('click', (e) => {
-            e.stopPropagation();
-        });
-    },
-
-    switchToTab(tabId) {
-        // Sauvegarder l'état de l'onglet actuel avant de changer
-        this.saveCurrentTabState();
         
-        // Mettre à jour les états
-        this.tabs.forEach(tab => {
-            tab.isActive = tab.id === tabId;
+        closeBtn.addEventListener('click', closeModal);
+        closeBtnBottom.addEventListener('click', closeModal);
+        
+        // Fermer en cliquant à l'extérieur
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
         });
         
-        this.activeTabId = tabId;
-        
-        // Charger l'état du nouvel onglet
-        this.loadTabState(tabId);
-        
-        // Mettre à jour l'affichage
-        this.renderTabs();
-        
-        // Sauvegarder la nouvelle configuration
-        this.saveTabsToCookie();
+        // Support des touches
+        const keyHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                document.removeEventListener('keydown', keyHandler);
+            }
+        };
+        document.addEventListener('keydown', keyHandler);
     },
 
-    closeTab(tabId) {
-        if (this.tabs.length <= 1) {
-            this.addOutput('<span class="text-yellow-400">⚠️ Impossible de fermer le dernier onglet</span>', 'system');
+    showCommandInfoModal(commandName) {
+        // Obtenir les métadonnées de la commande
+        let metadata = COMMAND_METADATA[commandName];
+        let isPluginCommand = false;
+        let pluginCommand = null;
+        
+        // Si pas trouvé dans les commandes natives, chercher dans les plugins
+        if (!metadata && this.pluginManager) {
+            pluginCommand = this.pluginManager.getCommand(commandName);
+            if (pluginCommand) {
+                isPluginCommand = true;
+                // Créer des métadonnées compatibles à partir de la commande du plugin
+                metadata = {
+                    description: pluginCommand.description || 'Commande de plugin',
+                    synopsis: pluginCommand.name + (pluginCommand.usage ? ' ' + pluginCommand.usage : ''),
+                    category: pluginCommand.category || 'Plugin',
+                    options: pluginCommand.options || [],
+                    examples: pluginCommand.examples || [],
+                    seeAlso: pluginCommand.seeAlso || []
+                };
+            }
+        }
+        
+        if (!metadata) {
+            this.showNotification({
+                type: 'error',
+                title: 'Erreur',
+                message: `Aucune information disponible pour la commande "${commandName}".`,
+                duration: 3000
+            });
             return;
         }
 
-        const tabIndex = this.tabs.findIndex(tab => tab.id === tabId);
-        if (tabIndex === -1) return;
+        // Construire le HTML du modal d'informations
+        const infoModalHtml = `
+        <div id="command-info-modal" class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[60] p-6">
+            <div class="bg-slate-800/95 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl max-w-2xl w-full text-slate-100 border border-slate-600/40 animate-slide-up max-h-[80vh] overflow-y-auto">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold flex items-center">
+                        <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-2xl flex items-center justify-center mr-3 shadow-lg">
+                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        Détails de la commande
+                    </h2>
+                    <button id="close-command-info-modal" class="w-8 h-8 bg-slate-600/50 text-slate-300 rounded-full flex items-center justify-center hover:bg-slate-500/60 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
 
-        const wasActive = this.tabs[tabIndex].isActive;
-        this.tabs.splice(tabIndex, 1);
+                <div class="space-y-6">
+                    <!-- Nom et description -->
+                    <div class="bg-slate-700/30 rounded-xl p-4 border border-slate-600/40">
+                        <div class="flex items-center space-x-3 mb-3">
+                            <div class="w-8 h-8 bg-green-600/20 rounded-lg flex items-center justify-center">
+                                <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3"></path>
+                                </svg>
+                            </div>
+                            <span class="text-xl font-mono font-bold text-white">${commandName}</span>
+                            <span class="px-2 py-1 rounded text-xs bg-blue-600/20 text-blue-300 border border-blue-500/30">
+                                ${metadata.category || 'Autre'}
+                            </span>
+                            ${isPluginCommand ? '<span class="px-2 py-1 rounded text-xs bg-purple-600/20 text-purple-300 border border-purple-500/30">PLUGIN</span>' : ''}
+                        </div>
+                        <p class="text-slate-300 leading-relaxed">${metadata.description}</p>
+                        ${isPluginCommand && pluginCommand.plugin ? `<p class="text-slate-400 text-sm mt-2">Plugin: <span class="text-purple-400">${pluginCommand.plugin}</span></p>` : ''}
+                    </div>
 
-        if (wasActive) {
-            // Activer l'onglet suivant ou précédent
-            const newActiveIndex = Math.min(tabIndex, this.tabs.length - 1);
-            const newActiveTab = this.tabs[newActiveIndex];
-            this.switchToTab(newActiveTab.id);
-        }
+                    <!-- Synopsis -->
+                    <div class="bg-slate-700/30 rounded-xl p-4 border border-slate-600/40">
+                        <h3 class="text-lg font-semibold text-white mb-3 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            Synopsis
+                        </h3>
+                        <div class="bg-black/40 rounded-lg p-3 border border-slate-500/30">
+                            <code class="text-green-400 font-mono">${metadata.synopsis}${metadata.helpOption && metadata.helpOption !== "None" ? ' ' + metadata.helpOption : ''}</code>
+                        </div>
+                    </div>
 
-        this.renderTabs();
-        this.saveTabsToCookie();
+                    ${metadata.options && metadata.options.length > 0 ? `
+                    <!-- Options -->
+                    <div class="bg-slate-700/30 rounded-xl p-4 border border-slate-600/40">
+                        <h3 class="text-lg font-semibold text-white mb-3 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            Options disponibles
+                        </h3>
+                        <div class="space-y-2">
+                            ${metadata.options.map(option => `
+                                <div class="bg-black/20 rounded-lg p-3 border border-slate-500/20">
+                                    <code class="text-blue-300 font-mono text-sm">${option}</code>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+
+                    ${metadata.examples && metadata.examples.length > 0 ? `
+                    <!-- Exemples -->
+                    <div class="bg-slate-700/30 rounded-xl p-4 border border-slate-600/40">
+                        <h3 class="text-lg font-semibold text-white mb-3 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                            Exemples d'utilisation
+                        </h3>
+                        <div class="space-y-3">
+                            ${metadata.examples.map((example, index) => `
+                                <div class="bg-black/40 rounded-lg p-3 border border-slate-500/30">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-xs text-slate-400 font-medium">Exemple ${index + 1}</span>
+                                        <button class="copy-example-btn text-xs text-blue-400 hover:text-blue-300 transition-colors" data-command="${example}">
+                                            Copier
+                                        </button>
+                                    </div>
+                                    <code class="text-green-400 font-mono text-sm">${example}</code>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : ''}
+                </div>
+
+                <div class="flex justify-end mt-6 pt-4 border-t border-slate-600/40">
+                    <button id="close-command-info-modal-bottom" class="px-6 py-2 bg-slate-600/50 hover:bg-slate-500/60 text-slate-200 rounded-lg transition-colors">
+                        Fermer
+                    </button>
+                </div>
+            </div>
+        </div>
+        `;
+
+        // Ajouter le modal au DOM
+        document.body.insertAdjacentHTML('beforeend', infoModalHtml);
+        const infoModal = document.getElementById('command-info-modal');
+
+        // Gestionnaires d'événements pour fermer le modal
+        const closeInfoModal = () => {
+            infoModal.remove();
+        };
+
+        const closeBtn = document.getElementById('close-command-info-modal');
+        const closeBtnBottom = document.getElementById('close-command-info-modal-bottom');
+
+        closeBtn.addEventListener('click', closeInfoModal);
+        closeBtnBottom.addEventListener('click', closeInfoModal);
+
+        // Fermer en cliquant à l'extérieur
+        infoModal.addEventListener('click', (e) => {
+            if (e.target === infoModal) {
+                closeInfoModal();
+            }
+        });
+
+        // Gestionnaires pour copier les exemples
+        infoModal.querySelectorAll('.copy-example-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const command = btn.dataset.command;
+                navigator.clipboard.writeText(command).then(() => {
+                    btn.textContent = 'Copié !';
+                    btn.classList.add('text-green-400');
+                    setTimeout(() => {
+                        btn.textContent = 'Copier';
+                        btn.classList.remove('text-green-400');
+                        btn.classList.add('text-blue-400');
+                    }, 2000);
+                }).catch(() => {
+                    this.showNotification({
+                        type: 'error',
+                        title: 'Erreur de copie',
+                        message: 'Impossible de copier la commande dans le presse-papiers.',
+                        duration: 3000
+                    });
+                });
+            });
+        });
+
+        // Support des touches
+        const keyHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeInfoModal();
+                document.removeEventListener('keydown', keyHandler);
+            }
+        };
+        document.addEventListener('keydown', keyHandler);
     },
 
     updatePromptDisplay() {
@@ -875,46 +858,15 @@ const app = {
     },
 
     incrementActiveTabCommandCount(arg) {
-        const activeTab = this.tabs.find(tab => tab.id === this.activeTabId);
-        if (!activeTab) return;
-
-        // Incrémenter le compteur de commandes
-        if (!activeTab.commandCount) {
-            activeTab.commandCount = 0;
+        if (TabManager && typeof TabManager.incrementActiveTabCommandCount === 'function') {
+            TabManager.incrementActiveTabCommandCount(arg);
         }
-        if (arg === "clear") {
-            activeTab.commandCount = 0; // Réinitialiser le compteur si la commande est "clear"
-            return;
-        } else {
-            activeTab.commandCount++;
-        }
-
-        // Re-rendre les onglets pour actualiser le compteur
-        this.renderTabs();
-        
-        // Sauvegarder immédiatement
-        this.saveTabsToCookie();
     },
 
     updateActiveTabOutputCount() {
-        const activeTab = this.tabs.find(tab => tab.id === this.activeTabId);
-        if (!activeTab) return;
-
-        // Compter les éléments de sortie (exclure les indicateurs système)
-        const outputElements = Array.from(this.outputElement.children)
-            .filter(child => child.id !== 'loading-llm-indicator' && child.id !== 'console-end-ref');
-        
-        // Mettre à jour le compteur pour l'onglet actif
-        activeTab.outputHistory = outputElements.map(child => ({
-            html: child.innerHTML,
-            className: child.className || ''
-        }));
-
-        // Re-rendre les onglets pour actualiser le compteur
-        this.renderTabs();
-        
-        // Sauvegarder les modifications dans les cookies
-        this.saveTabsToCookie();
+        if (TabManager && typeof TabManager.updateActiveTabOutputCount === 'function') {
+            TabManager.updateActiveTabOutputCount();
+        }
     },
 
     scrollToBottom() {
@@ -940,13 +892,17 @@ const app = {
         // Toujours afficher le message après clear
         this.addOutput(this.defaultMessage, 'system');
         
-        // Mettre à jour le compteur après le nettoyage
-        this.updateActiveTabOutputCount();
         this.scrollToBottom();
-        this.incrementActiveTabCommandCount("clear");
 
-        // Sauvegarder l'état de l'onglet après le nettoyage
-        this.saveCurrentTabState();
+        if (TabManager && typeof TabManager.updateActiveTabOutputCount === 'function') {
+            TabManager.updateActiveTabOutputCount();
+        }
+        if (TabManager && typeof TabManager.incrementActiveTabCommandCount === 'function') {
+            TabManager.incrementActiveTabCommandCount("clear");
+        }
+        if (TabManager && typeof TabManager.saveCurrentTabState === 'function') {
+            TabManager.saveCurrentTabState();
+        }
     },
 
     updatePrompt() {
@@ -1156,15 +1112,27 @@ const app = {
         this.addOutput(promptLine, 'command');
         this.addToHistory(commandText, promptLine, 'command');
 
-        // INCRÉMENTER LE COMPTEUR DE COMMANDES ICI SEULEMENT POUR LES COMMANDES SIMPLES
-        this.incrementActiveTabCommandCount();
+        if (TabManager && typeof TabManager.incrementActiveTabCommandCount === 'function') {
+            TabManager.incrementActiveTabCommandCount();
+        }
 
         this.historyIndex = -1;
 
         const [cmd, ...args] = commandText.split(/\s+/);
+        
+        // Vérifier d'abord dans les commandes natives
         const execute = this.commands[cmd];
 
         if (execute) {
+            // Vérifier si la commande est activée
+            if (!this.isCommandEnabled(cmd)) {
+                this.addOutput(`bash: ${cmd}: commande désactivée`, 'error');
+                this.addOutput(`<div class="text-gray-400 text-sm">Utilisez le menu Aide → Gestionnaire de commandes pour réactiver cette commande.</div>`);
+                this.updatePrompt();
+                this.commandInputElement.focus();
+                return;
+            }
+            
             try {
                 await execute.call(this, args);
             } catch (error) {
@@ -1172,7 +1140,28 @@ const app = {
                 console.error(`Command execution error (${cmd}):`, error);
             }
         } else {
-            this.addOutput(`bash: ${cmd}: commande introuvable`, 'error');
+            // Vérifier dans les plugins si la commande n'existe pas nativement
+            const pluginCommand = this.pluginManager ? this.pluginManager.getCommand(cmd) : null;
+            
+            if (pluginCommand) {
+                // Vérifier si la commande plugin est activée
+                if (!this.isCommandEnabled(cmd)) {
+                    this.addOutput(`bash: ${cmd}: commande désactivée`, 'error');
+                    this.addOutput(`<div class="text-gray-400 text-sm">Utilisez le menu Aide → Gestionnaire de commandes pour réactiver cette commande.</div>`);
+                    this.updatePrompt();
+                    this.commandInputElement.focus();
+                    return;
+                }
+                
+                try {
+                    await pluginCommand.execute.call(this, args);
+                } catch (error) {
+                    this.addOutput(`Erreur lors de l'exécution du plugin ${cmd}: ${error.message}`, 'error');
+                    console.error(`Plugin execution error (${cmd}):`, error);
+                }
+            } else {
+                this.addOutput(`bash: ${cmd}: commande introuvable`, 'error');
+            }
         }
 
         this.updatePrompt();
@@ -1182,6 +1171,13 @@ const app = {
     // Méthode pour exécuter une commande simple (refactorisée)
     async executeSingleCommandWithExitCode(commandText) {
         const [cmd, ...args] = commandText.split(/\s+/);
+        
+        // Vérifier si la commande est activée
+        if (!this.isCommandEnabled(cmd)) {
+            this.addOutput(`bash: ${cmd}: commande désactivée`, 'error');
+            return 1; // Code d'erreur
+        }
+        
         const execute = this.commands[cmd];
 
         if (execute) {
@@ -1194,8 +1190,21 @@ const app = {
                 return 1;
             }
         } else {
-            this.addOutput(`bash: ${cmd}: commande introuvable`, 'error');
-            return 1;
+            // Vérifier dans les plugins
+            const pluginCommand = this.pluginManager ? this.pluginManager.getCommand(cmd) : null;
+            
+            if (pluginCommand) {
+                try {
+                    await pluginCommand.execute.call(this, args);
+                    return 0;
+                } catch (error) {
+                    this.addOutput(`Erreur lors de l'exécution du plugin ${cmd}: ${error.message}`, 'error');
+                    return 1;
+                }
+            } else {
+                this.addOutput(`bash: ${cmd}: commande introuvable`, 'error');
+                return 1;
+            }
         }
     },
 
@@ -1243,6 +1252,9 @@ const app = {
 
     // --- Command Definitions ---
     commands: {
+        // Commandes pour la gestion des onglets
+        ...TabManager.createTabCommands(),
+
         echo(args) {
             // Parse options
             const options = this.parseOptions(args, {
@@ -1406,35 +1418,59 @@ const app = {
 
             categoryOrder.forEach((category, index) => {
             if (grouped[category]) {
-                const icon = commandHelpers.getCategoryIcon(category);
+                // Filtrer les commandes désactivées
+                const enabledCommands = grouped[category].filter(cmdName => this.isCommandEnabled(cmdName));
                 
-                this.addOutput(`<span class="underline text-blue-300 font-semibold mt-2">${icon} ${category}</span>`);
-                
-                grouped[category].forEach(cmdName => {
-                const metadata = COMMAND_METADATA[cmdName];
-                if (metadata) {
-                    let commandLine = `<span class="ml-4"><span class="text-green-400 cursor-pointer clickable-command" data-command="${cmdName}">${cmdName}</span>`;
+                if (enabledCommands.length > 0) {
+                    const icon = commandHelpers.getCategoryIcon(category);
                     
-                    // Ajouter helpOption avec style si présent ET différent de "None"
-                    if (metadata.helpOption && metadata.helpOption !== "None" && metadata.helpOption.trim() !== "") {
-                    // Échapper les caractères < et > pour l'affichage HTML
-                    const escapedHelpOption = metadata.helpOption.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                    commandLine += ` <span class="bg-gray-700 text-gray-200 px-1 rounded">${escapedHelpOption}</span>`;
+                    this.addOutput(`<span class="underline text-blue-300 font-semibold mt-2">${icon} ${category}</span>`);
+                    
+                    enabledCommands.forEach(cmdName => {
+                    const metadata = COMMAND_METADATA[cmdName];
+                    if (metadata) {
+                        let commandLine = `<span class="ml-4"><span class="text-green-400 cursor-pointer clickable-command" data-command="${cmdName}">${cmdName}</span>`;
+                        
+                        // Ajouter helpOption avec style si présent ET différent de "None"
+                        if (metadata.helpOption && metadata.helpOption !== "None" && metadata.helpOption.trim() !== "") {
+                        // Échapper les caractères < et > pour l'affichage HTML
+                        const escapedHelpOption = metadata.helpOption.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                        commandLine += ` <span class="bg-gray-700 text-gray-200 px-1 rounded">${escapedHelpOption}</span>`;
+                        }
+                        
+                        commandLine += ` <span class="text-gray-400">- ${metadata.description}</span></span>`;
+                        this.addOutput(commandLine);
                     }
+                    });
                     
-                    commandLine += ` <span class="text-gray-400">- ${metadata.description}</span></span>`;
-                    this.addOutput(commandLine);
-                }
-                });
-                
-                // Ajouter séparateur sauf pour la dernière catégorie
-                if (index < categoryOrder.length - 1) {
-                this.addOutput('<hr class="my-2 border-gray-700">');
+                    // Ajouter séparateur sauf pour la dernière catégorie avec des commandes
+                    const remainingCategories = categoryOrder.slice(index + 1);
+                    const hasMoreEnabledCategories = remainingCategories.some(cat => 
+                        grouped[cat] && grouped[cat].some(cmd => this.isCommandEnabled(cmd))
+                    );
+                    if (hasMoreEnabledCategories) {
+                        this.addOutput('<hr class="my-2 border-gray-700">');
+                    }
                 }
             }
             });
 
+            // Ajouter les commandes des plugins (filtrées)
+            if (this.pluginManager) {
+                const pluginCommands = this.pluginManager.getAllCommands().filter(cmd => this.isCommandEnabled(cmd.name));
+                if (pluginCommands.length > 0) {
+                    this.addOutput('<hr class="my-2 border-gray-700">');
+                    this.addOutput(`<span class="underline text-purple-300 font-semibold mt-2">🔌 Plugins</span>`);
+                    
+                    pluginCommands.forEach(cmd => {
+                        this.addOutput(`<span class="ml-4"><span class="text-purple-400 cursor-pointer clickable-command" data-command="${cmd.name}">${cmd.name}</span> <span class="text-gray-400">- ${cmd.description}</span></span>`);
+                    });
+                }
+            }
+
             this.addOutput('<hr class="my-2 border-gray-700">');
+            this.addOutput('<div class="text-sm text-gray-400 mt-3">💡 <strong>Nouveauté:</strong> Utilisez <span class="text-purple-400 clickable-command cursor-pointer" data-command="plugins manager">plugins manager</span> pour gérer vos extensions personnalisées!</div>');
+            this.addOutput('<div class="text-sm text-gray-400 mt-2">⚙️ <strong>Gestion:</strong> Utilisez le menu <span class="text-blue-400 cursor-pointer" onclick="app.showCommandManagerModal()">Aide → Commandes</span> pour gérer la visibilité des commandes.</div>');
             
             // Configurer les commandes cliquables après avoir ajouté tout l'output
             setTimeout(() => this.setupClickableCommands(), 0);
@@ -1462,7 +1498,11 @@ const app = {
                 type: 'directory',
                 children: {}
             };
+            
+            // IMPORTANT: Sauvegarder immédiatement
+            this.saveFileSystemToLocalStorage();
             this.saveFileSystemToCookie();
+            
             this.addOutput(`Dossier '${dirName}' créé.`);
             this.addToHistory(`mkdir ${dirName}`, `Dossier '${dirName}' créé.`, 'system');
         },
@@ -1585,8 +1625,8 @@ const app = {
                             <span class="text-white font-mono">${versionData.version || 'N/A'}</span>
                         </div>
                         <div class="flex justify-between p-2 bg-blue-900/30 rounded">
-                            <span class="text-blue-300 font-medium">Date de build:</span>
-                            <span class="text-white font-mono">${versionData.buildDate || 'N/A'}</span>
+                            <span class="text-blue-300 font-medium">Date:</span>
+                            <span class="text-white font-mono">${versionData.date || 'N/A'}</span>
                         </div>
                         <div class="flex justify-between p-2 bg-green-900/30 rounded">
                             <span class="text-green-300 font-medium">Auteur:</span>
@@ -1680,6 +1720,375 @@ const app = {
                 }, 1000);
             }
         },
+
+        // Nouvelles commandes de versioning
+        versionbump: async function(args) {
+            if (!args || args.length === 0) {
+                this.addOutput('Erreur: Un changelog est requis. Usage: versionbump [type] "changelog"', 'error');
+                return;
+            }
+
+            let type = 'patch';
+            let changelog = '';
+
+            // Détecter si le premier argument est un type de version
+            if (args[0] && ['major', 'minor', 'patch'].includes(args[0].toLowerCase())) {
+                type = args[0].toLowerCase();
+                changelog = args.slice(1).join(' ');
+            } else {
+                changelog = args.join(' ');
+            }
+
+            if (!changelog.trim()) {
+                this.addOutput('Erreur: Un changelog est requis.', 'error');
+                return;
+            }
+
+            const loadingAnimation = this.createLoadingAnimation({
+                title: `Simulation mise à jour de version (${type})...`,
+                progressBarColors: 'from-green-500 to-blue-500',
+                steps: [
+                    { text: 'Lecture de la version actuelle...', color: 'text-green-400', delay: 0 },
+                    { text: 'Calcul de la nouvelle version...', color: 'text-blue-400', delay: 200 },
+                    { text: 'Génération de la commande Node.js...', color: 'text-purple-400', delay: 400 }
+                ]
+            });
+
+            try {
+                const response = await fetch('/version.json');
+                if (!response.ok) {
+                    throw new Error(`Impossible de lire version.json: ${response.status}`);
+                }
+                
+                const versionData = await response.json();
+                const [major, minor, patch] = versionData.version.split('.').map(Number);
+                
+                let newVersion;
+                switch(type) {
+                    case 'major':
+                        newVersion = `${major + 1}.0.0`;
+                        break;
+                    case 'minor':
+                        newVersion = `${major}.${minor + 1}.0`;
+                        break;
+                    case 'patch':
+                    default:
+                        newVersion = `${major}.${minor}.${patch + 1}`;
+                        break;
+                }
+
+                loadingAnimation.complete();
+
+                const nodeCommand = `node version.js ${type} add "${changelog}"`;
+
+                const updateHTML = `
+                    <div class="border border-green-500 rounded-xl p-6 bg-gradient-to-br from-green-900/30 to-blue-900/20 backdrop-blur-sm mt-3">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 bg-gradient-to-br from-green-500 to-blue-500 rounded-full flex items-center justify-center border-2 border-green-400">
+                                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 class="text-2xl font-bold text-white">Commande Version générée</h2>
+                                    <p class="text-green-300 text-sm">Mise à jour ${type} : ${versionData.version} → ${newVersion}</p>
+                                </div>
+                            </div>
+                            <div class="bg-green-500/20 text-green-400 px-4 py-2 rounded-full text-lg font-bold border border-green-500/30">
+                                v${newVersion}
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <div class="p-4 bg-gray-900/50 rounded-lg border border-gray-600">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-blue-300 font-medium text-sm">Commande Node.js à exécuter :</span>
+                                    <button onclick="navigator.clipboard.writeText('${nodeCommand}').then(() => app.addOutput('Commande copiée!', 'system'))" 
+                                        class="text-xs bg-blue-600/20 text-blue-300 px-2 py-1 rounded border border-blue-500/30 hover:bg-blue-600/30 transition-colors">
+                                        Copier
+                                    </button>
+                                </div>
+                                <code class="text-white font-mono text-sm bg-gray-800/80 block p-3 rounded border-l-4 border-green-500 break-all">${nodeCommand}</code>
+                            </div>
+                            
+                            <div class="grid md:grid-cols-2 gap-4">
+                                <div class="space-y-2">
+                                    <div class="flex justify-between p-2 bg-red-900/30 rounded">
+                                        <span class="text-red-300 font-medium">Version actuelle:</span>
+                                        <span class="text-white font-mono">${versionData.version}</span>
+                                    </div>
+                                    <div class="flex justify-between p-2 bg-green-900/30 rounded">
+                                        <span class="text-green-300 font-medium">Nouvelle version:</span>
+                                        <span class="text-white font-mono font-bold">${newVersion}</span>
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="flex justify-between p-2 bg-purple-900/30 rounded">
+                                        <span class="text-purple-300 font-medium">Type:</span>
+                                        <span class="text-white font-mono">${type.toUpperCase()}</span>
+                                    </div>
+                                    <div class="flex justify-between p-2 bg-blue-900/30 rounded">
+                                        <span class="text-blue-300 font-medium">Date:</span>
+                                        <span class="text-white font-mono">${new Date().toISOString().split('T')[0]}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="p-3 bg-gray-900/30 rounded border-l-4 border-yellow-500">
+                                <span class="text-yellow-300 font-medium text-sm">Changelog:</span>
+                                <div class="text-white font-mono text-sm mt-1">${changelog}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4 p-3 bg-blue-900/20 border border-blue-600 rounded-lg">
+                            <div class="text-blue-400 text-sm">
+                                💡 <strong>Instructions:</strong> Copiez la commande ci-dessus et exécutez-la dans votre terminal Node.js dans le répertoire racine du projet.
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                this.addOutput(updateHTML, 'system');
+
+            } catch (error) {
+                loadingAnimation.complete();
+                this.addOutput(`
+                    <div class="mt-3 p-4 bg-red-900/20 border border-red-600 rounded-lg">
+                        <div class="flex items-center mb-2">
+                            <span class="text-red-400 mr-2">❌</span>
+                            <span class="text-red-300 font-medium">Erreur lors de la génération de la commande</span>
+                        </div>
+                        <div class="text-red-400 text-sm">${error.message}</div>
+                    </div>
+                `, 'error');
+            }
+        },
+
+        changelog: async function(args) {
+            try {
+                const response = await fetch('/version.json');
+                if (!response.ok) {
+                    throw new Error(`Impossible de lire version.json: ${response.status}`);
+                }
+                
+                const versionData = await response.json();
+
+                if (args && args.length > 0) {
+                    // Générer commande pour modifier le changelog
+                    const newChangelog = args.join(' ');
+                    const nodeCommand = `node version.js patch add "${newChangelog}"`;
+                    
+                    const updateHTML = `
+                        <div class="border border-blue-500 rounded-xl p-6 bg-gradient-to-br from-blue-900/30 to-purple-900/20 backdrop-blur-sm mt-3">
+                            <div class="flex items-center space-x-3 mb-4">
+                                <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center border-2 border-blue-400">
+                                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 class="text-2xl font-bold text-white">Commande Changelog générée</h2>
+                                    <p class="text-blue-300 text-sm">Nouvelle version patch avec changelog</p>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-4">
+                                <div class="p-4 bg-gray-900/50 rounded-lg border border-gray-600">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-blue-300 font-medium text-sm">Commande Node.js à exécuter :</span>
+                                        <button onclick="navigator.clipboard.writeText('${nodeCommand}').then(() => app.addOutput('Commande copiée!', 'system'))" 
+                                            class="text-xs bg-blue-600/20 text-blue-300 px-2 py-1 rounded border border-blue-500/30 hover:bg-blue-600/30 transition-colors">
+                                            Copier
+                                        </button>
+                                    </div>
+                                    <code class="text-white font-mono text-sm bg-gray-800/80 block p-3 rounded border-l-4 border-blue-500 break-all">${nodeCommand}</code>
+                                </div>
+                                
+                                <div class="grid gap-3">
+                                    <div class="p-3 bg-red-900/30 rounded border-l-4 border-red-500">
+                                        <span class="text-red-300 font-medium text-sm">Changelog actuel:</span>
+                                        <div class="text-gray-300 font-mono text-sm mt-1">${versionData.changelog || 'Aucun'}</div>
+                                    </div>
+                                    <div class="p-3 bg-green-900/30 rounded border-l-4 border-green-500">
+                                        <span class="text-green-300 font-medium text-sm">Nouveau changelog:</span>
+                                        <div class="text-white font-mono text-sm mt-1 font-bold">${newChangelog}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    this.addOutput(updateHTML, 'system');
+                } else {
+                    // Afficher le changelog actuel
+                    const changelogHTML = `
+                        <div class="border border-purple-500 rounded-xl p-6 bg-gradient-to-br from-purple-900/30 to-blue-900/20 backdrop-blur-sm mt-3">
+                            <div class="flex items-center space-x-3 mb-4">
+                                <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center border-2 border-purple-400">
+                                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 class="text-2xl font-bold text-white">Changelog Actuel</h2>
+                                    <p class="text-purple-300 text-sm">Version ${versionData.version}</p>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-3">
+                                <div class="flex justify-between p-2 bg-purple-900/30 rounded">
+                                    <span class="text-purple-300 font-medium">Version:</span>
+                                    <span class="text-white font-mono">${versionData.version}</span>
+                                </div>
+                                <div class="flex justify-between p-2 bg-blue-900/30 rounded">
+                                    <span class="text-blue-300 font-medium">Date:</span>
+                                    <span class="text-white font-mono">${versionData.date}</span>
+                                </div>
+                                <div class="p-3 bg-gray-900/30 rounded">
+                                    <span class="text-gray-300 font-medium">Changelog:</span>
+                                    <div class="text-white font-mono text-sm mt-2 p-2 bg-gray-800/50 rounded border-l-4 border-blue-500">
+                                        ${versionData.changelog || 'Aucun changelog disponible'}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    this.addOutput(changelogHTML, 'system');
+                }
+
+            } catch (error) {
+                this.addOutput(`
+                    <div class="mt-3 p-4 bg-red-900/20 border border-red-600 rounded-lg">
+                        <div class="flex items-center mb-2">
+                            <span class="text-red-400 mr-2">❌</span>
+                            <span class="text-red-300 font-medium">Erreur lors de l'accès au changelog</span>
+                        </div>
+                        <div class="text-red-400 text-sm">${error.message}</div>
+                    </div>
+                `, 'error');
+            }
+        },
+
+        versionhistory: async function(args) {
+            const loadingAnimation = this.createLoadingAnimation({
+                title: 'Génération des commandes Node.js...',
+                progressBarColors: 'from-indigo-500 to-purple-500',
+                steps: [
+                    { text: 'Récupération de l\'historique...', color: 'text-indigo-400', delay: 0 },
+                    { text: 'Analyse des données...', color: 'text-purple-400', delay: 200 },
+                    { text: 'Génération des commandes...', color: 'text-pink-400', delay: 400 }
+                ]
+            });
+
+            try {
+                const response = await fetch('/version.json');
+                if (!response.ok) {
+                    throw new Error(`Impossible de lire version.json: ${response.status}`);
+                }
+                
+                const versionData = await response.json();
+                const history = versionData.history || [];
+                
+                loadingAnimation.complete();
+
+                const commandsHTML = `
+                    <div class="border border-indigo-500 rounded-xl p-6 bg-gradient-to-br from-indigo-900/30 to-purple-900/20 backdrop-blur-sm mt-3">
+                        <div class="flex items-center justify-between mb-6">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center border-2 border-indigo-400">
+                                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 class="text-2xl font-bold text-white">Commandes Node.js pour toutes les versions</h2>
+                                    <p class="text-indigo-300 text-sm">Historique complet avec commandes de versioning</p>
+                                </div>
+                            </div>
+                            <div class="bg-indigo-500/20 text-indigo-400 px-4 py-2 rounded-full text-sm font-bold border border-indigo-500/30">
+                                ${history.length} versions
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4 p-4 bg-blue-900/20 border border-blue-500/30 rounded-lg">
+                            <div class="text-blue-400 text-sm mb-2">
+                                💡 <strong>Instructions:</strong> Voici toutes les commandes Node.js pour reproduire l'historique des versions
+                            </div>
+                            <div class="flex space-x-2">
+                                <button onclick="
+                                    const commands = Array.from(document.querySelectorAll('[data-node-command]')).map(el => el.dataset.nodeCommand).join('\\n');
+                                    navigator.clipboard.writeText(commands).then(() => app.addOutput('Toutes les commandes copiées!', 'system'));
+                                " class="text-xs bg-blue-600/20 text-blue-300 px-3 py-1 rounded border border-blue-500/30 hover:bg-blue-600/30 transition-colors">
+                                    Copier toutes les commandes
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-3 max-h-96 overflow-y-auto custom-scrollbar">
+                            ${history.map((version, index) => {
+                                const typeColors = {
+                                    'major': 'text-red-400 bg-red-900/30 border-red-500',
+                                    'minor': 'text-yellow-400 bg-yellow-900/30 border-yellow-500', 
+                                    'patch': 'text-green-400 bg-green-900/30 border-green-500',
+                                    'initial': 'text-blue-400 bg-blue-900/30 border-blue-500'
+                                };
+                                const colorClass = typeColors[version.type] || typeColors['patch'];
+                                const nodeCommand = `node version.js ${version.type || 'patch'} add "${version.changelog}"`;
+                                
+                                return `
+                                    <div class="border border-gray-600 rounded-lg p-4 bg-gray-800/30 hover:bg-gray-700/30 transition-colors">
+                                        <div class="flex items-center justify-between mb-3">
+                                            <div class="flex items-center space-x-3">
+                                                <span class="text-white font-bold text-lg font-mono">v${version.version}</span>
+                                                <span class="px-2 py-1 rounded text-xs font-medium border ${colorClass}">
+                                                    ${version.type?.toUpperCase() || 'PATCH'}
+                                                </span>
+                                                ${index === 0 ? '<span class="px-2 py-1 rounded text-xs font-medium bg-purple-500/20 text-purple-400 border border-purple-500">ACTUELLE</span>' : ''}
+                                            </div>
+                                            <span class="text-gray-400 text-sm font-mono">${version.date}</span>
+                                        </div>
+                                        
+                                        <div class="mb-3 p-3 bg-gray-900/50 rounded border border-gray-600">
+                                            <div class="flex items-center justify-between mb-1">
+                                                <span class="text-gray-300 text-xs font-medium">Commande Node.js:</span>
+                                                <button onclick="navigator.clipboard.writeText('${nodeCommand}').then(() => app.addOutput('Commande copiée!', 'system'))" 
+                                                    class="text-xs bg-gray-600/20 text-gray-300 px-2 py-1 rounded border border-gray-500/30 hover:bg-gray-600/40 transition-colors">
+                                                    Copier
+                                                </button>
+                                            </div>
+                                            <code data-node-command="${nodeCommand}" class="text-green-300 font-mono text-xs bg-gray-800/80 block p-2 rounded border-l-2 border-green-500 break-all">
+                                                ${nodeCommand}
+                                            </code>
+                                        </div>
+                                        
+                                        <div class="text-gray-300 text-sm bg-gray-900/50 p-3 rounded border-l-4 border-indigo-500">
+                                            <strong>Changelog:</strong> ${version.changelog}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+                
+                this.addOutput(commandsHTML, 'system');
+
+            } catch (error) {
+                loadingAnimation.complete();
+                this.addOutput(`
+                    <div class="mt-3 p-4 bg-red-900/20 border border-red-600 rounded-lg">
+                        <div class="flex items-center mb-2">
+                            <span class="text-red-400 mr-2">❌</span>
+                            <span class="text-red-300 font-medium">Erreur lors du chargement de l'historique</span>
+                        </div>
+                        <div class="text-red-400 text-sm">${error.message}</div>
+                    </div>
+                `, 'error');
+            }
+        },
+
         cconnect: async function (args) {
             if (!args || args.length === 0 || !args[0].trim()) {
             this.addOutput('Erreur : veuillez fournir un pseudo. Utilisation : cconnect <username>', 'error');
@@ -4131,16 +4540,32 @@ const app = {
             const command = args && args[0] ? args[0].toLowerCase() : '';
 
             if (!command) {
-                // Affiche la liste des manuels disponibles
+                // Affiche la liste des manuels disponibles (filtrée)
                 this.addOutput(`<div class="text-blue-300 font-bold mb-2">MANUELS DISPONIBLES</div>`);
                 this.addOutput(`<div class="text-gray-300 mb-2">Utilisez '<span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="man ">man [commande]</span>' pour afficher le manuel d'une commande spécifique.</div>`);
                 this.addOutput(`<div class="text-yellow-300 mb-2">Commandes disponibles :</div>`);
 
-                const commands = Object.keys(COMMAND_METADATA).sort();
+                // Collecter les commandes natives activées
+                const nativeCommands = Object.keys(COMMAND_METADATA).filter(cmd => this.isCommandEnabled(cmd));
+                
+                // Collecter les commandes des plugins activés
+                const pluginCommands = [];
+                if (this.pluginManager) {
+                    const allPluginCommands = this.pluginManager.getAllCommands();
+                    allPluginCommands.forEach(cmd => {
+                        if (this.isCommandEnabled(cmd.name)) {
+                            pluginCommands.push(cmd.name);
+                        }
+                    });
+                }
+                
+                // Combiner et trier toutes les commandes
+                const allCommands = [...nativeCommands, ...pluginCommands].sort();
+                
                 let output = '<div class="grid grid-cols-4 gap-4 text-sm">';
 
-                for (let i = 0; i < commands.length; i++) {
-                    output += `<div class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="man ${commands[i]}">${commands[i]}</div>`;
+                for (let i = 0; i < allCommands.length; i++) {
+                    output += `<div class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="man ${allCommands[i]}">${allCommands[i]}</div>`;
                 }
                 output += '</div>';
 
@@ -4149,7 +4574,35 @@ const app = {
                 return;
             }
 
-            const metadata = COMMAND_METADATA[command];
+            // Vérifier si la commande est activée
+            if (!this.isCommandEnabled(command)) {
+                this.addOutput(`<div class="text-red-400">man: Aucune entrée de manuel pour '${command}' (commande désactivée)</div>`);
+                this.addOutput(`<div class="text-gray-400 text-sm">Utilisez le menu Aide → Commandes pour réactiver cette commande.</div>`);
+                return;
+            }
+
+            // Chercher d'abord dans les métadonnées des commandes natives
+            let metadata = COMMAND_METADATA[command];
+            let isPluginCommand = false;
+            let pluginCommand = null;
+            
+            // Si pas trouvé dans les commandes natives, chercher dans les plugins
+            if (!metadata && this.pluginManager) {
+                pluginCommand = this.pluginManager.getCommand(command);
+                if (pluginCommand) {
+                    isPluginCommand = true;
+                    // Créer des métadonnées compatibles à partir de la commande du plugin
+                    metadata = {
+                        description: pluginCommand.description || 'Commande de plugin',
+                        synopsis: pluginCommand.name + (pluginCommand.usage ? ' ' + pluginCommand.usage : ''),
+                        category: pluginCommand.category || 'Plugin',
+                        options: pluginCommand.options || [],
+                        examples: pluginCommand.examples || [],
+                        seeAlso: pluginCommand.seeAlso || []
+                    };
+                }
+            }
+            
             if (!metadata) {
                 this.addOutput(`<div class="text-red-400">man: aucune entrée de manuel pour ${command}</div>`);
                 this.addOutput(`<div class="text-gray-300">Essayez '<span class="text-green-400 cursor-pointer hover:text-green-300 clickable-command" data-command="man">man</span>' pour voir toutes les commandes disponibles.</div>`);
@@ -4160,7 +4613,7 @@ const app = {
             // Affiche le manuel de la commande
             let output = `
                 <div class="man-page">
-                    <div class="text-blue-300 font-bold text-lg mb-2">${command.toUpperCase()}(1)</div>
+                    <div class="text-blue-300 font-bold text-lg mb-2">${command.toUpperCase()}(1)${isPluginCommand ? ' [PLUGIN]' : ''}</div>
                     <div class="mb-4">
                         <div class="text-yellow-300 font-bold mb-1">NOM</div>
                         <div class="ml-4 text-gray-300">${command} - ${metadata.description}</div>
@@ -4174,6 +4627,15 @@ const app = {
                         <div class="ml-4 text-gray-300">${metadata.description}</div>
                     </div>
             `;
+
+            if (isPluginCommand && pluginCommand.plugin) {
+                output += `
+                    <div class="mb-4">
+                        <div class="text-yellow-300 font-bold mb-1">PLUGIN</div>
+                        <div class="ml-4 text-gray-300">Cette commande provient du plugin: <span class="text-blue-400">${pluginCommand.plugin}</span></div>
+                    </div>
+                `;
+            }
 
             if (metadata.options && metadata.options.length > 0) {
                 output += `
@@ -4609,144 +5071,146 @@ ${bottomBorder}
             this.addOutput('<span class="text-green-400">Lancement de la simulation Matrix...</span>');
             this.addOutput('<span class="text-yellow-300">Appuyez sur "q" pour quitter</span>');
 
-            // Créer un overlay pour le canvas Matrix dans console-output
+            // Créer un overlay pour le canvas Matrix en plein écran
             const matrixOverlay = document.createElement('div');
             matrixOverlay.id = 'matrix-overlay';
-            matrixOverlay.className = 'absolute inset-0 z-50 bg-black';
+            matrixOverlay.className = 'fixed inset-0 z-50 bg-black';
             matrixOverlay.innerHTML = `
-            <canvas id="matrix-canvas" class="w-full h-full"></canvas>
+            <canvas id="matrix-canvas" class="w-full h-full block"></canvas>
+                        
             <div class="absolute bottom-4 left-4 bg-black/50 backdrop-blur-sm rounded-lg p-3 border border-green-500/30">
-            <div class="text-green-400 text-sm font-mono mb-1">🔴 MATRIX SIMULATION</div>
-            <div class="text-green-300 text-xs font-mono opacity-80">Appuyez sur "q" pour quitter</div>
+                <div class="text-green-400 text-sm font-mono mb-1">🔴 MATRIX SIMULATION</div>
+                <div class="text-green-300 text-xs font-mono opacity-80">Appuyez sur "q" pour quitter</div>
             </div>
             <button id="matrix-fullscreen-btn" class="absolute bottom-4 right-4 bg-black/50 backdrop-blur-sm rounded-lg p-3 border border-green-500/30 hover:bg-green-500/20 transition-colors duration-200">
-            <div class="text-green-400 text-sm font-mono">⛶ Plein écran</div>
+                <div class="text-green-400 text-sm font-mono">⛶ Plein écran</div>
             </button>
             `;
             
-            // Assurer que console-output a une position relative pour l'overlay
-            this.outputElement.style.position = 'relative';
-            this.outputElement.appendChild(matrixOverlay);
+            // Ajouter l'overlay au body pour qu'il recouvre tout l'écran
+            document.body.appendChild(matrixOverlay);
 
             // Effet Matrix intégré
             const canvas = document.getElementById('matrix-canvas');
             const ctx = canvas.getContext('2d');
 
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-
             // Caractères Matrix (katakana, hiragana, chiffres)
             const matrixChars = "田由甲申甴电甶男甸甹町画甼甽甾甿畀畁畂畃畄畅畆畇畈畉畊畋界畍畎畏畐畑アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
             const fontSize = 16;
-            const columns = canvas.width / fontSize;
-            const drops = [];
+            let drops = [];
 
-            const speed = 0.5; // Vitesse de chute des gouttes
+            // Fonction pour redimensionner le canvas
+            const resizeCanvas = () => {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                
+                // Recalculer les colonnes
+                const columns = Math.floor(canvas.width / fontSize);
+                drops = [];
+                for (let x = 0; x < columns; x++) {
+                    drops[x] = Math.floor(Math.random() * (canvas.height / fontSize));
+                }
+            };
 
-            // Initialiser les gouttes
-            for (let x = 0; x < columns; x++) {
-                drops[x] = 1;
-            }
+            // Initialiser la taille
+            resizeCanvas();
 
             let animationId;
-            let frameCount = 0;
             const draw = () => {
-                frameCount++;
-
                 // Fond noir semi-transparent pour l'effet de traînée
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.04)';
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
                 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-                // Utiliser speed pour contrôler la fréquence de mise à jour
-                if (frameCount % (speed + 1) === 0) {
-                    ctx.fillStyle = '#0F0'; // Vert Matrix
-                    ctx.font = fontSize + 'px monospace';
+                // Style du texte
+                ctx.fillStyle = '#0F0'; // Vert Matrix
+                ctx.font = fontSize + 'px monospace';
 
-                    for (let i = 0; i < drops.length; i++) {
-                        // Caractère aléatoire
-                        const text = matrixChars[Math.floor(Math.random() * matrixChars.length)];
-                        
-                        // Position X et Y
-                        const x = i * fontSize;
-                        const y = drops[i] * fontSize;
+                for (let i = 0; i < drops.length; i++) {
+                    // Caractère aléatoire
+                    const text = matrixChars[Math.floor(Math.random() * matrixChars.length)];
+                    
+                    // Position X et Y
+                    const x = i * fontSize;
+                    const y = drops[i] * fontSize;
 
-                        ctx.fillText(text, x, y);
+                    ctx.fillText(text, x, y);
 
-                        // Redémarrer la goutte aléatoirement ou quand elle sort de l'écran
-                        if (y > canvas.height && Math.random() > 0.975) {
-                            drops[i] = 0;
-                        }
-                        drops[i] += 1;
+                    // Redémarrer la goutte quand elle sort de l'écran
+                    if (y > canvas.height && Math.random() > 0.975) {
+                        drops[i] = 0;
                     }
+                    
+                    // Faire tomber la goutte
+                    drops[i]++;
                 }
 
                 // Continue the animation loop
-                animationId = requestAnimationFrame(draw);
-            }
+                setTimeout(() => {
+                    animationId = requestAnimationFrame(draw);
+                }, 10); // Délai pour ralentir l'animation
+            };
 
-        animationId = requestAnimationFrame(draw);
+            // Démarrer l'animation
+            draw();
 
-    // Démarrer l'animation
-    draw();
-
-    // Bouton plein écran
-    document.getElementById('matrix-fullscreen-btn').addEventListener('click', () => {
-        if (!document.fullscreenElement) {
-            matrixOverlay.requestFullscreen().then(() => {
-                canvas.width = screen.width;
-                canvas.height = screen.height;
-                document.getElementById('matrix-fullscreen-btn').innerHTML = '<div class="text-green-400 text-sm font-mono flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>Quitter</div>';
-            }).catch(err => {
+            // Bouton plein écran
+            const fullscreenBtn = document.getElementById('matrix-fullscreen-btn');
+            const handleFullscreenClick = () => {
+            if (!document.fullscreenElement) {
+                matrixOverlay.requestFullscreen().then(() => {
+                resizeCanvas();
+                fullscreenBtn.innerHTML = '<div class="text-green-400 text-sm font-mono flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>Quitter</div>';
+                }).catch(err => {
                 console.error('Erreur plein écran:', err);
-            });
-        } else {
-            document.exitFullscreen().then(() => {
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
-                document.getElementById('matrix-fullscreen-btn').innerHTML = '<div class="text-green-400 text-sm font-mono"> Plein écran</div>';
-            });
-        }
-    });
+                });
+            } else {
+                document.exitFullscreen().then(() => {
+                resizeCanvas();
+                fullscreenBtn.innerHTML = '<div class="text-green-400 text-sm font-mono">⛶ Plein écran</div>';
+                });
+            }
+            };
+            
+            fullscreenBtn.addEventListener('click', handleFullscreenClick);
 
-    // Gestionnaire pour les changements de plein écran
-    const handleFullscreenChange = () => {
-        if (document.fullscreenElement) {
-            canvas.width = screen.width;
-            canvas.height = screen.height;
-        } else {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        }
-    };
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
+            // Gestionnaire pour les changements de plein écran
+            const handleFullscreenChange = () => {
+            setTimeout(resizeCanvas, 100); // Petit délai pour s'assurer que les dimensions sont correctes
+            };
+            document.addEventListener('fullscreenchange', handleFullscreenChange);
 
-    // Gestionnaire d'événements pour quitter avec "q"
-    const handleKeyPress = (e) => {
+            // Gestionnaire d'événements pour quitter avec "q"
+            const handleKeyPress = (e) => {
             if (e.key.toLowerCase() === 'q') {
-            // Arrêter l'animation
-            if (animationId) {
-            cancelAnimationFrame(animationId);
-            }
-            
-            // Nettoyer l'overlay (supprimer du DOM)
-            if (matrixOverlay && matrixOverlay.parentNode) {
-            matrixOverlay.parentNode.removeChild(matrixOverlay);
-            }
-            
-            // Retirer l'écouteur d'événements
-            document.removeEventListener('keypress', handleKeyPress);
-            window.removeEventListener('resize', handleResize);
-            
-            // Nettoyer la console et afficher le message de sortie
-            this.addOutput('<span class="text-red-400">Matrix simulation terminée</span>');
-            this.commandInputElement.focus();
+                // Sortir du plein écran si nécessaire
+                if (document.fullscreenElement) {
+                document.exitFullscreen();
+                }
+                
+                // Arrêter l'animation
+                if (animationId) {
+                cancelAnimationFrame(animationId);
+                }
+                
+                // Nettoyer l'overlay (supprimer du DOM)
+                if (matrixOverlay && matrixOverlay.parentNode) {
+                matrixOverlay.parentNode.removeChild(matrixOverlay);
+                }
+                
+                // Retirer les écouteurs d'événements
+                document.removeEventListener('keypress', handleKeyPress);
+                document.removeEventListener('fullscreenchange', handleFullscreenChange);
+                window.removeEventListener('resize', handleResize);
+                
+                // Nettoyer la console et afficher le message de sortie
+                this.addOutput('<span class="text-red-400">Matrix simulation terminée</span>');
+                this.commandInputElement.focus();
             }
             };
 
             // Gestionnaire pour redimensionner le canvas
             const handleResize = () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+            resizeCanvas();
             };
 
             document.addEventListener('keypress', handleKeyPress);
@@ -5001,86 +5465,10 @@ ${bottomBorder}
             }, 5500);
         },
 
-        newtab(args) {
-            const title = args.join(' ').trim();
-            const newTab = {
-                id: this.nextTabId++,
-                title: title || `Terminal ${this.nextTabId - 1}`,
-                currentDir: '/home/user',
-                outputHistory: [],
-                isActive: false,
-                history: []
-            };
-            
-            this.saveCurrentTabState();
-            this.tabs.push(newTab);
-            this.switchToTab(newTab.id);
-            this.renderTabs();
-            
-            
-            this.addOutput(`<span class="text-green-400">✅ Nouvel onglet créé : ${newTab.title}</span>`, 'system');
-        },
-
-        closetab(args) {
-            if (this.tabs.length <= 1) {
-                this.addOutput('<span class="text-yellow-400">⚠️ Impossible de fermer le dernier onglet</span>', 'system');
-                return;
-            }
-
-            let targetTabId = this.activeTabId;
-            
-            if (args.length > 0) {
-                const tabNumber = parseInt(args[0]);
-                if (!isNaN(tabNumber) && tabNumber > 0 && tabNumber <= this.tabs.length) {
-                    targetTabId = this.tabs[tabNumber - 1].id;
-                }
-            }
-
-            const tab = this.tabs.find(t => t.id === targetTabId);
-            if (tab) {
-                this.addOutput(`<span class="text-red-400">🗑️ Fermeture de l'onglet : ${tab.title}</span>`, 'system');
-                this.closeTab(targetTabId);
-            }
-        },
-
-        renametab(args) {
-            const newTitle = args.join(' ').trim();
-            if (!newTitle) {
-                this.addOutput('renametab: utilisation: renametab <nouveau nom>', 'error');
-                return;
-            }
-
-            this.renameTab(this.activeTabId, newTitle);
-            this.addOutput(`<span class="text-blue-400">📝 Onglet renommé : ${newTitle}</span>`, 'system');
-        },
-
-        listtabs() {
-            this.addOutput('<span class="font-bold text-blue-400">📋 Liste des onglets :</span>');
-            this.tabs.forEach((tab, index) => {
-                const activeIndicator = tab.isActive ? '<span class="text-green-400">●</span>' : '<span class="text-gray-500">○</span>';
-                this.addOutput(`  ${activeIndicator} ${index + 1}. ${tab.title} <span class="text-gray-400">(${tab.currentDir})</span>`);
-            });
-        },
-
-        switchtab(args) {
-            if (args.length === 0) {
-                this.addOutput('switchtab: utilisation: switchtab <numéro>', 'error');
-                return;
-            }
-
-            const tabNumber = parseInt(args[0]);
-            if (isNaN(tabNumber) || tabNumber < 1 || tabNumber > this.tabs.length) {
-                this.addOutput(`switchtab: numéro d'onglet invalide (1-${this.tabs.length})`, 'error');
-                return;
-            }
-
-            const targetTab = this.tabs[tabNumber - 1];
-            this.switchToTab(targetTab.id);
-            this.addOutput(`<span class="text-blue-400">🔄 Basculé vers l'onglet : ${targetTab.title}</span>`, 'system');
-        },
         fullscreen() {
             app.fullscreen();
         },
+
         notify (args) {
             // Vérifier d'abord si --help est présent avant de parser les options
             if (args.includes('--help') || args.includes('-h')) {
@@ -5253,7 +5641,249 @@ ${bottomBorder}
             const fileName = args[0].trim();
             this.checkFileContent(fileName);
         },
+        qrcode(args) {
+            const options = this.parseOptions(args, {
+            's': 'size',
+            'c': 'color',
+            'b': 'bgcolor',
+            'f': 'format',
+            'e': 'error-level',
+            'h': 'help'
+            });
 
+            // Help option
+            if (options.help || args.includes('--help')) {
+            this.commands.man.call(this, ['qrcode']);
+            return;
+            }
+
+            // Récupérer le texte à encoder
+            const text = options._.join(' ').trim();
+            if (!text) {
+                this.addOutput('qrcode: manque le texte à encoder', 'error');
+                this.addOutput('Utilisation: qrcode [options] <texte>');
+                this.addOutput('Exemple: qrcode "https://example.com"');
+                return;
+            }
+
+            // Configuration par défaut
+            const config = {
+                size: parseInt(options.size) || 200,
+                color: options.color || '000000',
+                bgcolor: options.bgcolor || 'ffffff',
+                format: options.format || 'png',
+                errorLevel: options['error-level'] || 'M',
+                text: encodeURIComponent(text)
+            };
+
+            // Validation des paramètres
+            if (config.size < 50 || config.size > 1000) {
+                this.addOutput('qrcode: la taille doit être entre 50 et 1000 pixels', 'error');
+                return;
+            }
+
+            // Animation de génération
+            const loadingAnimation = this.createLoadingAnimation({
+                title: 'Génération du QR Code...',
+                progressBarColors: 'from-purple-500 to-blue-500',
+                steps: [
+                    { text: 'Encodage du texte...', color: 'text-purple-400', delay: 0 },
+                    { text: 'Génération du code QR...', color: 'text-blue-400', delay: 300 },
+                    { text: 'Optimisation de l\'image...', color: 'text-green-400', delay: 600 }
+                ]
+            });
+
+            // Créer le QR code en utilisant l'API qr-server.com
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${config.size}x${config.size}&data=${config.text}&color=${config.color}&bgcolor=${config.bgcolor}&format=${config.format}&ecc=${config.errorLevel}`;
+
+            // Tester si l'image se charge correctement
+            const img = new Image();
+            img.onload = () => {
+                loadingAnimation.complete();
+                
+                // Créer un ID unique pour le QR code
+                const qrId = 'qr-' + Date.now();
+                
+                const qrHTML = `
+                    <div class="border border-purple-500 rounded-xl p-6 bg-gradient-to-br from-purple-900/30 to-blue-900/20 backdrop-blur-sm mt-3">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center">
+                                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 class="text-2xl font-bold text-white">QR Code Généré</h2>
+                                    <p class="text-purple-300 text-sm">Prêt à utiliser</p>
+                                </div>
+                            </div>
+                            <div class="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm font-semibold border border-green-500/30">
+                                ✅ Succès
+                            </div>
+                        </div>
+                        
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div class="text-center">
+                                <div class="bg-white p-4 rounded-lg inline-block shadow-lg">
+                                    <img id="${qrId}" src="${qrUrl}" alt="QR Code" class="max-w-full h-auto" style="image-rendering: pixelated;">
+                                </div>
+                                <div class="mt-3 space-x-2">
+                                    <button onclick="app.downloadQRCode('${qrId}', '${text.replace(/'/g, "\\'")}', '${config.format}')" 
+                                        class="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white rounded-lg transition-all duration-300 transform hover:scale-105">
+                                        📥 Télécharger
+                                    </button>
+                                    <button onclick="navigator.clipboard.writeText('${qrUrl}').then(() => app.addOutput('🔗 URL du QR Code copiée!', 'system'))" 
+                                        class="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-700 hover:to-purple-600 text-white rounded-lg transition-all duration-300 transform hover:scale-105">
+                                        🔗 Copier URL
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-3">
+                                <h3 class="text-lg font-semibold text-blue-300 flex items-center">
+                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Informations
+                                </h3>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex justify-between p-2 bg-purple-900/30 rounded">
+                                        <span class="text-purple-300 font-medium">Contenu:</span>
+                                        <span class="text-white font-mono text-xs max-w-xs truncate">${text.length > 50 ? text.substring(0, 50) + '...' : text}</span>
+                                    </div>
+                                    <div class="flex justify-between p-2 bg-blue-900/30 rounded">
+                                        <span class="text-blue-300 font-medium">Taille:</span>
+                                        <span class="text-white font-mono">${config.size}x${config.size}px</span>
+                                    </div>
+                                    <div class="flex justify-between p-2 bg-green-900/30 rounded">
+                                        <span class="text-green-300 font-medium">Format:</span>
+                                        <span class="text-white font-mono">${config.format.toUpperCase()}</span>
+                                    </div>
+                                    <div class="flex justify-between p-2 bg-yellow-900/30 rounded">
+                                        <span class="text-yellow-300 font-medium">Niveau d'erreur:</span>
+                                        <span class="text-white font-mono">${config.errorLevel}</span>
+                                    </div>
+                                    <div class="flex justify-between p-2 bg-orange-900/30 rounded">
+                                        <span class="text-orange-300 font-medium">Couleurs:</span>
+                                        <span class="text-white font-mono">#${config.color}/#${config.bgcolor}</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-4 p-3 bg-gray-800/50 rounded-lg">
+                                    <h4 class="text-sm font-semibold text-gray-300 mb-2">🔗 URL de l'API:</h4>
+                                    <div class="bg-gray-900 rounded p-2 text-xs text-gray-400 font-mono break-all">
+                                        ${qrUrl}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                this.addOutput(qrHTML, 'system');
+            };
+
+            img.onerror = () => {
+                loadingAnimation.complete();
+                this.addOutput(`
+                    <div class="mt-3 p-4 bg-red-900/20 border border-red-600 rounded-lg">
+                        <div class="flex items-center mb-2">
+                            <span class="text-red-400 mr-2">❌</span>
+                            <span class="text-red-300 font-medium">Erreur lors de la génération du QR Code</span>
+                        </div>
+                        <div class="text-red-400 text-sm">Impossible de générer le QR Code. Vérifiez votre connexion internet.</div>
+                    </div>
+                `, 'error');
+            };
+
+            img.src = qrUrl;
+        },
+
+
+
+    },
+
+    // Fonction utilitaire pour télécharger le QR Code
+    downloadQRCode(imgId, filename, format) {
+        const img = document.getElementById(imgId);
+        if (!img) {
+            this.addOutput('❌ Erreur: Image QR Code non trouvée', 'error');
+            return;
+        }
+
+        // Créer un canvas pour convertir l'image
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        
+        // Dessiner l'image sur le canvas
+        ctx.drawImage(img, 0, 0);
+        
+        // Convertir en blob et télécharger
+        canvas.toBlob((blob) => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `qrcode-${filename.replace(/[^a-zA-Z0-9]/g, '_')}.${format}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            this.addOutput(`📥 QR Code téléchargé: ${a.download}`, 'system');
+        }, `image/${format}`);
+    },
+
+    // Fonction globale accessible depuis d'autres sites
+    generateQRCodeAPI(text, options = {}) {
+        const config = {
+            size: options.size || 200,
+            color: options.color || '000000',
+            bgcolor: options.bgcolor || 'ffffff',
+            format: options.format || 'png',
+            errorLevel: options.errorLevel || 'M'
+        };
+        
+        // Validation
+        if (!text) {
+            throw new Error('Le texte est requis pour générer un QR Code');
+        }
+        
+        if (config.size < 50 || config.size > 1000) {
+            throw new Error('La taille doit être entre 50 et 1000 pixels');
+        }
+        
+        // Construire l'URL de l'API
+        const encodedText = encodeURIComponent(text);
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${config.size}x${config.size}&data=${encodedText}&color=${config.color}&bgcolor=${config.bgcolor}&format=${config.format}&ecc=${config.errorLevel}`;
+        
+        return {
+            url: qrUrl,
+            config: config,
+            text: text,
+            // Fonction pour obtenir l'image en tant que Promise
+            getImage: () => {
+                return new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = () => resolve(img);
+                    img.onerror = () => reject(new Error('Impossible de charger le QR Code'));
+                    img.src = qrUrl;
+                });
+            },
+            // Fonction pour télécharger directement
+            download: (filename = 'qrcode') => {
+                const a = document.createElement('a');
+                a.href = qrUrl;
+                a.download = `${filename}.${config.format}`;
+                a.target = '_blank';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+        };
     },
 
     // Nouvelle fonction helper pour l'éditeur
@@ -5566,16 +6196,14 @@ ${bottomBorder}
                 return;
             }
 
-            // CORRECTION: Sauvegarder le contenu dans le nœud
+            // Sauvegarder le contenu dans le nœud
             targetNode.content = editor.innerHTML;
             
-            // CORRECTION: Sauvegarder immédiatement dans le localStorage/cookie
+            // Sauvegarder immédiatement dans localStorage ET cookies
             this.saveFileSystemToLocalStorage();
-            
-            // CORRECTION: Sauvegarder aussi dans les cookies comme backup
             this.saveFileSystemToCookie();
             
-            // Notification de succès
+            // UNE SEULE notification de succès
             this.showNotification({
                 type: 'success',
                 title: '💾 Fichier sauvegardé',
@@ -5583,7 +6211,7 @@ ${bottomBorder}
                 duration: 3000
             });
             
-            // Confirmer dans la console
+            // UN SEUL message dans la console
             this.addOutput(`<span class="text-green-400">✅ Fichier "${fileName}" sauvegardé avec succès</span>`, 'system');
             
             this.closeEditor(modal);
@@ -5594,80 +6222,149 @@ ${bottomBorder}
             this.addOutput('Édition annulée.', 'system');
         };
 
-        // CORRECTION: Supprimer les doublons - utiliser seulement onclick OU addEventListener, pas les deux
+        // NETTOYER et réaffecter les gestionnaires d'événements
         if (saveBtn) {
-            saveBtn.onclick = saveFile;
-            // SUPPRIMER cette ligne qui crée le doublon :
-            // saveBtn.addEventListener('click', saveFile);
+            // Supprimer tous les anciens écouteurs
+            saveBtn.removeEventListener('click', saveBtn._saveFileHandler);
+            saveBtn.onclick = null;
+            
+            // Fonction de sauvegarde avec vérification des changements
+            const saveFileWithChanges = () => {
+            const editor = document.getElementById('edit-rich-text-editor');
+            if (!editor) {
+                console.error('Éditeur non trouvé');
+                return;
+            }
+
+            const currentContent = editor.innerHTML;
+            const originalContent = targetNode.content;
+
+            // Vérifier si le contenu a changé
+            if (currentContent === originalContent) {
+                this.showNotification({
+                type: 'info',
+                title: 'ℹ️ Aucun changement',
+                message: 'Le fichier n\'a pas été modifié',
+                duration: 2000
+                });
+                this.closeEditor(modal);
+                this.addOutput(`<span class="text-yellow-400">ℹ️ Aucune modification détectée dans "${fileName}"</span>`, 'system');
+                return;
+            }
+
+            // Il y a des changements, procéder à la sauvegarde
+            targetNode.content = currentContent;
+            
+            // Sauvegarder immédiatement dans localStorage ET cookies
+            this.saveFileSystemToLocalStorage();
+            this.saveFileSystemToCookie();
+            
+            // UNE SEULE notification de succès
+            this.showNotification({
+                type: 'success',
+                title: '💾 Fichier sauvegardé',
+                message: `${fileName} a été enregistré avec succès`,
+                duration: 3000
+            });
+
+
+            this.addOutput(`<span class="text-green-400">✅ Fichier "${fileName}" sauvegardé avec succès</span>`, 'system');
+
+            this.closeEditor(modal);
+            };
+            
+            // Ajouter le nouveau gestionnaire
+            saveBtn._saveFileHandler = saveFileWithChanges;
+            saveBtn.onclick = saveFileWithChanges;
         }
+        
         if (exitBtn) {
+            exitBtn.removeEventListener('click', exitBtn._closeHandler);
+            exitBtn.onclick = null;
+            exitBtn._closeHandler = closeEditor;
             exitBtn.onclick = closeEditor;
-            // SUPPRIMER cette ligne qui crée le doublon :
-            // exitBtn.addEventListener('click', closeEditor);
         }
+        
         if (closeBtn) {
+            closeBtn.removeEventListener('click', closeBtn._closeHandler);
+            closeBtn.onclick = null;
+            closeBtn._closeHandler = closeEditor;
             closeBtn.onclick = closeEditor;
-            // SUPPRIMER cette ligne qui crée le doublon :
-            // closeBtn.addEventListener('click', closeEditor);
         }
     },
     
     // Raccourcis clavier
     setupKeyboardShortcuts(fileName, targetNode, modal) {
+        // Supprimer l'ancien gestionnaire s'il existe
+        if (modal._keydownHandler) {
+            document.removeEventListener('keydown', modal._keydownHandler, true);
+        }
+
         const handleKeydown = (e) => {
             if (e.ctrlKey || e.metaKey) {
                 switch (e.key.toLowerCase()) {
                     case 's':
                         e.preventDefault();
-                        // CORRECTION: Déclencher la sauvegarde via le bouton pour assurer la cohérence
+                        e.stopPropagation();
+                        // Déclencher la sauvegarde UNE SEULE FOIS
                         const saveBtn = document.getElementById('edit-save-btn');
-                        if (saveBtn) {
-                            saveBtn.click();
+                        if (saveBtn && typeof saveBtn._saveFileHandler === 'function') {
+                            saveBtn._saveFileHandler();
                         }
                         break;
                     case 'b':
                         e.preventDefault();
-                        document.getElementById('edit-bold-btn').click();
+                        const boldBtn = document.getElementById('edit-bold-btn');
+                        if (boldBtn) boldBtn.click();
                         break;
                     case 'i':
                         e.preventDefault();
-                        document.getElementById('edit-italic-btn').click();
+                        const italicBtn = document.getElementById('edit-italic-btn');
+                        if (italicBtn) italicBtn.click();
                         break;
                     case 'u':
                         e.preventDefault();
-                        document.getElementById('edit-underline-btn').click();
+                        const underlineBtn = document.getElementById('edit-underline-btn');
+                        if (underlineBtn) underlineBtn.click();
                         break;
                 }
             } else if (e.key === 'Escape') {
                 e.preventDefault();
-                document.getElementById('edit-exit-btn').click();
+                const exitBtn = document.getElementById('edit-exit-btn');
+                if (exitBtn && typeof exitBtn._closeHandler === 'function') {
+                    exitBtn._closeHandler();
+                }
             }
         };
 
-        document.addEventListener('keydown', handleKeydown);
+        // Stocker la référence du gestionnaire sur le modal
+        modal._keydownHandler = handleKeydown;
         
-        // Nettoyer l'écouteur quand le modal se ferme
-        modal.addEventListener('transitionend', () => {
-            if (modal.classList.contains('hidden')) {
-                document.removeEventListener('keydown', handleKeydown);
-            }
-        });
+        // Ajouter l'écouteur avec capture
+        document.addEventListener('keydown', handleKeydown, true);
     },
 
     initFileSystem() {
         // Essayer de charger depuis localStorage d'abord
         if (this.loadFileSystemFromLocalStorage()) {
             console.log('Système de fichiers chargé depuis localStorage');
+            // Sauvegarder aussi dans les cookies pour backup
+            this.saveFileSystemToCookie();
             return;
         }
         
         // Sinon essayer les cookies
         if (this.loadFileSystemFromCookie()) {
             console.log('Système de fichiers chargé depuis les cookies');
+            // Sauvegarder dans localStorage pour les prochaines fois
+            this.saveFileSystemToLocalStorage();
             return;
         }
         
         console.log('Utilisation du système de fichiers par défaut');
+        // Sauvegarder le système par défaut
+        this.saveFileSystemToLocalStorage();
+        this.saveFileSystemToCookie();
     },
 
     checkFileContent(fileName) {
@@ -5693,6 +6390,695 @@ ${bottomBorder}
         modal.classList.add('hidden');
         this.updatePrompt();
         this.commandInputElement.focus();
+    },
+
+    // === COMMANDES DE GESTION DES PLUGINS ===
+    
+    plugins: function(args) {
+        if (args.includes('--help')) {
+            this.addOutput(`
+                <div class="bg-gray-800/50 border border-gray-600 rounded-lg p-4 my-2">
+                    <div class="text-purple-400 font-bold text-lg mb-2">PLUGINS - Gestionnaire de plugins</div>
+                    <div class="text-gray-300 mb-2">Gère les plugins personnalisés pour étendre les fonctionnalités de la console.</div>
+                    <div class="text-yellow-300 font-bold mb-1">UTILISATION:</div>
+                    <div class="ml-4 text-green-400 font-mono mb-2">plugins [option]</div>
+                    <div class="text-yellow-300 font-bold mb-1">OPTIONS:</div>
+                    <div class="ml-4 space-y-1">
+                        <div class="text-gray-300">list, ls        - Liste tous les plugins</div>
+                        <div class="text-gray-300">enable &lt;nom&gt;   - Active un plugin</div>
+                        <div class="text-gray-300">disable &lt;nom&gt;  - Désactive un plugin</div>
+                        <div class="text-gray-300">remove &lt;nom&gt;   - Supprime un plugin</div>
+                        <div class="text-gray-300">export         - Exporte la configuration</div>
+                        <div class="text-gray-300">import &lt;json&gt;  - Importe une configuration</div>
+                        <div class="text-gray-300">manager        - Ouvre l'interface de gestion</div>
+                    </div>
+                </div>
+            `, 'system');
+            return;
+        }
+
+        const action = args[0] || 'list';
+        
+        switch (action) {
+            case 'list':
+            case 'ls':
+                this.listPlugins();
+                break;
+            case 'enable':
+                if (args[1]) {
+                    this.togglePlugin(args[1], true);
+                } else {
+                    this.addOutput('Erreur: nom du plugin requis. Usage: plugins enable &lt;nom&gt;', 'error');
+                }
+                break;
+            case 'disable':
+                if (args[1]) {
+                    this.togglePlugin(args[1], false);
+                } else {
+                    this.addOutput('Erreur: nom du plugin requis. Usage: plugins disable &lt;nom&gt;', 'error');
+                }
+                break;
+            case 'remove':
+                if (args[1]) {
+                    this.removePlugin(args[1]);
+                } else {
+                    this.addOutput('Erreur: nom du plugin requis. Usage: plugins remove &lt;nom&gt;', 'error');
+                }
+                break;
+            case 'export':
+                this.exportPluginConfig(false); // fromUI = false pour la commande console
+                break;
+            case 'import':
+                if (args[1]) {
+                    // Créer une méthode temporaire pour l'import via console
+                    const jsonString = args.slice(1).join(' ');
+                    try {
+                        const result = this.pluginManager.importPluginConfig(jsonString);
+                        if (result.success) {
+                            this.addOutput(`
+                                <div class="bg-green-900/30 border border-green-600 rounded-lg p-3 my-2">
+                                    <div class="text-green-400 font-bold">Import réussi</div>
+                                    <div class="text-gray-300 text-sm">${result.message}</div>
+                                </div>
+                            `, 'system');
+                        } else {
+                            this.addOutput(`Erreur lors de l'import: ${result.error}`, 'error');
+                        }
+                    } catch (error) {
+                        this.addOutput(`Erreur lors de l'import: ${error.message}`, 'error');
+                    }
+                } else {
+                    this.addOutput('Erreur: configuration JSON requise. Usage: plugins import &lt;json&gt;', 'error');
+                }
+                break;
+            case 'manager':
+                this.openPluginManager();
+                break;
+            default:
+                this.addOutput(`Action inconnue: ${action}. Utilisez "plugins --help" pour l'aide.`, 'error');
+        }
+    },
+
+    listPlugins() {
+        const plugins = this.pluginManager.listPlugins();
+        
+        if (plugins.length === 0) {
+            this.addOutput(`
+                <div class="bg-gray-800/50 border border-gray-600 rounded-lg p-4 my-2">
+                    <div class="text-yellow-400 font-bold">Aucun plugin installé</div>
+                    <div class="text-gray-300 text-sm mt-2">Utilisez "plugins manager" pour ouvrir l'interface de gestion.</div>
+                </div>
+            `, 'system');
+            return;
+        }
+
+        let output = `
+            <div class="bg-gray-800/50 border border-purple-600 rounded-lg p-4 my-2">
+                <div class="text-purple-400 font-bold text-lg mb-3">📦 Plugins installés (${plugins.length})</div>
+        `;
+
+        plugins.forEach(plugin => {
+            const statusColor = plugin.enabled ? 'text-green-400' : 'text-red-400';
+            const statusIcon = plugin.enabled ? '✅' : '❌';
+            const typeColor = plugin.type === 'permanent' ? 'text-blue-400' : 'text-yellow-400';
+            
+            output += `
+                <div class="border border-gray-600 rounded-lg p-3 mb-2 bg-gray-700/30">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="${statusColor}">${statusIcon}</span>
+                            <span class="text-white font-bold">${plugin.name}</span>
+                            <span class="px-2 py-1 rounded text-xs ${typeColor} bg-gray-600">${plugin.type}</span>
+                        </div>
+                        <div class="${statusColor} text-sm">${plugin.enabled ? 'ACTIVÉ' : 'DÉSACTIVÉ'}</div>
+                    </div>
+                    <div class="text-gray-300 text-sm">
+                        Commandes: ${plugin.commands.length > 0 ? plugin.commands.join(', ') : 'Aucune'}
+                    </div>
+                </div>
+            `;
+        });
+
+        output += `</div>`;
+        this.addOutput(output, 'system');
+    },
+
+    togglePlugin(pluginName, enabled) {
+        const result = this.pluginManager.togglePlugin(pluginName, enabled);
+        const action = enabled ? 'activé' : 'désactivé';
+        const color = enabled ? 'text-green-400' : 'text-orange-400';
+        
+        this.addOutput(`<span class="${color}">Plugin "${pluginName}" ${action} avec succès.</span>`, 'system');
+    },
+
+    removePlugin(pluginName) {
+        const result = this.pluginManager.removePlugin(pluginName);
+        this.addOutput(`<span class="text-red-400">Plugin "${pluginName}" supprimé avec succès.</span>`, 'system');
+    },
+
+    exportPluginConfig(fromUI = false) {
+        const config = this.pluginManager.exportPluginConfig();
+        if (config) {
+            // Créer un blob et déclencher le téléchargement
+            const blob = new Blob([config], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `clk-plugins-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            if (fromUI) {
+                // Utiliser une notification popup pour l'interface utilisateur
+                this.showNotification({
+                    type: 'success',
+                    title: 'Configuration exportée',
+                    message: 'Le fichier a été téléchargé dans votre dossier de téléchargements.',
+                    duration: 3000
+                });
+            } else {
+                // Utiliser addOutput pour la console
+                this.addOutput(`
+                    <div class="bg-green-900/30 border border-green-600 rounded-lg p-3 my-2">
+                        <div class="text-green-400 font-bold">Configuration exportée avec succès</div>
+                        <div class="text-gray-300 text-sm">Le fichier a été téléchargé dans votre dossier de téléchargements.</div>
+                    </div>
+                `, 'system');
+            }
+        } else {
+            if (fromUI) {
+                this.showNotification({
+                    type: 'error',
+                    title: 'Erreur d\'export',
+                    message: 'Erreur lors de l\'export de la configuration.'
+                });
+            } else {
+                this.addOutput('Erreur lors de l\'export de la configuration.', 'error');
+            }
+        }
+    },
+
+    importplugin: function(args) {
+        if (args.includes('--help')) {
+            this.addOutput(`
+                <div class="bg-gray-800/50 border border-gray-600 rounded-lg p-4 my-2">
+                    <div class="text-blue-400 font-bold text-lg mb-2">IMPORTPLUGIN - Import de code plugin</div>
+                    <div class="text-gray-300 mb-2">Importe du code JavaScript comme plugin personnalisé.</div>
+                    <div class="text-yellow-300 font-bold mb-1">UTILISATION:</div>
+                    <div class="ml-4 text-green-400 font-mono mb-2">importplugin &lt;nom&gt; &lt;code&gt;</div>
+                    <div class="text-yellow-300 font-bold mb-1">EXEMPLE:</div>
+                    <div class="ml-4 text-green-400 font-mono text-sm">importplugin mon_plugin "module.exports = { hello: { name: 'hello', description: 'Dit bonjour', execute: () => 'Bonjour!' } }"</div>
+                </div>
+            `, 'system');
+            return;
+        }
+
+        if (args.length < 2) {
+            this.addOutput('Erreur: nom du plugin et code requis. Usage: importplugin &lt;nom&gt; &lt;code&gt;', 'error');
+            return;
+        }
+
+        const pluginName = args[0];
+        const pluginCode = args.slice(1).join(' ');
+
+        const result = this.pluginManager.importPluginFromCode(pluginCode, pluginName);
+        
+        if (result.success) {
+            // Utiliser uniquement addOutput pour l'import via commande console
+            this.addOutput(`
+                <div class="bg-green-900/30 border border-green-600 rounded-lg p-3 my-2">
+                    <div class="text-green-400 font-bold">Plugin importé avec succès</div>
+                    <div class="text-gray-300 text-sm">Nom: ${result.name}</div>
+                    <div class="text-gray-300 text-sm">Commandes: ${result.commands.join(', ')}</div>
+                </div>
+            `, 'system');
+        } else {
+            this.addOutput(`Erreur lors de l'import: ${result.error}`, 'error');
+        }
+    },
+
+    // === MÉTHODES POUR L'INTERFACE PLUGIN MANAGER ===
+    
+    openPluginManager() {
+        if (this.pluginManagerModal) {
+            this.pluginManagerModal.classList.remove('hidden');
+            this.refreshPluginManagerContent();
+        } else {
+            this.addOutput('Interface de gestion des plugins non disponible.', 'error');
+        }
+    },
+
+    closePluginManager() {
+        if (this.pluginManagerModal) {
+            this.pluginManagerModal.classList.add('hidden');
+        }
+    },
+
+    refreshPluginManagerContent() {
+        // Configurer les gestionnaires d'événements pour les onglets
+        const tabs = document.querySelectorAll('.plugin-tab');
+        const contents = document.querySelectorAll('.plugin-content');
+        
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Retirer la classe active de tous les onglets
+                tabs.forEach(t => {
+                    t.classList.remove('active-tab');
+                    t.classList.add('bg-slate-600/20', 'text-slate-300', 'hover:bg-slate-600/30');
+                    t.classList.remove('bg-purple-600/20', 'text-purple-300');
+                });
+                
+                // Ajouter la classe active à l'onglet cliqué
+                tab.classList.add('active-tab');
+                tab.classList.remove('bg-slate-600/20', 'text-slate-300', 'hover:bg-slate-600/30');
+                tab.classList.add('bg-purple-600/20', 'text-purple-300');
+                
+                // Cacher tous les contenus
+                contents.forEach(content => content.classList.add('hidden'));
+                
+                // Afficher le contenu correspondant
+                const tabId = tab.id.replace('plugin-tab-', '');
+                const contentId = `plugin-content-${tabId}`;
+                const targetContent = document.getElementById(contentId);
+                if (targetContent) {
+                    targetContent.classList.remove('hidden');
+                }
+                
+                // Rafraîchir le contenu si nécessaire
+                if (tabId === 'manage') {
+                    this.refreshPluginsList();
+                }
+            });
+        });
+        
+        // Configurer les gestionnaires d'événements pour les boutons
+        this.setupPluginManagerEvents();
+        
+        // Rafraîchir la liste des plugins
+        this.refreshPluginsList();
+    },
+
+    setupPluginManagerEvents() {
+        // Bouton d'import de plugin
+        const importBtn = document.getElementById('import-plugin-btn');
+        if (importBtn) {
+            importBtn.addEventListener('click', () => {
+                const name = document.getElementById('plugin-name-input').value.trim();
+                const code = document.getElementById('plugin-code-input').value.trim();
+                
+                if (!name) {
+                    this.showNotification({
+                        type: 'warning',
+                        title: 'Nom requis',
+                        message: 'Veuillez entrer un nom pour le plugin.'
+                    });
+                    return;
+                }
+                
+                if (!code) {
+                    this.showNotification({
+                        type: 'warning',
+                        title: 'Code requis',
+                        message: 'Veuillez entrer le code du plugin.'
+                    });
+                    return;
+                }
+                
+                const result = this.pluginManager.importPluginFromCode(code, name);
+                
+                if (result.success) {
+                    this.showNotification({
+                        type: 'success',
+                        title: 'Plugin importé',
+                        message: `Plugin "${result.name}" importé avec ${result.commands.length} commande(s).`
+                    });
+                    
+                    // Vider les champs
+                    document.getElementById('plugin-name-input').value = '';
+                    document.getElementById('plugin-code-input').value = '';
+                    
+                    // Rafraîchir la liste
+                    this.refreshPluginsList();
+                } else {
+                    this.showNotification({
+                        type: 'error',
+                        title: 'Erreur d\'import',
+                        message: result.error
+                    });
+                }
+            });
+        }
+        
+        // Bouton pour effacer le code
+        const clearBtn = document.getElementById('clear-plugin-code-btn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                document.getElementById('plugin-name-input').value = '';
+                document.getElementById('plugin-code-input').value = '';
+            });
+        }
+        
+        // Bouton d'export de configuration
+        const exportBtn = document.getElementById('export-config-btn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => {
+                this.exportPluginConfig(true); // fromUI = true pour l'interface utilisateur
+            });
+        }
+        
+        // Bouton pour choisir un fichier de configuration
+        const fileBtn = document.getElementById('import-config-file-btn');
+        const fileInput = document.getElementById('config-file-input');
+        if (fileBtn && fileInput) {
+            fileBtn.addEventListener('click', () => {
+                fileInput.click();
+            });
+            
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const config = e.target.result;
+                        this.importPluginConfigFromText(config);
+                    };
+                    reader.readAsText(file);
+                }
+            });
+        }
+        
+        // Bouton d'import depuis JSON
+        const importJsonBtn = document.getElementById('import-config-json-btn');
+        if (importJsonBtn) {
+            importJsonBtn.addEventListener('click', () => {
+                const jsonText = document.getElementById('config-json-input').value.trim();
+                if (!jsonText) {
+                    this.showNotification({
+                        type: 'warning',
+                        title: 'JSON requis',
+                        message: 'Veuillez coller une configuration JSON.'
+                    });
+                    return;
+                }
+                
+                this.importPluginConfigFromText(jsonText);
+            });
+        }
+    },
+
+    importPluginConfigFromText(jsonText) {
+        const result = this.pluginManager.importPluginConfig(jsonText);
+        
+        if (result.success) {
+            this.showNotification({
+                type: 'success',
+                title: 'Configuration importée',
+                message: result.message
+            });
+            
+            document.getElementById('config-json-input').value = '';
+            this.refreshPluginsList();
+        } else {
+            this.showNotification({
+                type: 'error',
+                title: 'Erreur d\'import',
+                message: result.error
+            });
+        }
+    },
+
+    refreshPluginsList() {
+        const listContainer = document.getElementById('plugins-list');
+        if (!listContainer) return;
+        
+        const plugins = this.pluginManager.listPlugins();
+        
+        if (plugins.length === 0) {
+            listContainer.innerHTML = `
+                <div class="text-center py-12">
+                    <div class="text-slate-400 text-lg mb-2">📦</div>
+                    <div class="text-slate-400 font-medium">Aucun plugin installé</div>
+                    <div class="text-slate-500 text-sm">Utilisez l'onglet "Importer" pour ajouter des plugins.</div>
+                </div>
+            `;
+            return;
+        }
+        
+        let html = '';
+        plugins.forEach(plugin => {
+            const statusColor = plugin.enabled ? 'text-green-400' : 'text-red-400';
+            const statusText = plugin.enabled ? 'ACTIVÉ' : 'DÉSACTIVÉ';
+            const typeColor = plugin.type === 'permanent' ? 'bg-blue-600/20 text-blue-300 border-blue-500/30' : 'bg-yellow-600/20 text-yellow-300 border-yellow-500/30';
+            const typeText = plugin.type === 'permanent' ? 'Permanent' : 'Temporaire';
+            
+            html += `
+                <div class="plugin-item bg-slate-700/30 border border-slate-600/40 rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 bg-purple-600/20 rounded-lg flex items-center justify-center">
+                                <span class="text-purple-400">🔌</span>
+                            </div>
+                            <div>
+                                <div class="text-white font-medium">${plugin.name}</div>
+                                <div class="text-slate-400 text-xs">${plugin.commands.length} commande(s)</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <button class="w-6 h-6 bg-blue-600/20 text-blue-300 rounded-full flex items-center justify-center hover:bg-blue-600/40 transition-colors plugin-info-btn" data-plugin="${plugin.name}" title="Informations sur le plugin">
+                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                </svg>
+                            </button>
+                            <span class="px-2 py-1 rounded text-xs ${typeColor} border">${typeText}</span>
+                            <span class="${statusColor} text-sm font-medium">${statusText}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="text-slate-300 text-sm mb-3">
+                        <strong>Commandes:</strong> ${plugin.commands.length > 0 ? plugin.commands.join(', ') : '<span class="text-slate-500 italic">Aucune commande disponible</span>'}
+                    </div>
+                    
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-slate-400 text-sm">Activer/Désactiver:</span>
+                            <div class="plugin-toggle ${plugin.enabled ? 'enabled' : ''}" data-plugin="${plugin.name}"></div>
+                        </div>
+                        <button class="px-3 py-1 bg-red-600/20 text-red-300 border border-red-500/30 rounded-lg hover:bg-red-600/30 transition-colors text-sm remove-plugin-btn" data-plugin="${plugin.name}">
+                            🗑️ Supprimer
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        listContainer.innerHTML = html;
+        
+        // Ajouter les gestionnaires d'événements pour les toggles et boutons de suppression
+        listContainer.querySelectorAll('.plugin-toggle').forEach(toggle => {
+            toggle.addEventListener('click', () => {
+                const pluginName = toggle.dataset.plugin;
+                const isEnabled = toggle.classList.contains('enabled');
+                
+                this.pluginManager.togglePlugin(pluginName, !isEnabled);
+                
+                this.showNotification({
+                    type: 'info',
+                    title: 'Plugin ' + (!isEnabled ? 'activé' : 'désactivé'),
+                    message: `Plugin "${pluginName}" ${!isEnabled ? 'activé' : 'désactivé'} avec succès.`,
+                    duration: 2000
+                });
+                
+                // Rafraîchir la liste
+                setTimeout(() => this.refreshPluginsList(), 100);
+            });
+        });
+
+        listContainer.querySelectorAll('.plugin-info-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const pluginName = btn.dataset.plugin;
+                this.showPluginInfoModal(pluginName);
+            });
+        });
+        
+        listContainer.querySelectorAll('.remove-plugin-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const pluginName = btn.dataset.plugin;
+                
+                if (confirm(`Êtes-vous sûr de vouloir supprimer le plugin "${pluginName}" ?`)) {
+                    this.pluginManager.removePlugin(pluginName);
+                    
+                    this.showNotification({
+                        type: 'success',
+                        title: 'Plugin supprimé',
+                        message: `Plugin "${pluginName}" supprimé avec succès.`,
+                        duration: 2000
+                    });
+                    
+                    this.refreshPluginsList();
+                }
+            });
+        });
+    },
+
+    // Méthode pour afficher les informations détaillées d'un plugin
+    showPluginInfoModal(pluginName) {
+        const pluginInfo = this.pluginManager.getPluginInfo(pluginName);
+        
+        const modalHtml = `
+        <div id="plugin-info-modal" class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-6">
+            <div class="bg-slate-800/95 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl max-w-2xl w-full text-slate-100 border border-slate-600/40 animate-slide-up max-h-[90vh] flex flex-col">
+                <div class="flex items-center justify-between mb-6 flex-shrink-0">
+                    <h2 class="text-2xl font-bold flex items-center">
+                        <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center mr-3 shadow-lg">
+                            <span class="text-white">🔌</span>
+                        </div>
+                        Informations du Plugin
+                    </h2>
+                    <button id="close-plugin-info-modal" class="w-8 h-8 bg-slate-600/50 text-slate-300 rounded-full flex items-center justify-center hover:bg-slate-500/60 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto custom-scrollbar pr-2">
+                    <div class="space-y-6">
+                        <!-- Informations générales -->
+                        <div class="bg-slate-700/30 rounded-xl p-4 border border-slate-600/40">
+                            <h3 class="text-lg font-bold text-white mb-4 flex items-center">
+                                <svg class="w-5 h-5 mr-2 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                </svg>
+                                Informations générales
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <span class="text-slate-400 text-sm">Nom:</span>
+                                    <div class="text-white font-medium">${pluginInfo.name}</div>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 text-sm">Version:</span>
+                                    <div class="text-white font-medium">${pluginInfo.version}</div>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 text-sm">Auteur:</span>
+                                    <div class="text-white font-medium">${pluginInfo.author}</div>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 text-sm">Type:</span>
+                                    <div class="text-white font-medium">
+                                        <span class="px-2 py-1 rounded text-xs ${pluginInfo.type === 'permanent' ? 'bg-blue-600/20 text-blue-300 border border-blue-500/30' : 'bg-yellow-600/20 text-yellow-300 border border-yellow-500/30'}">
+                                            ${pluginInfo.type === 'permanent' ? 'Permanent' : 'Temporaire'}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <span class="text-slate-400 text-sm">Statut:</span>
+                                    <div class="text-white font-medium">
+                                        <span class="${pluginInfo.enabled ? 'text-green-400' : 'text-red-400'} font-bold">
+                                            ${pluginInfo.enabled ? '✅ ACTIVÉ' : '❌ DÉSACTIVÉ'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="bg-slate-700/30 rounded-xl p-4 border border-slate-600/40">
+                            <h3 class="text-lg font-bold text-white mb-3 flex items-center">
+                                <svg class="w-5 h-5 mr-2 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 0v12h8V4H6z" clip-rule="evenodd"></path>
+                                </svg>
+                                Description
+                            </h3>
+                            <p class="text-slate-300">${pluginInfo.description}</p>
+                        </div>
+
+                        <!-- Commandes -->
+                        <div class="bg-slate-700/30 rounded-xl p-4 border border-slate-600/40">
+                            <h3 class="text-lg font-bold text-white mb-3 flex items-center">
+                                <svg class="w-5 h-5 mr-2 text-purple-400" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"></path>
+                                </svg>
+                                Commandes disponibles (${pluginInfo.commands.length})
+                            </h3>
+                            ${pluginInfo.commands.length > 0 ? 
+                                pluginInfo.commands.map(cmd => `
+                                    <div class="bg-slate-800/40 rounded-lg p-3 mb-3 border border-slate-600/30">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <span class="text-green-400 font-mono font-bold text-lg">${cmd.name}</span>
+                                            <div class="flex items-center space-x-2">
+                                                ${cmd.category ? `<span class="text-xs text-slate-400 px-2 py-1 bg-slate-600/30 rounded">${cmd.category}</span>` : ''}
+                                                <span class="text-xs text-slate-500 px-2 py-1 bg-slate-600/30 rounded">commande</span>
+                                            </div>
+                                        </div>
+                                        <p class="text-slate-300 text-sm mb-2">${cmd.description}</p>
+                                        ${cmd.synopsis ? `
+                                            <div class="mb-2">
+                                                <span class="text-yellow-300 text-xs font-semibold">Usage:</span>
+                                                <code class="text-green-300 font-mono text-sm bg-slate-900/40 px-2 py-1 rounded ml-2">${cmd.synopsis}</code>
+                                            </div>
+                                        ` : ''}
+                                        ${cmd.examples && cmd.examples.length > 0 ? `
+                                            <div>
+                                                <span class="text-blue-300 text-xs font-semibold">Exemples:</span>
+                                                <div class="mt-1 space-y-1">
+                                                    ${cmd.examples.map(example => `
+                                                        <code class="block text-cyan-300 font-mono text-xs bg-slate-900/40 px-2 py-1 rounded cursor-pointer hover:bg-slate-900/60 transition-colors">${example}</code>
+                                                    `).join('')}
+                                                </div>
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `).join('') 
+                                : 
+                                '<div class="text-slate-400 italic text-center py-4">Aucune commande disponible</div>'
+                            }
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-center mt-6 flex-shrink-0">
+                    <button id="close-plugin-info-modal-btn" class="px-6 py-3 bg-slate-600/50 text-white rounded-xl hover:bg-slate-500/60 focus:outline-none focus:ring-2 focus:ring-slate-400/50 transition-all duration-300 border border-slate-500/40 font-medium">
+                        Fermer
+                    </button>
+                </div>
+            </div>
+        </div>
+        `;
+
+        // Ajouter le modal au body
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // Gestionnaires d'événements pour fermer le modal
+        const modal = document.getElementById('plugin-info-modal');
+        const closeBtn = document.getElementById('close-plugin-info-modal');
+        const closeBtnBottom = document.getElementById('close-plugin-info-modal-btn');
+        
+        const closeModal = () => {
+            modal.remove();
+        };
+        
+        closeBtn.addEventListener('click', closeModal);
+        closeBtnBottom.addEventListener('click', closeModal);
+        
+        // Fermer en cliquant à l'extérieur
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+        
+        // Support des touches
+        const keyHandler = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                document.removeEventListener('keydown', keyHandler);
+            }
+        };
+        document.addEventListener('keydown', keyHandler);
     },
 
     // --- Système de notifications popup à droite ---
@@ -6094,7 +7480,7 @@ ${bottomBorder}
                     versionElement.textContent = versionData.version || 'N/A';
                 }
                 if (dateElement) {
-                    dateElement.textContent = versionData.buildDate || 'N/A';
+                    dateElement.textContent = versionData.date || 'N/A';
                 }
 
                 // Display changelog
@@ -6249,6 +7635,7 @@ ${bottomBorder}
             this.history = [];
         }
     },
+
     addToHistory(cmd, output, type = 'command') {
         const now = new Date();
         const entry = {
@@ -6263,13 +7650,16 @@ ${bottomBorder}
         this.history = [...this.history, entry];
         this.saveHistoryToCookie();
         
-        const activeTab = this.tabs.find(tab => tab.id === this.activeTabId);
-        if (activeTab) {
-            activeTab.history = [...this.history];
-            activeTab.historyIndex = this.historyIndex;
-            this.saveTabsToCookie();
+        if (TabManager && TabManager.tabs && Array.isArray(TabManager.tabs) && TabManager.activeTabId) {
+            const activeTab = TabManager.tabs.find(tab => tab.id === TabManager.activeTabId);
+            if (activeTab) {
+                activeTab.history = [...this.history];
+                activeTab.historyIndex = this.historyIndex;
+                TabManager.saveTabsToCookie();
+            }
         }
     },
+
     showFullHistory() {
         this.clearConsole();
         if (this.history && this.history.length > 0) {
@@ -6286,6 +7676,14 @@ ${bottomBorder}
         try {
             const fileSystemData = JSON.stringify(this.fileSystem);
             const compressedData = btoa(fileSystemData);
+
+            // Nettoyer les anciens cookies d'abord
+            this.clearFileSystemCookies();
+
+            // Vérifier la taille du cookie
+            if (compressedData.length > 4000) {
+                console.warn('Le système de fichiers est trop gros pour être stocké dans un seul cookie, il sera divisé en plusieurs chunks.');
+            }
             
             // Diviser en chunks si trop gros
             const maxCookieSize = 4000; // Limite de sécurité pour les cookies
@@ -6304,6 +7702,9 @@ ${bottomBorder}
             });
             
             console.log(`Système de fichiers sauvegardé dans ${chunks.length} cookies`);
+            
+            // Sauvegarder aussi dans localStorage comme backup
+            this.saveFileSystemToLocalStorage();
             return true;
         } catch (error) {
             console.error('Erreur lors de la sauvegarde dans les cookies:', error);
@@ -6311,15 +7712,51 @@ ${bottomBorder}
         }
     },
     loadFileSystemFromCookie() {
-        const match = document.cookie.match(/(?:^|;\s*)filesystem=([^;]*)/);
-        if (match) {
-            try {
-                this.fileSystem = JSON.parse(decodeURIComponent(match[1]));
-            } catch {
-                // Si erreur, on garde le système par défaut
+        try {
+            // Vérifier le nombre de chunks
+            const chunksMatch = document.cookie.match(/(?:^|;\s*)console_filesystem_chunks=([^;]*)/);
+            if (!chunksMatch) return false;
+            
+            const numChunks = parseInt(chunksMatch[1]);
+            if (isNaN(numChunks) || numChunks <= 0) return false;
+            
+            // Reconstituer les chunks
+            let compressedData = '';
+            for (let i = 0; i < numChunks; i++) {
+                const chunkMatch = document.cookie.match(new RegExp(`(?:^|;\\s*)console_filesystem_${i}=([^;]*)`));
+                if (!chunkMatch) {
+                    console.warn(`Chunk ${i} manquant, abandon du chargement`);
+                    return false;
+                }
+                compressedData += chunkMatch[1];
             }
+            
+            // Décompresser et parser
+            const fileSystemData = atob(compressedData);
+            this.fileSystem = JSON.parse(fileSystemData);
+            console.log(`Système de fichiers chargé depuis ${numChunks} cookies`);
+            return true;
+        } catch (error) {
+            console.error('Erreur lors du chargement depuis les cookies:', error);
+            return false;
         }
     },
+
+    clearFileSystemCookies() {
+        // Nettoyer les anciens chunks
+        const chunksMatch = document.cookie.match(/(?:^|;\s*)console_filesystem_chunks=([^;]*)/);
+        if (chunksMatch) {
+            const oldNumChunks = parseInt(chunksMatch[1]);
+            if (!isNaN(oldNumChunks)) {
+                for (let i = 0; i < oldNumChunks; i++) {
+                    document.cookie = `console_filesystem_${i}=;path=/;max-age=0`;
+                }
+            }
+        }
+        // Nettoyer le compteur de chunks
+        document.cookie = `console_filesystem_chunks=;path=/;max-age=0`;
+    },
+
     // --- Dans app ---
     applyTheme(theme) {
         document.body.classList.remove('theme-dark', 'theme-light');
@@ -6434,23 +7871,45 @@ ${bottomBorder}
 
     showChangelog(versionData) {
         const changelogContainer = document.getElementById('changelog-container');
-        if (!changelogContainer || !versionData.changelog) return;
+        if (!changelogContainer) return;
 
-        let changelogHTML = '<div class="text-sm text-gray-300 space-y-2">';
+        let changelogHTML = '<div class="text-sm text-slate-300 space-y-3">';
         
-        Object.entries(versionData.changelog).forEach(([version, changes]) => {
-            changelogHTML += `
-                <div class="border-l-2 border-blue-500 pl-3 mb-3">
-                    <h4 class="font-semibold text-blue-400">${version}</h4>
-                    <ul class="list-disc list-inside text-xs space-y-1 mt-1">
-            `;
+        // Utiliser l'historique pour afficher les dernières versions
+        if (versionData.history && Array.isArray(versionData.history)) {
+            // Prendre les 10 dernières versions
+            const recentVersions = versionData.history;
             
-            changes.forEach(change => {
-                changelogHTML += `<li>${change}</li>`;
+            recentVersions.forEach(entry => {
+                const typeColor = entry.type === 'Major' ? 'text-red-400 border-red-500' : 
+                                 entry.type === 'minor' ? 'text-yellow-400 border-yellow-500' : 
+                                 'text-green-400 border-green-500';
+                
+                changelogHTML += `
+                    <div class="border-l-2 ${typeColor} pl-4 mb-4 bg-slate-800/30 rounded-r-lg p-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="font-semibold ${typeColor.split(' ')[0]}">${entry.version}</h4>
+                            <span class="text-xs text-slate-400">${entry.date}</span>
+                        </div>
+                        <p class="text-slate-300 text-sm leading-relaxed">${entry.changelog}</p>
+                        <span class="inline-block mt-2 px-2 py-1 bg-slate-700/50 text-xs ${typeColor.split(' ')[0]} rounded-full border border-current/20">
+                            ${entry.type}
+                        </span>
+                    </div>
+                `;
             });
-            
-            changelogHTML += '</ul></div>';
-        });
+        } else {
+            // Fallback pour la version actuelle
+            changelogHTML += `
+                <div class="border-l-2 border-blue-500 pl-4 mb-4 bg-slate-800/30 rounded-r-lg p-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="font-semibold text-blue-400">${versionData.version || 'Version actuelle'}</h4>
+                        <span class="text-xs text-slate-400">${versionData.date || 'Date inconnue'}</span>
+                    </div>
+                    <p class="text-slate-300 text-sm">${versionData.changelog || 'Aucune information disponible'}</p>
+                </div>
+            `;
+        }
         
         changelogHTML += '</div>';
         changelogContainer.innerHTML = changelogHTML;
@@ -6998,6 +8457,9 @@ ${bottomBorder}
     },
 
 };
+
+// Rendre l'objet app accessible globalement
+window.app = app;
 
 // --- Initialize the App ---
 document.addEventListener('DOMContentLoaded', function () {

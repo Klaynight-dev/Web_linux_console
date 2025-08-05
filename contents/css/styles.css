@@ -97,3 +97,49 @@ body {
     background-color: #1f2937;
 }
 
+/* Styles pour les toggles de commandes */
+.command-toggle {
+    width: 48px;
+    height: 24px;
+    background-color: #374151;
+    border-radius: 12px;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid #4b5563;
+    display: flex;
+    align-items: center;
+}
+
+.command-toggle::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 2px;
+    width: 18px;
+    height: 18px;
+    background-color: #9ca3af;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.command-toggle.enabled {
+    background-color: #10b981;
+    border-color: #059669;
+}
+
+.command-toggle.enabled::before {
+    transform: translateX(26px) translateY(-50%);
+    background-color: #ffffff;
+}
+
+.command-toggle:hover {
+    opacity: 0.8;
+    transform: scale(1.05);
+}
+
+.command-toggle:active {
+    transform: scale(0.95);
+}
+

@@ -1,0 +1,49 @@
+{
+    "name": "Plugin Exemple",
+    "version": "1.0.0",
+    "description": "Un plugin d'exemple avec des commandes utiles",
+    "author": "Communauté",
+    "main": "index.js",
+    "commands": {
+        "greet": {
+            "category": "General",
+            "description": "Affiche un message de salutation",
+            "synopsis": "greet",
+            "helpOption": "[nom]",
+            "options": [
+            "<nom> - nom à saluer (optionnel)"
+            ],
+            "examples": [
+            "greet",
+            "greet Jean"
+            ]
+        },
+        "calc": {
+            "category": "Utility",
+            "description": "Effectue des calculs mathématiques",
+            "synopsis": "calc",
+            "helpOption": "<expression>",
+            "options": [
+            "<expression> - expression mathématique à calculer"
+            ],
+            "examples": [
+            "calc 2 + 2",
+            "calc 10 * 5"
+            ]
+        },
+        "random": {
+            "category": "Utility",
+            "description": "Génère un nombre aléatoire",
+            "synopsis": "random",
+            "helpOption": "[min] [max]",
+            "options": [
+            "<min> - valeur minimale (optionnel)",
+            "<max> - valeur maximale (optionnel)"
+            ],
+            "examples": [
+            "random",
+            "random 1 100"
+            ]
+        }
+    }
+}
