@@ -376,6 +376,35 @@ const TabManager = {
                 }
             });
 
+            // Gestion du clic molette (bouton du milieu) pour fermer l'onglet
+            tabElement.addEventListener('mousedown', (e) => {
+                if (e.button === 1) { // Bouton du milieu (molette)
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Ne pas fermer s'il n'y a qu'un seul onglet
+                    if (this.tabs.length > 1) {
+                        this.closeTab(tab.id);
+                    } else {
+                        // Feedback visuel pour indiquer qu'on ne peut pas fermer le dernier onglet
+                        this.app.showNotification({
+                            type: 'warning',
+                            title: '⚠️ Impossible de fermer',
+                            message: 'Vous ne pouvez pas fermer le dernier onglet',
+                            duration: 2000
+                        });
+                    }
+                }
+            });
+
+            // Empêcher le comportement par défaut du clic molette (scroll)
+            tabElement.addEventListener('auxclick', (e) => {
+                if (e.button === 1) { // Bouton du milieu
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            });
+
             const closeBtn = tabElement.querySelector('.close-tab-btn');
             if (closeBtn) {
                 closeBtn.addEventListener('click', (e) => {
@@ -633,7 +662,7 @@ const TabManager = {
                     this.app.addOutput(`switchtab: numéro d'onglet invalide (1-${this.tabs.length})`, 'error');
                     return;
                 }
-
+                
                 const targetTab = this.tabs[tabNumber - 1];
                 this.switchToTab(targetTab.id);
                 this.app.addOutput(`<span class="text-blue-400">🔄 Basculé vers l'onglet : ${targetTab.title}</span>`, 'system');

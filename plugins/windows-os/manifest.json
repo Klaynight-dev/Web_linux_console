@@ -1,0 +1,8 @@
+{
+    "name": "Windows OS Simulator",
+    "version": "1.0.0",
+    "description": "Interface graphique Windows pour la console CLK",
+    "author": "Klaynight-dev",
+    "main": "index.js",
+    "commands": ["win", "windows"]
+}

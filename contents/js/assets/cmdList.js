@@ -348,6 +348,28 @@ const COMMAND_METADATA = {
         seeAlso: ["base64", "curl", "wget"]
     },
 
+    appearance: {
+        category: 'Configuration',
+        description: 'Gérer l\'apparence de la console (timestamps, numéros de ligne)',
+        synopsis: 'appearance [OPTIONS]',
+        helpOption: "-h, --help",
+        options: [
+            "--timestamps on|off     Active/désactive l'affichage des timestamps",
+            "--line-numbers on|off   Active/désactive la numérotation des lignes",
+            "--status                Affiche l'état actuel des paramètres",
+            "--reset                 Réinitialise tous les paramètres",
+            "--test                  Teste l'affichage avec plusieurs lignes",
+            "-h, --help              Affiche cette aide"
+        ],
+        examples: [
+            "appearance --timestamps on",
+            "appearance --line-numbers off", 
+            "appearance --status",
+            "appearance --test"
+        ],
+        seeAlso: ["settings", "clear", "echo"]
+    },
+
     // Système & Processus
     ps: {
         category: 'Système & Processus',

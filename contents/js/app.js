@@ -1,6 +1,7 @@
 import { COMMAND_METADATA, commandHelpers } from './assets/cmdList.js';
 import TabManager from './assets/tabs.js';
 import { PluginManager } from './assets/plugin-manager.js';
+import { SettingsManager } from './assets/settings-manager.js';
 
 // --- Application Core ---
 const app = {
@@ -86,6 +87,9 @@ const app = {
 
     // --- Initialization ---
     init() {
+        // Initialiser le gestionnaire de paramètres
+        this.settingsManager = new SettingsManager();
+        
         // Initialiser le gestionnaire de plugins
         this.pluginManager = new PluginManager();
         
@@ -142,23 +146,28 @@ const app = {
         }
 
         if (this.saveSettingsModal) {
-                this.saveSettingsModal.onclick = function () {
+            this.saveSettingsModal.onclick = function () {
+                app.saveAllSettings();
                 const settingsModal = document.getElementById('settings-modal');
                 if (settingsModal) {
                     settingsModal.classList.add('hidden');
                 }
-            // Ajoute ici la logique de sauvegarde des paramètres si besoin
+                app.showNotification({
+                    type: 'success',
+                    title: 'Paramètres sauvegardés',
+                    message: 'Tous les paramètres ont été sauvegardés avec succès.',
+                    duration: 2000
+                });
             };
         }
 
-        this.loadTheme();
+        // Initialiser les gestionnaires des onglets de paramètres
+        this.initSettingsModal();
 
-        // Gestion du changement de thème
-        if (this.themeSelect) {
-            this.themeSelect.addEventListener('change', function () {
-                app.applyTheme(this.value);
-            });
-        }
+        // Charger tous les paramètres sauvegardés
+        this.loadAllSavedSettings();
+
+        this.loadTheme();
 
         // Gestion du changement de police
         if (this.fontSelect) {
@@ -169,8 +178,8 @@ const app = {
         // Gestion de la taille de la police
         if (this.fontSizeRange && this.fontSizeValue && this.consoleOutput) {
             this.fontSizeRange.addEventListener('input', function () {
-                this.fontSizeValue.textContent = this.value + 'px';
-                this.consoleOutput.style.fontSize = this.value + 'px';
+                app.fontSizeValue.textContent = this.value + 'px';
+                app.applyFontSize(this.value);
             });
         }
 
@@ -258,13 +267,25 @@ const app = {
         
         // Charger les plugins au démarrage
         if (this.pluginManager) {
-            this.pluginManager.loadAllPlugins().catch(error => {
+            this.pluginManager.loadAllPlugins().then(() => {
+                console.log('Plugins chargés:', this.pluginManager.listPlugins());
+                // Mettre à jour les statistiques dans l'interface si elle est ouverte
+                if (document.getElementById('settings-modal') && !document.getElementById('settings-modal').classList.contains('hidden')) {
+                    this.updateAdvancedSettingsStats();
+                }
+            }).catch(error => {
                 console.warn('Erreur lors du chargement des plugins:', error);
             });
         }
         
         // Charger les commandes désactivées
         this.loadDisabledCommands();
+        
+        // Charger et appliquer tous les paramètres sauvegardés
+        setTimeout(() => {
+            this.loadAllSavedSettings();
+            console.log('✅ Paramètres utilisateur chargés depuis les cookies');
+        }, 50);
         
         // Peupler le répertoire bin après que tous les imports soient chargés
         // Utiliser un délai plus long pour s'assurer que tous les modules sont chargés
@@ -489,6 +510,12 @@ const app = {
                         <span id="enabled-count">${allCommands.size - this.disabledCommands.size}</span> / ${allCommands.size} commandes activées
                     </div>
                     <div class="flex space-x-3">
+                        <button id="export-commands-btn" class="px-3 py-2 bg-blue-600/20 text-blue-300 border border-blue-500/30 rounded-lg hover:bg-blue-600/30 transition-colors text-sm" title="Exporter la configuration">
+                            Exporter
+                        </button>
+                        <button id="import-commands-btn" class="px-3 py-2 bg-green-600/20 text-green-300 border border-green-500/30 rounded-lg hover:bg-green-600/30 transition-colors text-sm" title="Importer une configuration">
+                            Importer
+                        </button>
                         <button id="reset-commands-btn" class="px-4 py-2 bg-yellow-600/20 text-yellow-300 border border-yellow-500/30 rounded-lg hover:bg-yellow-600/30 transition-colors text-sm">
                             Réinitialiser
                         </button>
@@ -510,6 +537,15 @@ const app = {
         const closeBtnBottom = document.getElementById('close-command-manager-btn');
         const resetBtn = document.getElementById('reset-commands-btn');
         const enabledCountSpan = document.getElementById('enabled-count');
+        const exportBtn = document.getElementById('export-commands-btn');
+        const importBtn = document.getElementById('import-commands-btn');
+
+        // Ajout d'une barre de recherche
+        const searchBar = document.createElement('input');
+        searchBar.type = 'text';
+        searchBar.placeholder = 'Rechercher une commande...';
+        searchBar.className = 'command-search-bar px-3 py-2 mb-4 w-full rounded-lg border border-slate-600 bg-slate-800 text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-400';
+        modal.querySelector('.flex-1.overflow-y-auto').insertBefore(searchBar, modal.querySelector('.flex-1.overflow-y-auto').firstChild);
         
         const updateEnabledCount = () => {
             enabledCountSpan.textContent = allCommands.size - this.disabledCommands.size;
@@ -580,6 +616,12 @@ const app = {
                     duration: 2000
                 });
             });
+
+            // Ajout d'une info-bulle sur chaque commande
+            const commandItem = toggle.closest('.command-item');
+            if (commandItem && commandItem.dataset.description) {
+                toggle.title = commandItem.dataset.description;
+            }
         });
 
         // Gestionnaires pour les boutons d'information
@@ -628,6 +670,91 @@ const app = {
                     duration: 2000
                 });
             }
+        });
+
+        // Exporter la configuration des commandes activées
+        exportBtn.addEventListener('click', () => {
+            const enabled = [];
+            modal.querySelectorAll('.command-toggle.enabled').forEach(toggle => {
+                enabled.push(toggle.dataset.command);
+            });
+            const config = { enabledCommands: enabled };
+            const blob = new Blob([JSON.stringify(config, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'commandes_config.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // Importer une configuration de commandes
+        importBtn.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json,application/json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (evt) => {
+                    try {
+                        const config = JSON.parse(evt.target.result);
+                        if (Array.isArray(config.enabledCommands)) {
+                            modal.querySelectorAll('.command-toggle').forEach(toggle => {
+                                const name = toggle.dataset.command;
+                                if (config.enabledCommands.includes(name)) {
+                                    toggle.classList.add('enabled');
+                                } else {
+                                    toggle.classList.remove('enabled');
+                                }
+                                // Mettre à jour l'icône et le texte de statut
+                                const commandItem = toggle.closest('.command-item');
+                                const statusContainer = commandItem.querySelector('.flex.items-center.space-x-3.flex-shrink-0 .flex.items-center.space-x-2');
+                                const iconSpan = statusContainer.children[0];
+                                const textSpan = statusContainer.children[1];
+                                if (toggle.classList.contains('enabled')) {
+                                    iconSpan.textContent = '✓';
+                                    iconSpan.className = 'text-lg text-green-400';
+                                    textSpan.textContent = 'ACTIVÉE';
+                                    textSpan.className = 'text-xs text-green-400 font-medium';
+                                } else {
+                                    iconSpan.textContent = '✗';
+                                    iconSpan.className = 'text-lg text-red-400';
+                                    textSpan.textContent = 'DÉSACTIVÉE';
+                                    textSpan.className = 'text-xs text-red-400 font-medium';
+                                }
+                            });
+                            modal.querySelectorAll('.category-section').forEach(section => updateCategoryCount(section));
+                            updateEnabledCount();
+                            this.showNotification({
+                                type: 'success',
+                                title: 'Import réussi',
+                                message: 'Configuration importée avec succès.',
+                                duration: 2000
+                            });
+                        }
+                    } catch (err) {
+                        this.showNotification({
+                            type: 'error',
+                            title: 'Erreur import',
+                            message: 'Fichier de configuration invalide.',
+                            duration: 3000
+                        });
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        });
+
+        // Recherche dynamique des commandes
+        searchBar.addEventListener('input', (e) => {
+            const value = e.target.value.toLowerCase();
+            modal.querySelectorAll('.command-item').forEach(item => {
+                const name = item.querySelector('.command-name').textContent.toLowerCase();
+                item.style.display = name.includes(value) ? '' : 'none';
+            });
         });
         
         // Gestionnaires pour l'ouverture/fermeture des catégories
@@ -810,7 +937,7 @@ const app = {
 
         // Construire le HTML du modal d'informations
         const infoModalHtml = `
-        <div id="command-info-modal" class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-[60] p-6">
+        <div id="command-info-modal" class="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center modal-content p-6">
             <div class="bg-slate-800/95 backdrop-blur-2xl rounded-3xl p-6 shadow-2xl max-w-2xl w-full text-slate-100 border border-slate-600/40 animate-slide-up max-h-[80vh] overflow-y-auto">
                 <div class="flex items-center justify-between mb-6">
                     <h2 class="text-2xl font-bold flex items-center">
@@ -1054,8 +1181,46 @@ const app = {
 
     // --- Output Management ---
     addOutput(line, type = 'normal') {
+        // Vérifier les paramètres d'affichage
+        const showTimestamps = this.getSetting('show_timestamps', false);
+        const showLineNumbers = this.getSetting('show_line_numbers', false);
+        
+        // Obtenir le compteur de ligne actuel
+        if (!this.lineCounter) {
+            this.lineCounter = 1;
+        }
+        
         const lineDiv = document.createElement('div');
-        lineDiv.innerHTML = line;
+        lineDiv.classList.add('console-line');
+        
+        // Construire le contenu de la ligne avec les préfixes optionnels
+        let lineContent = '';
+        
+        // Ajouter le numéro de ligne si activé
+        if (showLineNumbers) {
+            const lineNumber = String(this.lineCounter).padStart(3, ' ');
+            lineContent += `<span class="line-number text-gray-500 text-xs mr-2 font-mono select-none">${lineNumber}:</span>`;
+            this.lineCounter++;
+        }
+        
+        // Ajouter le timestamp si activé
+        if (showTimestamps) {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('fr-FR', { 
+                hour12: false,
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit'
+            });
+            lineContent += `<span class="timestamp text-gray-500 text-xs mr-2 font-mono select-none">[${timeStr}]</span>`;
+        }
+        
+        // Ajouter le contenu principal de la ligne
+        lineContent += `<span class="line-content">${line}</span>`;
+        
+        lineDiv.innerHTML = lineContent;
+        
+        // Appliquer les styles selon le type
         if (type === 'command') {
             lineDiv.classList.add('text-gray-400');
         } else if (type === 'error') {
@@ -1063,6 +1228,15 @@ const app = {
         } else if (type === 'system') {
             lineDiv.classList.add('text-purple-400');
         }
+        
+        // Ajouter des classes CSS pour le styling
+        if (showTimestamps) {
+            lineDiv.classList.add('has-timestamp');
+        }
+        if (showLineNumbers) {
+            lineDiv.classList.add('has-line-numbers');
+        }
+        
         this.outputElement.insertBefore(lineDiv, this.consoleEndRefElement);
         this.scrollToBottom();
 
@@ -1101,6 +1275,10 @@ const app = {
                 this.outputElement.insertBefore(this.loadingLLMIndicator, this.consoleEndRefElement);
             }
         }
+        
+        // Réinitialiser le compteur de ligne
+        this.lineCounter = 1;
+        
         // Toujours afficher le message après clear
         this.addOutput(this.defaultMessage, 'system');
         
@@ -5681,7 +5859,7 @@ ${bottomBorder}
             app.fullscreen();
         },
 
-        notify (args) {
+        notify(args) {
             // Vérifier d'abord si --help est présent avant de parser les options
             if (args.includes('--help') || args.includes('-h')) {
             // Utiliser la fonction man pour afficher l'aide de notify
@@ -5696,6 +5874,8 @@ ${bottomBorder}
             let persistent = false;
             let action = null;
             let messageArgs = [];
+            let useDesktop = false; // Nouveau: notifications de bureau
+            let useHybrid = false;  // Nouveau: mode hybride (interface + bureau)
             
             // Fonction pour extraire les valeurs entre guillemets ou un seul argument
             const extractQuotedValue = (args, startIndex) => {
@@ -5768,6 +5948,10 @@ ${bottomBorder}
                 }
             } else if (arg === '-p') {
                 persistent = true;
+            } else if (arg === '--desktop' || arg === '-D') {
+                useDesktop = true;
+            } else if (arg === '--hybrid' || arg === '-H') {
+                useHybrid = true;
             } else if (arg === '-a' && i + 1 < args.length) {
                 const result = extractQuotedValue(args, i + 1);
                 if (result.value !== null) {
@@ -5817,7 +6001,9 @@ ${bottomBorder}
             message: message,
             duration: duration,
             closable: true,
-            actions: actions
+            actions: actions,
+            useDesktopNotification: useDesktop,
+            useHybridMode: useHybrid
             });
 
             // Utiliser la fonction existante createInfoBlock pour créer un bloc d'information structuré
@@ -5834,6 +6020,8 @@ ${bottomBorder}
                 { label: 'Durée', value: duration === 0 ? '∞ permanente' : duration + 'ms', labelColor: 'text-yellow-300' },
                 { label: 'Persistante', value: persistent ? '✅ oui' : '❌ non', labelColor: 'text-orange-300' },
                 { label: 'Action', value: action || '❌ aucune', labelColor: 'text-cyan-300' },
+                { label: 'Bureau', value: useDesktop ? '🖥️ oui' : '❌ non', labelColor: 'text-pink-300' },
+                { label: 'Hybride', value: useHybrid ? '🔄 oui' : '❌ non', labelColor: 'text-indigo-300' },
             ]
             });
 
@@ -5841,7 +6029,140 @@ ${bottomBorder}
 
             // Confirmer dans la console
             const durationText = duration === 0 ? 'permanente' : `${duration}ms`;
-            this.addOutput(`📱 Notification ${notificationType} affichée (durée: ${durationText})`, 'system');
+            const modeText = useDesktop ? 'bureau' : useHybrid ? 'hybride' : 'interface';
+            this.addOutput(`📱 Notification ${notificationType} affichée en mode ${modeText} (durée: ${durationText})`, 'system');
+        },
+
+        // Nouvelle commande pour tester les notifications de bureau
+        desktopnotify(args) {
+            if (args.includes('--help') || args.includes('-h')) {
+                this.addOutput(`
+<span class="text-cyan-400 font-bold">🖥️ desktopnotify - Notifications de bureau natives</span>
+
+<span class="text-yellow-400 font-semibold">UTILISATION:</span>
+    desktopnotify [OPTIONS] MESSAGE
+
+<span class="text-yellow-400 font-semibold">OPTIONS:</span>
+    <span class="text-green-400">-t TYPE</span>      Type de notification (info, success, warning, error)
+    <span class="text-green-400">-T TITRE</span>     Titre de la notification (défaut: "CLK Console")
+    <span class="text-green-400">-d DURÉE</span>     Durée en millisecondes (défaut: 5000, 0 = permanent)
+    <span class="text-green-400">--check</span>      Vérifier le support et les permissions
+    <span class="text-green-400">--request</span>    Demander les permissions
+    <span class="text-green-400">-h, --help</span>   Afficher cette aide
+
+<span class="text-yellow-400 font-semibold">EXEMPLES:</span>
+    <span class="text-slate-400">desktopnotify "Hello World!"</span>
+    <span class="text-slate-400">desktopnotify -t success -T "Succès" "Opération terminée"</span>
+    <span class="text-slate-400">desktopnotify --check</span>
+    <span class="text-slate-400">desktopnotify --request</span>
+
+<span class="text-yellow-400 font-semibold">NOTES:</span>
+    • Nécessite les permissions de notification du navigateur
+    • Les notifications apparaissent dans la zone de notification du système
+    • Utilisez --check pour vérifier la compatibilité
+                `, 'system');
+                return;
+            }
+
+            // Option pour vérifier le support
+            if (args.includes('--check')) {
+                const isSupported = 'Notification' in window;
+                const permission = isSupported ? Notification.permission : 'non-supporté';
+                
+                this.addOutput(`
+<span class="text-blue-400 font-bold">🔍 État des notifications de bureau:</span>
+
+<span class="text-yellow-400">Support navigateur:</span> ${isSupported ? '✅ Supporté' : '❌ Non supporté'}
+<span class="text-yellow-400">Permission actuelle:</span> ${permission === 'granted' ? '✅ Accordée' : permission === 'denied' ? '❌ Refusée' : '⚠️ Non demandée'}
+<span class="text-yellow-400">État:</span> ${isSupported && permission === 'granted' ? '🟢 Prêt à utiliser' : '🔴 Nécessite une action'}
+
+${!isSupported ? '<span class="text-red-400">⚠️ Votre navigateur ne supporte pas les notifications de bureau</span>' : ''}
+${isSupported && permission === 'default' ? '<span class="text-orange-400">💡 Utilisez "desktopnotify --request" pour demander les permissions</span>' : ''}
+${isSupported && permission === 'denied' ? '<span class="text-red-400">⚠️ Permissions refusées. Activez-les dans les paramètres du navigateur</span>' : ''}
+                `, 'system');
+                return;
+            }
+
+            // Option pour demander les permissions
+            if (args.includes('--request')) {
+                if (!('Notification' in window)) {
+                    this.addOutput('❌ Les notifications de bureau ne sont pas supportées par ce navigateur', 'error');
+                    return;
+                }
+
+                if (Notification.permission === 'granted') {
+                    this.addOutput('✅ Les permissions sont déjà accordées', 'success');
+                    return;
+                }
+
+                if (Notification.permission === 'denied') {
+                    this.addOutput('❌ Les permissions ont été refusées. Vous devez les activer manuellement dans les paramètres du navigateur', 'error');
+                    return;
+                }
+
+                this.addOutput('🔄 Demande de permission en cours...', 'info');
+                
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        this.addOutput('✅ Permissions accordées ! Vous pouvez maintenant utiliser les notifications de bureau', 'success');
+                        
+                        // Notification de test
+                        new Notification('CLK Console', {
+                            body: 'Notifications de bureau activées avec succès !',
+                            icon: '/contents/img/logo.svg'
+                        });
+                    } else {
+                        this.addOutput('❌ Permissions refusées', 'error');
+                    }
+                });
+                
+                return;
+            }
+
+            // Parser les arguments pour la notification
+            let type = 'info';
+            let title = 'CLK Console';
+            let duration = 5000;
+            let messageArgs = [];
+
+            for (let i = 0; i < args.length; i++) {
+                const arg = args[i];
+                
+                if (arg === '-t' && i + 1 < args.length) {
+                    type = args[i + 1];
+                    i++; // Skip next argument
+                } else if (arg === '-T' && i + 1 < args.length) {
+                    title = args[i + 1];
+                    i++; // Skip next argument
+                } else if (arg === '-d' && i + 1 < args.length) {
+                    const parsedDuration = parseInt(args[i + 1]);
+                    if (!isNaN(parsedDuration) && parsedDuration >= 0) {
+                        duration = parsedDuration;
+                    }
+                    i++; // Skip next argument
+                } else if (!arg.startsWith('-')) {
+                    messageArgs.push(arg);
+                }
+            }
+
+            if (messageArgs.length === 0) {
+                this.addOutput('desktopnotify: manque le message à afficher', 'error');
+                this.addOutput('Utilisez "desktopnotify --help" pour plus d\'informations.');
+                return;
+            }
+
+            const message = messageArgs.join(' ');
+
+            // Utiliser la fonction de notification de bureau
+            this.showNotification({
+                type: type,
+                title: title,
+                message: message,
+                duration: duration,
+                useDesktopNotification: true
+            });
+
+            this.addOutput(`🖥️ Notification de bureau envoyée: "${title}" - "${message}"`, 'system');
         },
 
         checkfile(args) {
@@ -6010,6 +6331,117 @@ ${bottomBorder}
             };
 
             img.src = qrUrl;
+        },
+
+        // Commande pour gérer l'apparence de la console
+        appearance(args) {
+            if (args.includes('--help') || args.includes('-h')) {
+                this.addOutput(`
+<span class="text-cyan-400 font-bold">🎨 appearance - Gestion de l'apparence de la console</span>
+
+<span class="text-yellow-400 font-semibold">UTILISATION:</span>
+    appearance [OPTION] [VALEUR]
+
+<span class="text-yellow-400 font-semibold">OPTIONS:</span>
+    <span class="text-green-400">--timestamps on|off</span>    Afficher/masquer les timestamps
+    <span class="text-green-400">--line-numbers on|off</span>  Afficher/masquer les numéros de ligne
+    <span class="text-green-400">--status</span>               Afficher l'état actuel des paramètres
+    <span class="text-green-400">--reset</span>                Réinitialiser tous les paramètres
+    <span class="text-green-400">--test</span>                 Tester l'affichage avec plusieurs lignes
+
+<span class="text-yellow-400 font-semibold">EXEMPLES:</span>
+    <span class="text-slate-400">appearance --timestamps on</span>
+    <span class="text-slate-400">appearance --line-numbers off</span>
+    <span class="text-slate-400">appearance --status</span>
+    <span class="text-slate-400">appearance --test</span>
+
+<span class="text-yellow-400 font-semibold">NOTES:</span>
+    • Les paramètres sont sauvegardés automatiquement
+    • Utilisez les paramètres de la console pour une configuration complète
+                `, 'system');
+                return;
+            }
+
+            // Commande status
+            if (args.includes('--status')) {
+                const showTimestamps = this.getSetting('show_timestamps', false);
+                const showLineNumbers = this.getSetting('show_line_numbers', false);
+                
+                this.addOutput(`
+<span class="text-blue-400 font-bold">📊 État de l'apparence de la console:</span>
+
+<span class="text-yellow-400">Timestamps:</span> ${showTimestamps ? '✅ Activés' : '❌ Désactivés'}
+<span class="text-yellow-400">Numéros de ligne:</span> ${showLineNumbers ? '✅ Activés' : '❌ Désactivés'}
+<span class="text-yellow-400">Compteur actuel:</span> ${this.lineCounter || 1}
+
+<span class="text-gray-400 text-sm">Utilisez "appearance --help" pour voir les options disponibles</span>
+                `, 'system');
+                return;
+            }
+
+            // Commande reset
+            if (args.includes('--reset')) {
+                this.applySetting('show_timestamps', false);
+                this.applySetting('show_line_numbers', false);
+                this.lineCounter = 1;
+                
+                this.addOutput('🔄 Paramètres d\'apparence réinitialisés', 'system');
+                this.addOutput('📝 Exemple de ligne sans formatage', 'normal');
+                return;
+            }
+
+            // Commande test
+            if (args.includes('--test')) {
+                this.addOutput('🧪 Test de l\'affichage - Ligne normale', 'normal');
+                this.addOutput('⚡ Test de l\'affichage - Ligne de commande', 'command');
+                this.addOutput('✅ Test de l\'affichage - Ligne système', 'system');
+                this.addOutput('❌ Test de l\'affichage - Ligne d\'erreur', 'error');
+                this.addOutput('📊 Test terminé - Vous pouvez voir l\'effet des paramètres d\'apparence', 'system');
+                return;
+            }
+
+            // Gestion des timestamps
+            if (args.includes('--timestamps')) {
+                const index = args.indexOf('--timestamps');
+                if (index + 1 < args.length) {
+                    const value = args[index + 1].toLowerCase();
+                    if (value === 'on' || value === 'true' || value === '1') {
+                        this.applySetting('show_timestamps', true);
+                        this.addOutput('✅ Timestamps activés', 'system');
+                        this.addOutput('📝 Cette ligne montre un timestamp', 'normal');
+                        return;
+                    } else if (value === 'off' || value === 'false' || value === '0') {
+                        this.applySetting('show_timestamps', false);
+                        this.addOutput('❌ Timestamps désactivés', 'system');
+                        return;
+                    }
+                }
+                this.addOutput('❌ Valeur invalide. Utilisez: on/off, true/false, ou 1/0', 'error');
+                return;
+            }
+
+            // Gestion des numéros de ligne
+            if (args.includes('--line-numbers')) {
+                const index = args.indexOf('--line-numbers');
+                if (index + 1 < args.length) {
+                    const value = args[index + 1].toLowerCase();
+                    if (value === 'on' || value === 'true' || value === '1') {
+                        this.applySetting('show_line_numbers', true);
+                        this.addOutput('✅ Numéros de ligne activés', 'system');
+                        this.addOutput('📝 Cette ligne montre un numéro', 'normal');
+                        return;
+                    } else if (value === 'off' || value === 'false' || value === '0') {
+                        this.applySetting('show_line_numbers', false);
+                        this.addOutput('❌ Numéros de ligne désactivés', 'system');
+                        return;
+                    }
+                }
+                this.addOutput('❌ Valeur invalide. Utilisez: on/off, true/false, ou 1/0', 'error');
+                return;
+            }
+
+            // Si aucune option reconnue, afficher l'aide
+            this.addOutput('❌ Option non reconnue. Utilisez "appearance --help" pour voir les options disponibles.', 'error');
         },
 
 
@@ -6594,8 +7026,6 @@ ${bottomBorder}
             this.addOutput(`Fichier "${fileName}" non trouvé`, 'error');
         }
     },
-
-    
 
     // Fermeture de l'éditeur
     closeEditor(modal) {
@@ -7305,8 +7735,92 @@ ${bottomBorder}
             showProgress: true,
             icon: null, // Icône personnalisée ou null pour l'icône par défaut
             actions: [], // Tableau d'actions [{text: 'Action', callback: function() {}}]
+            useDesktopNotification: false, // Nouveau: utiliser les notifications de bureau natives
+            useHybridMode: false, // Nouveau: afficher à la fois interface ET bureau
             ...options
         };
+
+        // Si demandé, essayer d'afficher une notification de bureau native
+        if (config.useDesktopNotification || config.useHybridMode) {
+            this.showDesktopNotification(config);
+        }
+
+        // Si mode hybride OU si pas de notification bureau demandée, afficher l'interface
+        if (!config.useDesktopNotification || config.useHybridMode) {
+            return this.showUINotification(config);
+        }
+    },
+
+    // Nouvelle fonction pour les notifications de bureau natives
+    showDesktopNotification: function(config) {
+        // Vérifier si les notifications de bureau sont supportées
+        if (!('Notification' in window)) {
+            console.warn('Les notifications de bureau ne sont pas supportées par ce navigateur');
+            return false;
+        }
+
+        // Fonction pour créer la notification
+        const createNotification = () => {
+            // Icônes par type de notification
+            const icons = {
+                success: '/contents/img/logo.svg',
+                error: '/contents/img/logo.svg', 
+                warning: '/contents/img/logo.svg',
+                info: '/contents/img/logo.svg'
+            };
+
+            const notificationConfig = {
+                body: config.message,
+                icon: config.icon || icons[config.type] || icons.info,
+                badge: '/contents/img/logo.svg',
+                tag: 'clk-console-' + config.type, // Remplace les notifications du même type
+                requireInteraction: config.duration === 0, // Persiste si durée = 0
+                silent: false
+            };
+
+            try {
+                const notification = new Notification(config.title, notificationConfig);
+                
+                // Gérer les clics sur la notification
+                notification.onclick = () => {
+                    window.focus(); // Ramener l'application au premier plan
+                    notification.close();
+                };
+
+                // Auto-fermeture si durée définie
+                if (config.duration > 0) {
+                    setTimeout(() => {
+                        notification.close();
+                    }, config.duration);
+                }
+
+                return notification;
+            } catch (error) {
+                console.warn('Erreur lors de la création de la notification de bureau:', error);
+                return false;
+            }
+        };
+
+        // Gérer les permissions
+        if (Notification.permission === 'granted') {
+            return createNotification();
+        } else if (Notification.permission !== 'denied') {
+            // Demander la permission
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    createNotification();
+                } else {
+                    console.warn('Permission refusée pour les notifications de bureau');
+                }
+            });
+        } else {
+            console.warn('Les notifications de bureau sont bloquées');
+            return false;
+        }
+    },
+
+    // Refactoriser l'ancienne fonction en fonction séparée pour l'interface
+    showUINotification: function(config) {
 
         // Définir les styles et icônes par type
         const typeConfig = {
@@ -7355,7 +7869,7 @@ ${bottomBorder}
         if (!notificationContainer) {
             notificationContainer = document.createElement('div');
             notificationContainer.id = 'notification-container';
-            notificationContainer.className = 'fixed bottom-4 right-4 z-50 pointer-events-none space-y-2';
+            notificationContainer.className = 'fixed bottom-4 right-4 pointer-events-none space-y-2 notification-container';
             notificationContainer.style.maxWidth = '300px';
             document.body.appendChild(notificationContainer);
         }
@@ -7970,21 +8484,25 @@ ${bottomBorder}
     },
 
     // --- Dans app ---
-    applyTheme(theme) {
-        document.body.classList.remove('theme-dark', 'theme-light');
-        document.body.classList.add('theme-' + theme);
-        localStorage.setItem('console_theme', theme);
-    },
     loadTheme() {
-        const saved = localStorage.getItem('console_theme') || 'dark';
-        this.applyTheme(saved);
+        // Utiliser le nouveau système unifié de gestion des paramètres
+        const saved = this.getSetting('theme', 'dark');
+        console.log('🎨 loadTheme: chargement du thème', saved);
+        this.switchTheme(saved);
+        
+        // Mettre à jour le select si il existe
         const select = document.getElementById('theme-select');
-        if (select) select.value = saved;
+        if (select) {
+            select.value = saved;
+            console.log('🎨 loadTheme: select mis à jour avec', saved);
+        }
     },
     applyFontFamily(font) {
-        document.getElementById('console-output').style.fontFamily = font;
-        localStorage.setItem('console_font', font);
-        document.cookie = `console_font=${encodeURIComponent(font)};path=/;max-age=31536000`; // 1 an
+        if (this.consoleOutput) {
+            this.consoleOutput.style.fontFamily = font;
+        }
+        // Utiliser le système unifié de sauvegarde
+        this.applySetting('font_family', font);
     },
     loadFontFamily() {
         // Prend d'abord le cookie, sinon localStorage, sinon monospace
@@ -7993,11 +8511,6 @@ ${bottomBorder}
         this.applyFontFamily(saved);
         const select = document.getElementById('font-family-select');
         if (select) select.value = saved;
-    },
-    applyFontSize(size) {
-        document.getElementById('console-output').style.fontSize = size + 'px';
-        localStorage.setItem('console_font_size', size);
-        document.cookie = `console_font_size=${encodeURIComponent(size)};path=/;max-age=31536000`; // 1 an
     },
     loadFontSize() {
         // Prend d'abord le cookie, sinon localStorage, sinon 16
@@ -8014,47 +8527,65 @@ ${bottomBorder}
         if (type === 'color') {
             el.style.backgroundImage = '';
             el.style.backgroundColor = value;
-            // Stocke la couleur courante
-            document.cookie = `console_bg_type=color;path=/;max-age=31536000`;
-            document.cookie = `console_bg_value=${encodeURIComponent(value)};path=/;max-age=31536000`;
-            localStorage.setItem('console_bg_type', 'color');
-            localStorage.setItem('console_bg_value', value);
-            // Sauvegarde la dernière couleur utilisée
+            // Utiliser le système unifié de sauvegarde
+            this.applySetting('console_bg_type', 'color');
+            this.applySetting('console_bg_color', value);
+            // Sauvegarde la dernière couleur utilisée pour compatibilité
             localStorage.setItem('console_bg_last_color', value);
         } else if (type === 'image') {
             el.style.backgroundColor = '';
             el.style.backgroundImage = `url('${value}')`;
             el.style.backgroundSize = 'cover';
             el.style.backgroundPosition = 'center';
-            document.cookie = `console_bg_type=image;path=/;max-age=31536000`;
-            localStorage.setItem('console_bg_type', 'image');
-            localStorage.setItem('console_bg_value', value);
-            // Efface la valeur du cookie si besoin
-            document.cookie = `console_bg_value=;path=/;max-age=0`;
-            // Sauvegarde la dernière image utilisée
+            // Utiliser le système unifié de sauvegarde
+            this.applySetting('console_bg_type', 'image');
+            this.applySetting('console_bg_image_url', value);
+            // Sauvegarde la dernière image utilisée pour compatibilité
             localStorage.setItem('console_bg_last_image', value);
         }
     },
     loadConsoleBackground() {
-        const typeMatch = document.cookie.match(/(?:^|;\s*)console_bg_type=([^;]*)/);
-        const type = typeMatch ? decodeURIComponent(typeMatch[1]) : (localStorage.getItem('console_bg_type') || 'color');
-        let value;
-        if (type === 'color') {
-            const valueMatch = document.cookie.match(/(?:^|;\s*)console_bg_value=([^;]*)/);
-            value = valueMatch ? decodeURIComponent(valueMatch[1]) : (localStorage.getItem('console_bg_last_color') || '#18181b');
-        } else if (type === 'image') {
-            value = localStorage.getItem('console_bg_last_image') || '';
-        }
-        this.applyConsoleBackground(type, value);
+        // Utiliser le nouveau système unifié
+        const type = this.getSetting('console_bg_type', 'color');
+        const consoleOutput = document.getElementById('console-output');
+        
+        if (!consoleOutput) return;
 
-        // Mets à jour les inputs du modal si besoin
+        if (type === 'color') {
+            const value = this.getSetting('console_bg_color', '#18181b');
+            consoleOutput.style.backgroundImage = '';
+            consoleOutput.style.background = '';
+            consoleOutput.style.backgroundColor = value;
+        } else if (type === 'image') {
+            const value = this.getSetting('console_bg_image_url', '');
+            if (value) {
+                consoleOutput.style.backgroundColor = '';
+                consoleOutput.style.background = '';
+                consoleOutput.style.backgroundImage = `url('${value}')`;
+                consoleOutput.style.backgroundSize = 'cover';
+                consoleOutput.style.backgroundPosition = 'center';
+            }
+        } else if (type === 'gradient') {
+            const gradient = this.getSetting('console_bg_gradient', { color1: '#1e293b', color2: '#0f172a' });
+            consoleOutput.style.backgroundColor = '';
+            consoleOutput.style.backgroundImage = '';
+            consoleOutput.style.background = `linear-gradient(135deg, ${gradient.color1}, ${gradient.color2})`;
+        } else {
+            // Type 'default' ou non reconnu - utiliser le dégradé par défaut
+            const gradient = this.getSetting('console_bg_gradient', { color1: '#1e293b', color2: '#0f172a' });
+            consoleOutput.style.backgroundColor = '';
+            consoleOutput.style.backgroundImage = '';
+            consoleOutput.style.background = `linear-gradient(135deg, ${gradient.color1}, ${gradient.color2})`;
+        }
+
+        // Mets à jour les inputs du modal si besoin (pour compatibilité avec l'ancienne interface)
         const typeSelect = document.getElementById('console-bg-type');
         const colorInput = document.getElementById('console-bg-color');
         const urlInput = document.getElementById('console-bg-url');
         const bgImageImportGroup = document.getElementById('console-bg-image-import-group');
         if (typeSelect) typeSelect.value = type;
-        if (colorInput) colorInput.value = localStorage.getItem('console_bg_last_color') || '#18181b';
-        if (urlInput) urlInput.value = localStorage.getItem('console_bg_last_image') || '';
+        if (colorInput) colorInput.value = this.getSetting('console_bg_color', '#18181b');
+        if (urlInput) urlInput.value = this.getSetting('console_bg_image_url', '');
         if (bgImageImportGroup) bgImageImportGroup.style.display = (type === 'image' ? 'block' : 'none');
         if (colorInput) colorInput.style.display = (type === 'color' ? 'inline-block' : 'none');
         if (urlInput) urlInput.style.display = (type === 'image' ? 'inline-block' : 'none');
@@ -8668,6 +9199,2316 @@ ${bottomBorder}
         };
     },
 
+    // Gestionnaire pour la modal des paramètres nouvelle génération
+    initSettingsModal() {
+        // Créer et injecter la nouvelle interface de paramètres
+        this.createAdvancedSettingsModal();
+        
+        // Initialiser les gestionnaires d'événements
+        this.initAdvancedSettingsHandlers();
+    },
+
+    // Créer la nouvelle interface de paramètres
+    createAdvancedSettingsModal() {
+        // Vérifier si le modal existe déjà
+        let settingsModal = document.getElementById('settings-modal');
+        
+        const modalHTML = `
+        <div id="settings-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md settings-modal hidden">
+            <div class="flex items-center justify-center min-h-screen p-4">
+                <div class="bg-slate-900/95 backdrop-blur-2xl rounded-3xl shadow-2xl w-full max-w-7xl max-h-[95vh] border border-slate-700/50 flex flex-col">
+                    
+                    <!-- Header -->
+                    <div class="bg-gradient-to-r from-purple-600/20 to-blue-600/20 p-6 border-b border-slate-700/50 flex-shrink-0">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-4">
+                                <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg">
+                                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h2 class="text-3xl font-bold text-white">Centre de Configuration</h2>
+                                    <p class="text-slate-400 mt-1">Personnalisez votre expérience terminal</p>
+                                </div>
+                            </div>
+                            <button id="close-settings-modal" class="w-10 h-10 bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 hover:text-white rounded-2xl flex items-center justify-center transition-all duration-200">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-1 min-h-0">
+                        <!-- Sidebar Navigation -->
+                        <div class="w-80 bg-slate-800/50 border-r border-slate-700/50 p-6 overflow-y-auto custom-scrollbar flex-shrink-0">
+                            <nav class="space-y-2">
+                                <button class="settings-nav-btn active w-full text-left p-4 rounded-xl bg-purple-600/20 text-purple-300 border border-purple-500/30 hover:bg-purple-600/30 transition-all duration-200 flex items-center space-x-3" data-section="appearance">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z"></path>
+                                    </svg>
+                                    <span class="font-medium">Apparence</span>
+                                </button>
+                                
+                                <button class="settings-nav-btn w-full text-left p-4 rounded-xl bg-slate-700/60 text-slate-300 hover:bg-slate-600/60 transition-all duration-200 flex items-center space-x-3" data-section="behavior">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <span class="font-medium">Comportement</span>
+                                </button>
+                                
+                                <button class="settings-nav-btn w-full text-left p-4 rounded-xl bg-slate-700/60 text-slate-300 hover:bg-slate-600/60 transition-all duration-200 flex items-center space-x-3" data-section="commands">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3"></path>
+                                    </svg>
+                                    <span class="font-medium">Commandes</span>
+                                </button>
+                                
+                                <button class="settings-nav-btn w-full text-left p-4 rounded-xl bg-slate-700/60 text-slate-300 hover:bg-slate-600/60 transition-all duration-200 flex items-center space-x-3" data-section="plugins">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                                    </svg>
+                                    <span class="font-medium">Plugins</span>
+                                </button>
+                                
+                                <button class="settings-nav-btn w-full text-left p-4 rounded-xl bg-slate-700/60 text-slate-300 hover:bg-slate-600/60 transition-all duration-200 flex items-center space-x-3" data-section="performance">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                    </svg>
+                                    <span class="font-medium">Performance</span>
+                                </button>
+                                
+                                <button class="settings-nav-btn w-full text-left p-4 rounded-xl bg-slate-700/60 text-slate-300 hover:bg-slate-600/60 transition-all duration-200 flex items-center space-x-3" data-section="backup">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l3-3m-3 3L9 8m-5 5h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293H20"></path>
+                                    </svg>
+                                    <span class="font-medium">Sauvegarde</span>
+                                </button>
+                            </nav>
+                            
+                            <!-- Stats rapides -->
+                            <div class="mt-8 p-4 bg-slate-800/60 rounded-xl border border-slate-700/40">
+                                <h3 class="text-sm font-semibold text-slate-400 mb-3">Statistiques</h3>
+                                <div class="space-y-2 text-xs">
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-500">Plugins actifs</span>
+                                        <span class="text-green-400" id="active-plugins-count">0</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-500">Commandes activées</span>
+                                        <span class="text-blue-400" id="enabled-commands-count">0</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-500">Thème</span>
+                                        <span class="text-purple-400" id="current-theme">Default</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Content Area -->
+                        <div class="flex-1 flex flex-col min-h-0">
+                            <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                                <div id="settings-content">
+                                    <!-- Le contenu sera injecté dynamiquement -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="bg-slate-800/50 border-t border-slate-700/50 p-6 flex justify-between items-center flex-shrink-0">
+                        <div class="text-sm text-slate-400">
+                            Dernière sauvegarde: <span id="last-save-time">Jamais</span>
+                        </div>
+                        <div class="flex space-x-3">
+                            <button id="cancel-settings-modal" class="px-6 py-3 bg-slate-700/60 hover:bg-slate-600/60 text-slate-300 hover:text-white rounded-xl transition-all duration-200 font-medium">
+                                Annuler
+                            </button>
+                            <button id="save-settings-modal" class="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-xl transition-all duration-200 font-medium shadow-lg">
+                                Sauvegarder
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+
+        if (settingsModal) {
+            settingsModal.outerHTML = modalHTML;
+        } else {
+            // Ajouter les styles CSS pour le modal si nécessaire
+            if (!document.getElementById('settings-modal-styles')) {
+                const style = document.createElement('style');
+                style.id = 'settings-modal-styles';
+                style.textContent = `
+                    .custom-scrollbar::-webkit-scrollbar {
+                        width: 8px;
+                    }
+                    .custom-scrollbar::-webkit-scrollbar-track {
+                        background: rgba(51, 65, 85, 0.3);
+                        border-radius: 4px;
+                    }
+                    .custom-scrollbar::-webkit-scrollbar-thumb {
+                        background: rgba(100, 116, 139, 0.6);
+                        border-radius: 4px;
+                    }
+                    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                        background: rgba(148, 163, 184, 0.8);
+                    }
+                    .custom-scrollbar {
+                        scrollbar-width: thin;
+                        scrollbar-color: rgba(100, 116, 139, 0.6) rgba(51, 65, 85, 0.3);
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+            
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+    },
+
+    // Initialiser les gestionnaires d'événements pour la nouvelle interface
+    initAdvancedSettingsHandlers() {
+        // Navigation entre les sections
+        document.querySelectorAll('.settings-nav-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const section = btn.dataset.section;
+                this.switchAdvancedSettingsSection(section);
+                
+                // Mettre à jour l'apparence des boutons
+                document.querySelectorAll('.settings-nav-btn').forEach(b => {
+                    b.classList.remove('active', 'bg-purple-600/20', 'text-purple-300', 'border-purple-500/30');
+                    b.classList.add('bg-slate-700/60', 'text-slate-300');
+                });
+                
+                btn.classList.remove('bg-slate-700/60', 'text-slate-300');
+                btn.classList.add('active', 'bg-purple-600/20', 'text-purple-300', 'border', 'border-purple-500/30');
+            });
+        });
+
+        // Boutons de fermeture et sauvegarde
+        const closeBtn = document.getElementById('close-settings-modal');
+        const cancelBtn = document.getElementById('cancel-settings-modal');
+        const saveBtn = document.getElementById('save-settings-modal');
+
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.closeAdvancedSettings());
+        }
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => this.closeAdvancedSettings());
+        }
+        if (saveBtn) {
+            saveBtn.addEventListener('click', () => this.saveAdvancedSettings());
+        }
+
+        // Initialiser la première section
+        this.switchAdvancedSettingsSection('appearance');
+        this.updateAdvancedSettingsStats();
+    },
+
+    // Basculer entre les sections de paramètres
+    switchAdvancedSettingsSection(section) {
+        const contentArea = document.getElementById('settings-content');
+        if (!contentArea) return;
+
+        let content = '';
+
+        switch (section) {
+            case 'appearance':
+                content = this.createAppearanceSection();
+                break;
+            case 'behavior':
+                content = this.createBehaviorSection();
+                break;
+            case 'commands':
+                content = this.createCommandsSection();
+                break;
+            case 'plugins':
+                content = this.createPluginsSection();
+                break;
+            case 'performance':
+                content = this.createPerformanceSection();
+                break;
+            case 'backup':
+                content = this.createBackupSection();
+                break;
+            default:
+                content = '<div class="text-center text-slate-400 py-12">Section non trouvée</div>';
+        }
+
+        contentArea.innerHTML = content;
+        
+        // Initialiser les gestionnaires spécifiques à la section
+        this.initSectionHandlers(section);
+    },
+
+    // Créer la section Apparence
+    createAppearanceSection() {
+        return this.settingsManager ? this.settingsManager.createAppearanceSection() : '<p>Chargement des paramètres...</p>';
+    },
+
+    // Méthodes de compatibilité pour l'ancien système
+
+    // Créer la section Comportement
+    createBehaviorSection() {
+        return `
+        <div class="space-y-8">
+            <div>
+                <h3 class="text-2xl font-bold text-white mb-2">Configuration du comportement</h3>
+                <p class="text-slate-400">Ajustez le fonctionnement de votre terminal</p>
+            </div>
+
+            <!-- Affichage -->
+            <div class="bg-slate-800/40 rounded-2xl p-6 border border-slate-700/40">
+                <h4 class="text-lg font-semibold text-white mb-4 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
+                    Options d'affichage
+                </h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label class="text-sm font-medium text-slate-300">Afficher les timestamps</label>
+                            <p class="text-xs text-slate-500">Horodatage des commandes</p>
+                        </div>
+                        <div class="relative">
+                            <input type="checkbox" id="show-timestamps" class="sr-only">
+                            <div class="toggle-bg">
+                                <div class="toggle-dot"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label class="text-sm font-medium text-slate-300">Numéros de ligne</label>
+                            <p class="text-xs text-slate-500">Numérotation des sorties</p>
+                        </div>
+                        <div class="relative">
+                            <input type="checkbox" id="show-line-numbers" class="sr-only">
+                            <div class="toggle-bg">
+                                <div class="toggle-dot"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historique -->
+            <div class="bg-slate-800/40 rounded-2xl p-6 border border-slate-700/40">
+                <h4 class="text-lg font-semibold text-white mb-4 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Gestion de l'historique
+                </h4>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label class="text-sm font-medium text-slate-300">Sauvegarde automatique</label>
+                            <p class="text-xs text-slate-500">Sauvegarder l'historique automatiquement</p>
+                        </div>
+                        <div class="relative">
+                            <input type="checkbox" id="auto-save-history" class="sr-only">
+                            <div class="toggle-bg">
+                                <div class="toggle-dot"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-300 mb-2">Taille maximale de l'historique</label>
+                        <select id="history-max-size" class="w-full bg-slate-700/50 border border-slate-600/50 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-green-400 focus:border-transparent">
+                            <option value="100">100 commandes</option>
+                            <option value="500">500 commandes</option>
+                            <option value="1000">1000 commandes</option>
+                            <option value="5000">5000 commandes</option>
+                            <option value="-1">Illimité</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Autocomplétion -->
+            <div class="bg-slate-800/40 rounded-2xl p-6 border border-slate-700/40">
+                <h4 class="text-lg font-semibold text-white mb-4 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Autocomplétion intelligente
+                </h4>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label class="text-sm font-medium text-slate-300">Activer l'autocomplétion</label>
+                            <p class="text-xs text-slate-500">Suggestions automatiques de commandes</p>
+                        </div>
+                        <div class="relative">
+                            <input type="checkbox" id="enable-autocomplete" class="sr-only">
+                            <div class="toggle-bg">
+                                <div class="toggle-dot"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label class="text-sm font-medium text-slate-300">Autocomplétion des fichiers</label>
+                            <p class="text-xs text-slate-500">Suggestions de noms de fichiers</p>
+                        </div>
+                        <div class="relative">
+                            <input type="checkbox" id="autocomplete-files" class="sr-only">
+                            <div class="toggle-bg">
+                                <div class="toggle-dot"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notifications et sons -->
+            <div class="bg-slate-800/40 rounded-2xl p-6 border border-slate-700/40">
+                <h4 class="text-lg font-semibold text-white mb-4 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM4.266 3.666a8.97 8.97 0 016.28 15.98 8.97 8.97 0 01-6.28-15.98zM14 3a8.97 8.97 0 012.734 17.334A8.97 8.97 0 0114 3z"></path>
+                    </svg>
+                    Audio et notifications
+                </h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label class="text-sm font-medium text-slate-300">Sons activés</label>
+                            <p class="text-xs text-slate-500">Effets sonores du terminal</p>
+                        </div>
+                        <div class="relative">
+                            <input type="checkbox" id="enable-sounds" class="sr-only">
+                            <div class="toggle-bg">
+                                <div class="toggle-dot"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <label class="text-sm font-medium text-slate-300">Notifications</label>
+                            <p class="text-xs text-slate-500">Alertes système</p>
+                        </div>
+                        <div class="relative">
+                            <input type="checkbox" id="enable-notifications" class="sr-only">
+                            <div class="toggle-bg">
+                                <div class="toggle-dot"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Animations -->
+            <div class="bg-slate-800/40 rounded-2xl p-6 border border-slate-700/40">
+                <h4 class="text-lg font-semibold text-white mb-4 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    Effets visuels
+                </h4>
+                <div class="flex items-center justify-between">
+                    <div>
+                        <label class="text-sm font-medium text-slate-300">Animations fluides</label>
+                        <p class="text-xs text-slate-500">Transitions et effets animés</p>
+                    </div>
+                    <div class="relative">
+                        <input type="checkbox" id="smooth-animations" class="sr-only">
+                        <div class="toggle-bg">
+                            <div class="toggle-dot"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+    },
+
+    // Créer la section Commandes
+    createCommandsSection() {
+        // Vérifier si COMMAND_METADATA est disponible
+        if (typeof COMMAND_METADATA === 'undefined' || !COMMAND_METADATA) {
+            return `
+            <div class="text-center py-12">
+                <div class="w-16 h-16 bg-yellow-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold text-white mb-2">Chargement en cours...</h3>
+                <p class="text-slate-400">Les métadonnées des commandes sont en cours de chargement.</p>
+                <button onclick="app.switchAdvancedSettingsSection('commands')" class="mt-4 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors">
+                    Réessayer
+                </button>
+            </div>
+            `;
+        }
+
+        // Collecter toutes les commandes disponibles
+        const allCommands = new Map();
+        
+        // Commandes natives
+        Object.keys(this.commands).forEach(cmd => {
+            if (COMMAND_METADATA[cmd]) {
+                allCommands.set(cmd, {
+                    name: cmd,
+                    description: COMMAND_METADATA[cmd].description,
+                    category: COMMAND_METADATA[cmd].category || 'Autre',
+                    isPlugin: false,
+                    enabled: this.isCommandEnabled(cmd)
+                });
+            }
+        });
+        
+        // Commandes des plugins
+        if (this.pluginManager) {
+            this.pluginManager.getAllCommands().forEach(pluginCmd => {
+                allCommands.set(pluginCmd.name, {
+                    name: pluginCmd.name,
+                    description: pluginCmd.description || 'Commande de plugin',
+                    category: 'Plugins',
+                    isPlugin: true,
+                    plugin: pluginCmd.plugin,
+                    enabled: this.isCommandEnabled(pluginCmd.name)
+                });
+            });
+        }
+
+        // Grouper par catégorie
+        const commandsByCategory = {};
+        allCommands.forEach(cmd => {
+            if (!commandsByCategory[cmd.category]) {
+                commandsByCategory[cmd.category] = [];
+            }
+            commandsByCategory[cmd.category].push(cmd);
+        });
+
+        let categoriesHtml = '';
+        Object.keys(commandsByCategory).sort().forEach(category => {
+            const commands = commandsByCategory[category];
+            const enabledCount = commands.filter(cmd => cmd.enabled).length;
+            
+            categoriesHtml += `
+            <div class="bg-slate-800/40 rounded-2xl border border-slate-700/40 overflow-hidden">
+                <div class="category-header p-4 cursor-pointer hover:bg-slate-700/30 transition-colors flex items-center justify-between" data-target="category-${category.replace(/\s+/g, '-').toLowerCase()}">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
+                            <span class="text-xs font-bold text-white">${category.charAt(0)}</span>
+                        </div>
+                        <div>
+                            <h4 class="text-lg font-semibold text-white">${category}</h4>
+                            <p class="text-xs text-slate-400">
+                                <span class="category-count">${enabledCount}/${commands.length}</span> commandes activées
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button class="category-enable-btn px-2 py-1 bg-green-600/20 text-green-300 text-xs rounded hover:bg-green-600/30 transition-colors" title="Tout activer">
+                            ✓ Tout
+                        </button>
+                        <button class="category-disable-btn px-2 py-1 bg-red-600/20 text-red-300 text-xs rounded hover:bg-red-600/30 transition-colors" title="Tout désactiver">
+                            ✗ Rien
+                        </button>
+                        <svg class="category-chevron w-5 h-5 text-slate-400 transform transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </div>
+                </div>
+                <div id="category-${category.replace(/\s+/g, '-').toLowerCase()}" class="category-content hidden">
+                    <div class="p-4 pt-0 space-y-2">
+                        ${commands.map(cmd => `
+                            <div class="command-item flex items-center justify-between p-3 bg-slate-700/30 rounded-lg hover:bg-slate-700/50 transition-colors" data-command="${cmd.name}" data-description="${cmd.description}">
+                                <div class="flex items-center space-x-3">
+                                    <div class="relative">
+                                        <div class="command-toggle w-10 h-6 rounded-full cursor-pointer transition-colors duration-200 ${cmd.enabled ? 'bg-green-600 enabled' : 'bg-slate-600'}" data-command="${cmd.name}">
+                                            <div class="toggle-dot w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 mt-1 ${cmd.enabled ? 'translate-x-5' : 'translate-x-1'}"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center space-x-2">
+                                            <code class="text-blue-300 font-mono text-sm font-semibold">${cmd.name}</code>
+                                            ${cmd.isPlugin ? '<span class="px-1.5 py-0.5 bg-purple-600/20 text-purple-300 text-xs rounded border border-purple-500/30">PLUGIN</span>' : ''}
+                                        </div>
+                                        <p class="text-slate-400 text-xs mt-1 line-clamp-1">${cmd.description}</p>
+                                        ${cmd.isPlugin && cmd.plugin ? `<p class="text-purple-400 text-xs">Plugin: ${cmd.plugin}</p>` : ''}
+                                    </div>
+                                </div>
+                                <button class="command-info-btn p-2 text-slate-400 hover:text-white transition-colors" data-command="${cmd.name}" title="Plus d'informations">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+            `;
+        });
+
+        return `
+        <div class="space-y-6">
+            <div>
+                <h3 class="text-2xl font-bold text-white mb-2">Gestion des commandes</h3>
+                <p class="text-slate-400">Contrôlez la visibilité et l'activation des commandes</p>
+            </div>
+
+            <!-- Actions rapides -->
+            <div class="bg-slate-800/40 rounded-2xl p-4 border border-slate-700/40">
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center space-x-4">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sm text-slate-400">Total:</span>
+                            <span class="text-white font-semibold">${allCommands.size}</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sm text-slate-400">Activées:</span>
+                            <span class="text-green-400 font-semibold" id="enabled-commands-count-detail">${allCommands.size - this.disabledCommands.size}</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-sm text-slate-400">Désactivées:</span>
+                            <span class="text-red-400 font-semibold" id="disabled-commands-count-detail">${this.disabledCommands.size}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button id="enable-all-commands-btn" class="px-3 py-2 bg-green-600/20 text-green-300 border border-green-500/30 rounded-lg hover:bg-green-600/30 transition-colors text-sm">
+                            Tout activer
+                        </button>
+                        <button id="reset-commands-btn" class="px-3 py-2 bg-yellow-600/20 text-yellow-300 border border-yellow-500/30 rounded-lg hover:bg-yellow-600/30 transition-colors text-sm">
+                            Réinitialiser
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Barre de recherche -->
+            <div class="bg-slate-800/40 rounded-2xl p-4 border border-slate-700/40">
+                <div class="relative">
+                    <svg class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <input type="text" id="command-search-input" placeholder="Rechercher une commande..." class="w-full pl-10 pr-4 py-3 bg-slate-700/50 border border-slate-600/50 rounded-lg text-white placeholder-slate-400 focus:ring-2 focus:ring-purple-400 focus:border-transparent">
+                </div>
+            </div>
+
+            <!-- Liste des commandes par catégorie -->
+            <div class="space-y-4" id="commands-categories">
+                ${categoriesHtml}
+            </div>
+        </div>
+        `;
+    },
+
+    // Créer la section Plugins
+    createPluginsSection() {
+        const installedPlugins = this.pluginManager ? this.pluginManager.listPlugins() : [];
+        const enabledPlugins = installedPlugins.filter(plugin => plugin.enabled);
+        
+        return `
+        <div class="space-y-6">
+            <div>
+                <h3 class="text-2xl font-bold text-white mb-2">Gestion des plugins</h3>
+                <p class="text-slate-400">Gérez vos extensions et plugins personnalisés</p>
+            </div>
+
+            <!-- Statistiques des plugins -->
+            <div class="bg-slate-800/40 rounded-2xl p-6 border border-slate-700/40">
+                <h4 class="text-lg font-semibold text-white mb-4 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                    Aperçu
+                </h4>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-green-400">${installedPlugins.length}</div>
+                        <div class="text-sm text-slate-400">Plugins installés</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-blue-400">${this.pluginManager ? this.pluginManager.getAllCommands().length : 0}</div>
+                        <div class="text-sm text-slate-400">Commandes ajoutées</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-purple-400">${enabledPlugins.length}</div>
+                        <div class="text-sm text-slate-400">Plugins actifs</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions sur les plugins -->
+            <div class="bg-slate-800/40 rounded-2xl p-6 border border-slate-700/40">
+                <h4 class="text-lg font-semibold text-white mb-4 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    Actions rapides
+                </h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button id="open-plugin-manager-btn" class="p-4 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 rounded-lg transition-colors text-left">
+                        <div class="flex items-center space-x-3">
+                            <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                            </svg>
+                            <div>
+                                <h5 class="text-purple-300 font-semibold">Gestionnaire complet</h5>
+                                <p class="text-slate-400 text-sm">Interface complète de gestion</p>
+                            </div>
+                        </div>
+                    </button>
+                    <button id="import-plugin-btn" class="p-4 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 rounded-lg transition-colors text-left">
+                        <div class="flex items-center space-x-3">
+                            <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
+                            </svg>
+                            <div>
+                                <h5 class="text-blue-300 font-semibold">Importer un plugin</h5>
+                                <p class="text-slate-400 text-sm">Depuis un fichier local</p>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Liste des plugins installés -->
+            <div class="bg-slate-800/40 rounded-2xl p-6 border border-slate-700/40">
+                <h4 class="text-lg font-semibold text-white mb-4 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                    </svg>
+                    Plugins installés (${installedPlugins.length})
+                </h4>
+                ${installedPlugins.length > 0 ? `
+                    <div class="space-y-3">
+                        ${installedPlugins.map(plugin => `
+                            <div class="bg-slate-700/40 rounded-lg p-4 border border-slate-600/40">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="w-10 h-10 bg-gradient-to-br ${plugin.enabled ? 'from-green-500 to-blue-500' : 'from-gray-500 to-gray-600'} rounded-lg flex items-center justify-center">
+                                            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h5 class="font-semibold text-white">${plugin.name}</h5>
+                                            <p class="text-sm text-slate-400">${plugin.commands.length} commande(s) • Type: ${plugin.type}</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <span class="px-2 py-1 text-xs rounded-full ${plugin.enabled ? 'bg-green-600/20 text-green-400 border border-green-500/30' : 'bg-gray-600/20 text-gray-400 border border-gray-500/30'}">
+                                            ${plugin.enabled ? 'Activé' : 'Désactivé'}
+                                        </span>
+                                        <button onclick="app.togglePluginFromSettings('${plugin.name}', ${!plugin.enabled})" class="px-3 py-1 text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded border border-blue-500/30 transition-colors">
+                                            ${plugin.enabled ? 'Désactiver' : 'Activer'}
+                                        </button>
+                                    </div>
+                                </div>
+                                ${plugin.commands.length > 0 ? `
+                                    <div class="mt-3 pt-3 border-t border-slate-600/40">
+                                        <p class="text-xs text-slate-500 mb-2">Commandes disponibles:</p>
+                                        <div class="flex flex-wrap gap-1">
+                                            ${plugin.commands.map(cmd => `
+                                                <span class="px-2 py-1 text-xs bg-slate-600/40 text-slate-300 rounded border border-slate-500/30">${cmd}</span>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                ` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : `
+                    <div class="text-center py-8">
+                        <svg class="w-12 h-12 text-slate-500 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                        </svg>
+                        <p class="text-slate-400">Aucun plugin installé</p>
+                        <p class="text-slate-500 text-sm mt-1">Utilisez les boutons ci-dessus pour importer ou gérer vos plugins</p>
+                    </div>
+                `}
+            </div>
+        </div>
+        `;
+    },
+
+    // Créer la section Performance
+    createPerformanceSection() {
+        return `
+        <div class="space-y-6">
+            <div>
+                <h3 class="text-2xl font-bold text-white mb-2">Optimisation des performances</h3>
+                <p class="text-slate-400">Ajustez les paramètres pour optimiser les performances</p>
+            </div>
+
+            <!-- Actions de nettoyage -->
+            <div class="bg-slate-800/40 rounded-2xl p-6 border border-slate-700/40">
+                <h4 class="text-lg font-semibold text-white mb-4 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                    Nettoyage et optimisation
+                </h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button id="clear-cache-btn" class="p-4 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 rounded-lg transition-colors text-left">
+                        <div class="flex items-center space-x-3">
+                            <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                            <div>
+                                <h5 class="text-blue-300 font-semibold">Vider le cache</h5>
+                                <p class="text-slate-400 text-sm">Libère la mémoire cache</p>
+                            </div>
+                        </div>
+                    </button>
+                    <button id="optimize-performance-btn" class="p-4 bg-green-600/20 hover:bg-green-600/30 border border-green-500/30 rounded-lg transition-colors text-left">
+                        <div class="flex items-center space-x-3">
+                            <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                            <div>
+                                <h5 class="text-green-300 font-semibold">Optimiser maintenant</h5>
+                                <p class="text-slate-400 text-sm">Lance une optimisation complète</p>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+        </div>
+        `;
+    },
+
+    // Créer la section Sauvegarde
+    createBackupSection() {
+        return `
+        <div class="space-y-6">
+            <div>
+                <h3 class="text-2xl font-bold text-white mb-2">Sauvegarde et synchronisation</h3>
+                <p class="text-slate-400">Gérez vos données et paramètres</p>
+            </div>
+
+            <!-- Export/Import -->
+            <div class="bg-slate-800/40 rounded-2xl p-6 border border-slate-700/40">
+                <h4 class="text-lg font-semibold text-white mb-4 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 4H6a2 2 0 00-2 2v12a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-2m-4-1v8m0 0l3-3m-3 3L9 8m-5 5h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 00.707.293H20"></path>
+                    </svg>
+                    Export et import de données
+                </h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button id="export-settings-btn" class="p-4 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 rounded-lg transition-colors text-left">
+                        <div class="flex items-center space-x-3">
+                            <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                            </svg>
+                            <div>
+                                <h5 class="text-blue-300 font-semibold">Exporter les paramètres</h5>
+                                <p class="text-slate-400 text-sm">Télécharger la configuration</p>
+                            </div>
+                        </div>
+                    </button>
+                    <button id="import-settings-btn" class="p-4 bg-green-600/20 hover:bg-green-600/30 border border-green-500/30 rounded-lg transition-colors text-left">
+                        <div class="flex items-center space-x-3">
+                            <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path>
+                            </svg>
+                            <div>
+                                <h5 class="text-green-300 font-semibold">Importer les paramètres</h5>
+                                <p class="text-slate-400 text-sm">Restaurer depuis un fichier</p>
+                            </div>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Réinitialisation -->
+            <div class="bg-slate-800/40 rounded-2xl p-6 border border-red-500/30">
+                <h4 class="text-lg font-semibold text-red-300 mb-4 flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                    Zone de danger
+                </h4>
+                <div class="space-y-4">
+                    <div class="p-4 bg-red-900/20 border border-red-500/30 rounded-lg">
+                        <h5 class="text-red-300 font-semibold mb-2">Réinitialiser tous les paramètres</h5>
+                        <p class="text-slate-400 text-sm mb-3">
+                            Restaure tous les paramètres aux valeurs par défaut. Cette action est irréversible.
+                        </p>
+                        <button id="reset-settings-btn" class="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/30 rounded-lg transition-colors">
+                            Réinitialiser
+                        </button>
+                    </div>
+                    <div class="p-4 bg-red-900/20 border border-red-500/30 rounded-lg">
+                        <h5 class="text-red-300 font-semibold mb-2">Effacer toutes les données</h5>
+                        <p class="text-slate-400 text-sm mb-3">
+                            Supprime définitivement tous les paramètres, l'historique et les fichiers.
+                        </p>
+                        <button id="clear-all-data-btn" class="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/30 rounded-lg transition-colors">
+                            Effacer toutes les données
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        `;
+    },
+
+    // Initialiser les gestionnaires spécifiques à chaque section
+    initSectionHandlers(section) {
+        switch (section) {
+            case 'appearance':
+                this.initAppearanceHandlers();
+                break;
+            case 'behavior':
+                this.initBehaviorHandlers();
+                break;
+            case 'commands':
+                this.initCommandsHandlers();
+                break;
+            case 'plugins':
+                this.initPluginsHandlers();
+                break;
+            case 'performance':
+                this.initPerformanceHandlers();
+                break;
+            case 'backup':
+                this.initBackupHandlers();
+                break;
+        }
+    },
+
+    // Gestionnaires pour la section Apparence
+    initAppearanceHandlers() {
+        // Gestionnaires pour les toggles
+        this.initToggleButtons();
+        
+        // Gestionnaires pour les contrôles d'arrière-plan (utiliser le SettingsManager)
+        if (this.settingsManager) {
+            this.settingsManager.initBackgroundControls(this);
+            this.settingsManager.initSettingsActionButtons();
+            // Charger tous les paramètres dans l'interface
+            setTimeout(() => {
+                this.settingsManager.loadAllSettingsIntoUI();
+            }, 100); // Petit délai pour s'assurer que les éléments DOM sont prêts
+        }
+        
+        // Gestionnaire pour la taille de police
+        const fontSizeRange = document.getElementById('font-size-range');
+        const fontSizeValue = document.getElementById('font-size-value');
+        
+        if (fontSizeRange && fontSizeValue) {
+            fontSizeRange.addEventListener('input', (e) => {
+                const size = e.target.value;
+                fontSizeValue.textContent = size + 'px';
+                this.applyFontSize(size);
+            });
+        }
+        
+        // Gestionnaire pour le changement de thème
+        const themeSelect = document.getElementById('theme-select');
+        if (themeSelect) {
+            console.log('🎨 Event listener du thème attaché');
+            themeSelect.addEventListener('change', (e) => {
+                console.log('🎨 Changement de thème détecté:', e.target.value);
+                this.switchTheme(e.target.value);
+                // Sauvegarder immédiatement le thème
+                this.applySetting('theme', e.target.value);
+            });
+        } else {
+            console.warn('🎨 Élément theme-select non trouvé');
+        }
+        
+        // Gestionnaire pour le changement de police
+        const fontSelect = document.getElementById('font-family-select');
+        if (fontSelect) {
+            fontSelect.addEventListener('change', (e) => {
+                this.applyFontFamily(e.target.value);
+                // Sauvegarder immédiatement la police
+                this.applySetting('font_family', e.target.value);
+            });
+        }
+        
+        // Charger les valeurs actuelles
+        this.loadAppearanceSettings();
+    },
+
+    // Gestionnaires pour la section Comportement
+    initBehaviorHandlers() {
+        this.initToggleButtons();
+        this.loadBehaviorSettings();
+    },
+
+    // Gestionnaires pour la section Commandes
+    initCommandsHandlers() {
+        // Gestionnaires pour les toggles de commandes
+        document.querySelectorAll('.command-toggle').forEach(toggle => {
+            toggle.addEventListener('click', (e) => {
+                const commandName = toggle.dataset.command;
+                const isEnabled = toggle.classList.contains('enabled');
+                
+                this.toggleCommandEnabled(commandName, !isEnabled);
+                
+                // Mettre à jour l'apparence
+                const dot = toggle.querySelector('.toggle-dot');
+                if (!isEnabled) {
+                    toggle.classList.add('enabled', 'bg-green-600');
+                    toggle.classList.remove('bg-slate-600');
+                    dot.classList.remove('translate-x-1');
+                    dot.classList.add('translate-x-5');
+                } else {
+                    toggle.classList.remove('enabled', 'bg-green-600');
+                    toggle.classList.add('bg-slate-600');
+                    dot.classList.remove('translate-x-5');
+                    dot.classList.add('translate-x-1');
+                }
+                
+                // Mettre à jour les compteurs
+                this.updateCommandsCounters();
+            });
+        });
+
+        // Gestionnaires pour les boutons d'information
+        document.querySelectorAll('.command-info-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const commandName = btn.dataset.command;
+                this.showCommandInfoModal(commandName);
+            });
+        });
+
+        // Gestionnaires pour l'ouverture/fermeture des catégories
+        document.querySelectorAll('.category-header').forEach(header => {
+            header.addEventListener('click', (e) => {
+                if (e.target.closest('.category-enable-btn') || e.target.closest('.category-disable-btn')) {
+                    return;
+                }
+                
+                const targetId = header.dataset.target;
+                const content = document.getElementById(targetId);
+                const chevron = header.querySelector('.category-chevron');
+                
+                if (content.style.display === 'none' || content.style.display === '') {
+                    content.style.display = 'block';
+                    chevron.style.transform = 'rotate(180deg)';
+                } else {
+                    content.style.display = 'none';
+                    chevron.style.transform = 'rotate(0deg)';
+                }
+            });
+        });
+
+        // Gestionnaires pour les boutons de catégorie
+        document.querySelectorAll('.category-enable-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const categoryElement = btn.closest('.bg-slate-800\\/40');
+                const commandToggles = categoryElement.querySelectorAll('.command-toggle');
+                
+                commandToggles.forEach(toggle => {
+                    const commandName = toggle.dataset.command;
+                    this.toggleCommandEnabled(commandName, true);
+                    
+                    toggle.classList.add('enabled', 'bg-green-600');
+                    toggle.classList.remove('bg-slate-600');
+                    const dot = toggle.querySelector('.toggle-dot');
+                    dot.classList.remove('translate-x-1');
+                    dot.classList.add('translate-x-5');
+                });
+                
+                this.updateCommandsCounters();
+            });
+        });
+
+        document.querySelectorAll('.category-disable-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const categoryElement = btn.closest('.bg-slate-800\\/40');
+                const commandToggles = categoryElement.querySelectorAll('.command-toggle');
+                
+                commandToggles.forEach(toggle => {
+                    const commandName = toggle.dataset.command;
+                    this.toggleCommandEnabled(commandName, false);
+                    
+                    toggle.classList.remove('enabled', 'bg-green-600');
+                    toggle.classList.add('bg-slate-600');
+                    const dot = toggle.querySelector('.toggle-dot');
+                    dot.classList.remove('translate-x-5');
+                    dot.classList.add('translate-x-1');
+                });
+                
+                this.updateCommandsCounters();
+            });
+        });
+
+        // Barre de recherche
+        const searchInput = document.getElementById('command-search-input');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                const searchTerm = e.target.value.toLowerCase();
+                document.querySelectorAll('.command-item').forEach(item => {
+                    const commandName = item.dataset.command.toLowerCase();
+                    const commandDesc = item.dataset.description.toLowerCase();
+                    
+                    if (commandName.includes(searchTerm) || commandDesc.includes(searchTerm)) {
+                        item.style.display = 'flex';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        // Boutons d'action
+        const enableAllBtn = document.getElementById('enable-all-commands-btn');
+        const resetBtn = document.getElementById('reset-commands-btn');
+
+        if (enableAllBtn) {
+            enableAllBtn.addEventListener('click', () => {
+                this.disabledCommands.clear();
+                this.saveDisabledCommands();
+                this.switchAdvancedSettingsSection('commands'); // Rafraîchir la vue
+                this.updateCommandsCounters();
+            });
+        }
+
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                if (confirm('Êtes-vous sûr de vouloir réactiver toutes les commandes ?')) {
+                    this.disabledCommands.clear();
+                    this.saveDisabledCommands();
+                    this.switchAdvancedSettingsSection('commands'); // Rafraîchir la vue
+                    this.updateCommandsCounters();
+                }
+            });
+        }
+    },
+
+    // Gestionnaires pour la section Plugins
+    initPluginsHandlers() {
+        const openPluginManagerBtn = document.getElementById('open-plugin-manager-btn');
+        const importPluginBtn = document.getElementById('import-plugin-btn');
+
+        if (openPluginManagerBtn) {
+            openPluginManagerBtn.addEventListener('click', () => {
+                // Ouvrir le gestionnaire de plugins existant
+                if (this.pluginManagerModal) {
+                    this.pluginManagerModal.classList.remove('hidden');
+                    this.refreshPluginManagerContent();
+                }
+            });
+        }
+
+        if (importPluginBtn) {
+            importPluginBtn.addEventListener('click', () => {
+                // Ouvrir un dialogue de sélection de fichier pour importer un plugin
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.js,.json';
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            try {
+                                const content = event.target.result;
+                                
+                                // Essayer d'importer comme code JavaScript
+                                if (file.name.endsWith('.js') && this.pluginManager) {
+                                    const result = this.pluginManager.importPluginFromCode(content, file.name.replace('.js', ''));
+                                    
+                                    if (result.success) {
+                                        this.showNotification({
+                                            type: 'success',
+                                            title: 'Plugin importé',
+                                            message: `Plugin "${result.name}" importé avec succès`,
+                                            duration: 4000
+                                        });
+                                        
+                                        // Actualiser l'interface
+                                        this.switchAdvancedSettingsSection('plugins');
+                                        this.updateAdvancedSettingsStats();
+                                    } else {
+                                        this.showNotification({
+                                            type: 'error',
+                                            title: 'Erreur d\'import',
+                                            message: `Échec de l'import: ${result.error}`,
+                                            duration: 4000
+                                        });
+                                    }
+                                } 
+                                // Essayer d'importer comme configuration JSON
+                                else if (file.name.endsWith('.json') && this.pluginManager) {
+                                    const result = this.pluginManager.importPluginConfig(content);
+                                    
+                                    if (result.success) {
+                                        this.showNotification({
+                                            type: 'success',
+                                            title: 'Configuration importée',
+                                            message: result.message,
+                                            duration: 4000
+                                        });
+                                        
+                                        // Actualiser l'interface
+                                        this.switchAdvancedSettingsSection('plugins');
+                                        this.updateAdvancedSettingsStats();
+                                    } else {
+                                        this.showNotification({
+                                            type: 'error',
+                                            title: 'Erreur d\'import',
+                                            message: `Échec de l'import: ${result.error}`,
+                                            duration: 4000
+                                        });
+                                    }
+                                }
+                            } catch (error) {
+                                this.showNotification({
+                                    type: 'error',
+                                    title: 'Erreur de lecture',
+                                    message: `Impossible de lire le fichier: ${error.message}`,
+                                    duration: 4000
+                                });
+                            }
+                        };
+                        reader.readAsText(file);
+                    }
+                };
+                input.click();
+            });
+        }
+    },
+
+    // Gestionnaires pour la section Performance
+    initPerformanceHandlers() {
+        const clearCacheBtn = document.getElementById('clear-cache-btn');
+        const optimizeBtn = document.getElementById('optimize-performance-btn');
+
+        if (clearCacheBtn) {
+            clearCacheBtn.addEventListener('click', () => {
+                // Vider le cache
+                if (typeof caches !== 'undefined') {
+                    caches.keys().then(names => {
+                        names.forEach(name => caches.delete(name));
+                    });
+                }
+                
+                this.showNotification({
+                    type: 'success',
+                    title: 'Cache vidé',
+                    message: 'Le cache a été vidé avec succès.',
+                    duration: 3000
+                });
+            });
+        }
+
+        if (optimizeBtn) {
+            optimizeBtn.addEventListener('click', () => {
+                // Optimisation générale
+                this.clearConsole();
+                if (this.history.length > 1000) {
+                    this.history = this.history.slice(-500);
+                    this.saveHistoryToCookie();
+                }
+                
+                this.showNotification({
+                    type: 'success',
+                    title: 'Optimisation terminée',
+                    message: 'Le système a été optimisé.',
+                    duration: 3000
+                });
+            });
+        }
+    },
+
+    // Gestionnaires pour la section Sauvegarde
+    initBackupHandlers() {
+        // Réutiliser les méthodes existantes
+        this.initSettingsActionButtons();
+    },
+
+    // Mettre à jour les compteurs de commandes
+    updateCommandsCounters() {
+        const enabledCountDetail = document.getElementById('enabled-commands-count-detail');
+        const disabledCountDetail = document.getElementById('disabled-commands-count-detail');
+        
+        if (enabledCountDetail && disabledCountDetail) {
+            const totalCommands = Object.keys(this.commands).length + (this.pluginManager ? this.pluginManager.getAllCommands().length : 0);
+            const enabledCount = totalCommands - this.disabledCommands.size;
+            
+            enabledCountDetail.textContent = enabledCount;
+            disabledCountDetail.textContent = this.disabledCommands.size;
+        }
+        
+        // Mettre à jour les compteurs de catégories
+        document.querySelectorAll('.category-count').forEach(countElement => {
+            const categoryElement = countElement.closest('.bg-slate-800\\/40');
+            if (categoryElement) {
+                const commandItems = categoryElement.querySelectorAll('.command-item');
+                const enabledItems = Array.from(commandItems).filter(item => {
+                    const toggle = item.querySelector('.command-toggle');
+                    return toggle && toggle.classList.contains('enabled');
+                });
+                
+                countElement.textContent = `${enabledItems.length}/${commandItems.length}`;
+            }
+        });
+    },
+
+    // Mettre à jour les statistiques dans la sidebar
+    updateAdvancedSettingsStats() {
+        const activePluginsCount = document.getElementById('active-plugins-count');
+        const enabledCommandsCount = document.getElementById('enabled-commands-count');
+        const currentTheme = document.getElementById('current-theme');
+
+        if (activePluginsCount) {
+            const pluginCount = this.pluginManager ? this.pluginManager.listPlugins().length : 0;
+            activePluginsCount.textContent = pluginCount;
+        }
+
+        if (enabledCommandsCount) {
+            const totalCommands = Object.keys(this.commands).length + (this.pluginManager ? this.pluginManager.getAllCommands().length : 0);
+            const enabledCount = totalCommands - this.disabledCommands.size;
+            enabledCommandsCount.textContent = enabledCount;
+        }
+
+        if (currentTheme) {
+            const theme = this.getSetting('theme', 'Default');
+            currentTheme.textContent = theme;
+        }
+    },
+
+    // Charger les paramètres d'apparence
+    loadAppearanceSettings() {
+        // Charger les paramètres sauvegardés et les appliquer aux contrôles
+        const themeSelect = document.getElementById('theme-select');
+        const fontSelect = document.getElementById('font-family-select');
+        const fontSizeRange = document.getElementById('font-size-range');
+        const fontSizeValue = document.getElementById('font-size-value');
+
+        if (themeSelect) {
+            const savedTheme = this.getSetting('theme', 'default'); // Changé de 'dark' à 'default'
+            themeSelect.value = savedTheme;
+            // Appliquer le thème immédiatement
+            this.switchTheme(savedTheme);
+        }
+        if (fontSelect) {
+            const savedFont = this.getSetting('font_family', "'Courier New', monospace");
+            fontSelect.value = savedFont;
+            // Appliquer la police immédiatement
+            if (this.consoleOutput) {
+                this.consoleOutput.style.fontFamily = savedFont;
+            }
+        }
+        if (fontSizeRange && fontSizeValue) {
+            const fontSize = this.getSetting('font_size', 14);
+            fontSizeRange.value = fontSize;
+            fontSizeValue.textContent = fontSize + 'px';
+            // Appliquer la taille de police immédiatement
+            if (this.consoleOutput) {
+                this.consoleOutput.style.fontSize = fontSize + 'px';
+            }
+        }
+        
+        // Charger les paramètres de contraste élevé
+        const highContrastElement = document.getElementById('high-contrast-mode');
+        if (highContrastElement) {
+            const highContrastValue = this.getSetting('high_contrast', false);
+            highContrastElement.checked = highContrastValue;
+            this.updateToggleAppearance(highContrastElement);
+            this.applyHighContrast(highContrastValue);
+        }
+    },
+
+    // Charger les paramètres de comportement
+    loadBehaviorSettings() {
+        // Charger et appliquer les paramètres de comportement
+        const settings = [
+            'show-timestamps',
+            'show-line-numbers', 
+            'auto-save-history',
+            'enable-autocomplete',
+            'autocomplete-files',
+            'enable-sounds',
+            'enable-notifications',
+            'smooth-animations'
+        ];
+
+        settings.forEach(settingId => {
+            const element = document.getElementById(settingId);
+            if (element) {
+                const key = settingId.replace(/-/g, '_');
+                const savedValue = this.getSetting(key, settingId === 'auto-save-history' || settingId === 'enable-autocomplete' || settingId === 'enable-sounds' || settingId === 'enable-notifications' || settingId === 'smooth-animations');
+                element.checked = savedValue;
+                this.updateToggleAppearance(element);
+                
+                // Appliquer le paramètre immédiatement
+                this.applySetting(key, savedValue);
+            }
+        });
+
+        // Charger et appliquer le contraste élevé
+        const highContrastElement = document.getElementById('high-contrast-mode');
+        if (highContrastElement) {
+            const highContrastValue = this.getSetting('high_contrast', false);
+            highContrastElement.checked = highContrastValue;
+            this.updateToggleAppearance(highContrastElement);
+            this.applyHighContrast(highContrastValue);
+        }
+    },
+
+    // Fonction pour mettre à jour l'apparence d'un toggle
+    updateToggleAppearance(toggleElement) {
+        const toggleBg = toggleElement.parentElement.querySelector('.toggle-bg');
+        
+        if (toggleBg) {
+            if (toggleElement.checked) {
+                toggleBg.classList.add('active');
+            } else {
+                toggleBg.classList.remove('active');
+            }
+        }
+    },
+
+    // Initialiser les gestionnaires de toggles
+    initToggleButtons() {
+        // Gestionnaires pour tous les toggles
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            const toggleContainer = checkbox.parentElement;
+            
+            // Ajouter le gestionnaire de clic au conteneur toggle
+            if (toggleContainer.querySelector('.toggle-bg')) {
+                toggleContainer.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    checkbox.checked = !checkbox.checked;
+                    this.updateToggleAppearance(checkbox);
+                    
+                    // Sauvegarder immédiatement le paramètre
+                    const settingKey = checkbox.id.replace(/-/g, '_');
+                    this.applySetting(settingKey, checkbox.checked);
+                    
+                    // Appliquer certains paramètres immédiatement
+                    if (checkbox.id === 'high-contrast-mode') {
+                        this.applyHighContrast(checkbox.checked);
+                    } else if (checkbox.id === 'show-timestamps') {
+                        this.applySetting('show_timestamps', checkbox.checked);
+                    }
+                });
+            }
+        });
+    },
+
+    // Fermer l'interface avancée
+    closeAdvancedSettings() {
+        const modal = document.getElementById('settings-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    },
+
+    // Sauvegarder tous les paramètres avancés
+    saveAdvancedSettings() {
+        this.saveAllSettings();
+        this.updateAdvancedSettingsStats();
+        
+        // Mettre à jour le timestamp de dernière sauvegarde
+        const lastSaveTime = document.getElementById('last-save-time');
+        if (lastSaveTime) {
+            lastSaveTime.textContent = new Date().toLocaleString('fr-FR');
+        }
+        
+        this.showNotification({
+            type: 'success',
+            title: 'Paramètres sauvegardés',
+            message: 'Tous vos paramètres ont été sauvegardés avec succès.',
+            duration: 3000
+        });
+
+        // Ne pas fermer automatiquement - laisser l'utilisateur fermer manuellement
+    },
+
+    // Ouvrir la nouvelle interface de paramètres
+    showAdvancedSettingsModal() {
+        const modal = document.getElementById('settings-modal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            this.updateAdvancedSettingsStats();
+        }
+    },
+
+    // Activer/désactiver un plugin depuis l'interface de paramètres
+    togglePluginFromSettings(pluginName, enabled) {
+        if (this.pluginManager) {
+            const result = this.pluginManager.togglePlugin(pluginName, enabled);
+            
+            // Actualiser la section plugins
+            this.switchAdvancedSettingsSection('plugins');
+            this.updateAdvancedSettingsStats();
+            
+            // Afficher une notification
+            this.showNotification({
+                type: enabled ? 'success' : 'info',
+                title: `Plugin ${enabled ? 'activé' : 'désactivé'}`,
+                message: `Le plugin "${pluginName}" a été ${enabled ? 'activé' : 'désactivé'} avec succès`,
+                duration: 3000
+            });
+        }
+    },
+
+    // Méthodes de compatibilité pour l'ancien système
+    switchSettingsTab(activeTab) {
+        // Rediriger vers la nouvelle interface
+        this.showAdvancedSettingsModal();
+        
+        // Mapper les anciens onglets vers les nouvelles sections
+        const sectionMap = {
+            'general': 'behavior',
+            'appearance': 'appearance',
+            'advanced': 'performance'
+        };
+        
+        const newSection = sectionMap[activeTab] || 'appearance';
+        setTimeout(() => {
+            this.switchAdvancedSettingsSection(newSection);
+        }, 100);
+    },
+
+    // Appliquer la taille de police
+    applyFontSize(size) {
+        const consoleOutput = document.getElementById('console-output');
+        if (consoleOutput) {
+            consoleOutput.style.fontSize = size + 'px';
+        }
+        this.applySetting('font_size', parseInt(size));
+    },
+
+    switchSettingsTab(activeTab) {
+        // Mettre à jour les boutons d'onglets
+        document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+            if (btn.dataset.tab === activeTab) {
+                btn.classList.remove('bg-slate-700/60', 'text-slate-300');
+                btn.classList.add('active', 'bg-purple-600/30', 'text-purple-300');
+            } else {
+                btn.classList.remove('active', 'bg-purple-600/30', 'text-purple-300');
+                btn.classList.add('bg-slate-700/60', 'text-slate-300');
+            }
+        });
+
+        // Mettre à jour le contenu des onglets
+        document.querySelectorAll('.settings-tab-content').forEach(content => {
+            content.classList.add('hidden');
+        });
+        const activeContent = document.getElementById(activeTab + '-tab');
+        if (activeContent) {
+            activeContent.classList.remove('hidden');
+        }
+    },
+
+    initToggleButtons() {
+        document.querySelectorAll('.toggle-bg').forEach(toggle => {
+            toggle.addEventListener('click', (e) => {
+                const checkbox = e.target.parentElement.querySelector('input[type="checkbox"]');
+                if (checkbox) {
+                    checkbox.checked = !checkbox.checked;
+                    this.updateToggleAppearance(checkbox);
+                    this.handleToggleChange(checkbox);
+                }
+            });
+        });
+
+        // Initialiser l'apparence des toggles
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            this.updateToggleAppearance(checkbox);
+        });
+    },
+
+    handleToggleChange(checkbox) {
+        const setting = checkbox.id;
+        const value = checkbox.checked;
+        
+        switch (setting) {
+            case 'high-contrast-mode':
+                this.applyHighContrast(value);
+                break;
+            case 'show-timestamps':
+                this.applySetting('show_timestamps', value);
+                break;
+            case 'show-line-numbers':
+                this.applySetting('show_line_numbers', value);
+                break;
+            case 'auto-save-history':
+                this.applySetting('auto_save_history', value);
+                break;
+            case 'enable-autocomplete':
+                this.applySetting('enable_autocomplete', value);
+                break;
+            case 'autocomplete-files':
+                this.applySetting('autocomplete_files', value);
+                break;
+            case 'enable-sounds':
+                this.applySetting('enable_sounds', value);
+                break;
+            case 'enable-notifications':
+                this.applySetting('enable_notifications', value);
+                break;
+            case 'smooth-animations':
+                this.applySetting('smooth_animations', value);
+                break;
+        }
+    },
+
+    initBackgroundControls() {
+        const bgTypeSelect = document.getElementById('console-bg-type');
+        if (bgTypeSelect) {
+            bgTypeSelect.addEventListener('change', (e) => {
+                this.switchBackgroundType(e.target.value);
+                // Sauvegarder le type d'arrière-plan
+                this.applySetting('console_bg_type', e.target.value);
+            });
+        }
+
+        // Gestionnaire pour la couleur unie avec feedback visuel
+        const bgColorInput = document.getElementById('console-bg-color');
+        if (bgColorInput) {
+            bgColorInput.addEventListener('input', (e) => {
+                const color = e.target.value;
+                this.applyConsoleBackground('color', color);
+                // Sauvegarder immédiatement pour la mémoire
+                this.applySetting('console_bg_color', color);
+            });
+            
+            bgColorInput.addEventListener('change', (e) => {
+                const color = e.target.value;
+                this.applyConsoleBackground('color', color);
+                // Sauvegarder immédiatement pour la mémoire
+                this.applySetting('console_bg_color', color);
+            });
+        }
+
+        // Gestionnaire pour l'URL d'image
+        const bgUrlInput = document.getElementById('console-bg-url');
+        if (bgUrlInput) {
+            bgUrlInput.addEventListener('input', (e) => {
+                const url = e.target.value.trim();
+                if (url) {
+                    this.applyConsoleBackground('image', url);
+                    // Sauvegarder immédiatement pour la mémoire
+                    this.applySetting('console_bg_image_url', url);
+                }
+            });
+            
+            bgUrlInput.addEventListener('blur', (e) => {
+                const url = e.target.value.trim();
+                if (url) {
+                    this.applyConsoleBackground('image', url);
+                    // Sauvegarder immédiatement pour la mémoire
+                    this.applySetting('console_bg_image_url', url);
+                }
+            });
+        }
+
+        // Gestionnaire pour le fichier d'image avec feedback
+        const bgFileInput = document.getElementById('console-bg-file');
+        if (bgFileInput) {
+            bgFileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    if (file.size > 5 * 1024 * 1024) { // 5MB max
+                        alert('Le fichier est trop volumineux. Taille maximum : 5MB');
+                        return;
+                    }
+                    
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const dataUrl = event.target.result;
+                        this.applyConsoleBackground('image', dataUrl);
+                        // Sauvegarder immédiatement pour la mémoire
+                        this.applySetting('console_bg_image_url', dataUrl);
+                        // Aussi mettre à jour l'input URL pour cohérence
+                        if (bgUrlInput) {
+                            bgUrlInput.value = ''; // Vider l'URL car on utilise un fichier
+                        }
+                    };
+                    reader.onerror = () => {
+                        alert('Erreur lors de la lecture du fichier');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        // Gestionnaires pour les couleurs de dégradé avec aperçu en temps réel
+        const gradientColor1 = document.getElementById('gradient-color1');
+        const gradientColor2 = document.getElementById('gradient-color2');
+        
+        if (gradientColor1 && gradientColor2) {
+            // Événement 'input' pour l'aperçu en temps réel et sauvegarde
+            gradientColor1.addEventListener('input', () => {
+                this.updateGradientBackground();
+                // Sauvegarder immédiatement pour la mémoire
+                this.applySetting('console_bg_gradient_start', gradientColor1.value);
+            });
+            gradientColor2.addEventListener('input', () => {
+                this.updateGradientBackground();
+                // Sauvegarder immédiatement pour la mémoire
+                this.applySetting('console_bg_gradient_end', gradientColor2.value);
+            });
+            
+            // Événement 'change' pour la sauvegarde finale
+            gradientColor1.addEventListener('change', () => {
+                this.updateGradientBackground();
+                // Sauvegarder immédiatement pour la mémoire
+                this.applySetting('console_bg_gradient_start', gradientColor1.value);
+            });
+            gradientColor2.addEventListener('change', () => {
+                this.updateGradientBackground();
+                // Sauvegarder immédiatement pour la mémoire
+                this.applySetting('console_bg_gradient_end', gradientColor2.value);
+            });
+        }
+
+        // Charger les paramètres d'arrière-plan actuels
+        this.loadBackgroundSettings();
+    },
+
+    loadBackgroundSettings() {
+        // Force la couleur unie comme défaut si c'était "default" avant
+        let bgType = this.getSetting('console_bg_type', 'color');
+        if (bgType === 'default') {
+            bgType = 'color';
+            this.applySetting('console_bg_type', 'color');
+        }
+        
+        const bgTypeSelect = document.getElementById('console-bg-type');
+        if (bgTypeSelect) {
+            bgTypeSelect.value = bgType;
+            this.switchBackgroundType(bgType);
+        }
+
+        // Force l'affichage des contrôles de couleur si le type est "color"
+        if (bgType === 'color') {
+            setTimeout(() => {
+                const colorControls = document.getElementById('color-controls');
+                const gradientControls = document.getElementById('gradient-controls');
+                const imageControls = document.getElementById('image-controls');
+                
+                if (colorControls) colorControls.classList.remove('hidden');
+                if (gradientControls) gradientControls.classList.add('hidden');
+                if (imageControls) imageControls.classList.add('hidden');
+            }, 100);
+        }
+
+        // Charger la couleur unie
+        const bgColor = this.getSetting('console_bg_color', '#18181b');
+        const bgColorInput = document.getElementById('console-bg-color');
+        if (bgColorInput) {
+            bgColorInput.value = bgColor;
+            if (bgType === 'color') {
+                this.applyConsoleBackground('color', bgColor);
+            }
+        }
+
+        // Charger l'URL d'image
+        const bgImageUrl = this.getSetting('console_bg_image_url', '');
+        const bgUrlInput = document.getElementById('console-bg-url');
+        if (bgUrlInput) {
+            bgUrlInput.value = bgImageUrl;
+            if (bgType === 'image' && bgImageUrl) {
+                this.applyConsoleBackground('image', bgImageUrl);
+            }
+        }
+
+        // Charger les couleurs de dégradé avec les vraies valeurs par défaut
+        const bgGradient = this.getSetting('console_bg_gradient', { color1: '#000000', color2: '#1a1a1a' });
+        const gradientColor1 = document.getElementById('gradient-color1');
+        const gradientColor2 = document.getElementById('gradient-color2');
+        if (gradientColor1 && gradientColor2) {
+            gradientColor1.value = bgGradient.color1;
+            gradientColor2.value = bgGradient.color2;
+            
+            // Mettre à jour l'aperçu du dégradé
+            const gradientPreview = document.getElementById('gradient-preview');
+            if (gradientPreview) {
+                gradientPreview.style.background = `linear-gradient(135deg, ${bgGradient.color1}, ${bgGradient.color2})`;
+            }
+            
+            if (bgType === 'gradient' || bgType === 'default') {
+                this.updateGradientBackground();
+            }
+        }
+    },
+
+    switchBackgroundType(type) {
+        // Masquer tous les contrôles
+        document.querySelectorAll('.bg-control-group').forEach(group => {
+            group.classList.add('hidden');
+        });
+
+        // Afficher le contrôle approprié et appliquer les derniers paramètres sauvegardés
+        switch (type) {
+            case 'color':
+                const colorControls = document.getElementById('color-controls');
+                if (colorControls) {
+                    colorControls.classList.remove('hidden');
+                    // Appliquer la dernière couleur sauvegardée
+                    const lastColor = this.getSetting('console_bg_color', '#18181b');
+                    const colorInput = document.getElementById('console-bg-color');
+                    if (colorInput) {
+                        colorInput.value = lastColor;
+                    }
+                    this.applyConsoleBackground('color', lastColor);
+                }
+                break;
+            case 'image':
+                const imageControls = document.getElementById('image-controls');
+                if (imageControls) {
+                    imageControls.classList.remove('hidden');
+                    // Appliquer la dernière image sauvegardée
+                    const lastImageUrl = this.getSetting('console_bg_image_url', '');
+                    if (lastImageUrl) {
+                        this.applyConsoleBackground('image', lastImageUrl);
+                    }
+                }
+                break;
+            case 'gradient':
+                const gradientControls = document.getElementById('gradient-controls');
+                if (gradientControls) {
+                    gradientControls.classList.remove('hidden');
+                    // Appliquer le dernier dégradé sauvegardé
+                    this.updateGradientBackground();
+                }
+                break;
+            case 'default':
+                // Pour le type par défaut, utiliser une couleur unie #18181b
+                const consoleOutput = document.getElementById('console-output');
+                if (consoleOutput) {
+                    consoleOutput.style.backgroundImage = '';
+                    consoleOutput.style.background = '';
+                    consoleOutput.style.backgroundColor = '#18181b';
+                }
+                this.applySetting('console_bg_type', 'default');
+                this.applySetting('console_bg_color', '#18181b');
+                break;
+        }
+        
+        // Sauvegarder le type sélectionné
+        this.applySetting('console_bg_type', type);
+    },
+
+    updateGradientBackground() {
+        const gradientColor1 = document.getElementById('gradient-color1');
+        const gradientColor2 = document.getElementById('gradient-color2');
+        
+        if (!gradientColor1 || !gradientColor2) {
+            console.warn('Éléments de dégradé non trouvés');
+            return;
+        }
+        
+        const color1 = gradientColor1.value;
+        const color2 = gradientColor2.value;
+        const gradient = `linear-gradient(135deg, ${color1}, ${color2})`;
+        
+        // Mettre à jour l'aperçu du dégradé
+        const gradientPreview = document.getElementById('gradient-preview');
+        if (gradientPreview) {
+            gradientPreview.style.background = gradient;
+        }
+        
+        // Appliquer au console output
+        const consoleOutput = document.getElementById('console-output');
+        if (consoleOutput) {
+            consoleOutput.style.backgroundColor = '';
+            consoleOutput.style.backgroundImage = '';
+            consoleOutput.style.background = gradient;
+        }
+        
+        this.applySetting('console_bg_type', 'gradient');
+        this.applySetting('console_bg_gradient', { color1, color2 });
+    },
+
+    initSettingsActionButtons() {
+        // Export des paramètres
+        const exportBtn = document.getElementById('export-settings-btn');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => this.exportSettings());
+        }
+
+        // Import des paramètres
+        const importBtn = document.getElementById('import-settings-btn');
+        if (importBtn) {
+            importBtn.addEventListener('click', () => this.importSettings());
+        }
+
+        // Réinitialisation
+        const resetBtn = document.getElementById('reset-settings-btn');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => this.resetSettings());
+        }
+
+        // Effacement des données
+        const clearBtn = document.getElementById('clear-all-data-btn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => this.clearAllData());
+        }
+    },
+
+    applySetting(key, value) {
+        return this.settingsManager ? this.settingsManager.applySetting(key, value) : false;
+    },
+
+    getSetting(key, defaultValue = null) {
+        return this.settingsManager ? this.settingsManager.getSetting(key, defaultValue) : defaultValue;
+    },
+
+    applyHighContrast(enabled) {
+        const body = document.body;
+        if (enabled) {
+            body.classList.add('high-contrast');
+        } else {
+            body.classList.remove('high-contrast');
+        }
+        this.applySetting('high_contrast', enabled);
+    },
+
+    saveAllSettings() {
+        // Sauvegarder tous les paramètres visibles dans la modal
+        const form = document.getElementById('settings-form');
+        
+        // Collecter tous les paramètres
+        const settings = {};
+
+        // Sélects (chercher dans toute la page, pas seulement dans le form)
+        document.querySelectorAll('select[id]').forEach(select => {
+            if (select.id) {
+                settings[select.id] = select.value;
+                // Sauvegarder immédiatement avec le système unifié
+                const settingKey = select.id.replace(/-/g, '_');
+                this.applySetting(settingKey, select.value);
+            }
+        });
+
+        // Inputs (chercher dans toute la page)
+        document.querySelectorAll('input[type="number"], input[type="color"], input[type="text"], input[type="range"], input[type="url"]').forEach(input => {
+            if (input.id) {
+                settings[input.id] = input.value;
+                // Sauvegarder immédiatement avec le système unifié
+                const settingKey = input.id.replace(/-/g, '_');
+                this.applySetting(settingKey, input.value);
+            }
+        });
+
+        // Checkboxes (chercher dans toute la page)
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            if (checkbox.id) {
+                settings[checkbox.id] = checkbox.checked;
+                // Sauvegarder immédiatement avec le système unifié
+                const settingKey = checkbox.id.replace(/-/g, '_');
+                this.applySetting(settingKey, checkbox.checked);
+            }
+        });
+
+        // Sauvegarder en lot pour compatibilité
+        try {
+            localStorage.setItem('clk_all_settings', JSON.stringify(settings));
+            this.applySetting('last_save', new Date().toISOString());
+            
+            // Appliquer immédiatement les changements critiques
+            this.applySettingsChanges(settings);
+        } catch (error) {
+            console.error('Erreur lors de la sauvegarde des paramètres:', error);
+        }
+    },
+
+    // Appliquer immédiatement les changements de paramètres
+    applySettingsChanges(settings) {
+        // Changement de thème
+        if (settings['theme-select']) {
+            this.switchTheme(settings['theme-select']);
+        }
+        
+        // Changement de police
+        if (settings['font-family-select']) {
+            this.applyFontFamily(settings['font-family-select']);
+        }
+        
+        // Changement de taille de police
+        if (settings['font-size-range']) {
+            this.applyFontSize(settings['font-size-range']);
+        }
+        
+        // Paramètres d'arrière-plan
+        if (settings['console-bg-type']) {
+            this.switchBackgroundType(settings['console-bg-type']);
+            
+            if (settings['console-bg-type'] === 'color' && settings['console-bg-color']) {
+                this.applyConsoleBackground('color', settings['console-bg-color']);
+            } else if (settings['console-bg-type'] === 'image' && settings['console-bg-url']) {
+                this.applyConsoleBackground('image', settings['console-bg-url']);
+            } else if (settings['console-bg-type'] === 'gradient' && settings['gradient-color1'] && settings['gradient-color2']) {
+                this.updateGradientBackground();
+            }
+        }
+        
+        // Paramètres de comportement
+        if (settings['high-contrast-mode'] !== undefined) {
+            this.applyHighContrast(settings['high-contrast-mode']);
+        }
+    },
+
+    // Appliquer la famille de police
+    applyFontFamily(fontFamily) {
+        const consoleOutput = document.getElementById('console-output');
+        const commandInput = document.getElementById('command-input');
+        
+        if (consoleOutput) {
+            consoleOutput.style.fontFamily = fontFamily;
+        }
+        if (commandInput) {
+            commandInput.style.fontFamily = fontFamily;
+        }
+        
+        this.applySetting('font_family', fontFamily);
+    },
+
+    // Changer le thème de l'application
+    switchTheme(theme) {
+        console.log('🎨 switchTheme appelée avec:', theme);
+        const body = document.body;
+        
+        // Supprimer les anciennes classes de thème
+        body.classList.remove('theme-dark', 'theme-light', 'theme-cyberpunk', 'theme-neon', 'theme-matrix', 'theme-default', 'theme-minimal');
+        console.log('🎨 Classes supprimées, classes actuelles:', body.className);
+        
+        // Appliquer le nouveau thème
+        switch (theme) {
+            case 'dark':
+                body.classList.add('theme-dark');
+                break;
+            case 'light':
+                body.classList.add('theme-light');
+                break;
+            case 'cyberpunk':
+                body.classList.add('theme-cyberpunk');
+                break;
+            case 'neon':
+                body.classList.add('theme-neon');
+                break;
+            case 'matrix':
+                body.classList.add('theme-matrix');
+                break;
+            case 'minimal':
+                body.classList.add('theme-minimal');
+                break;
+            case 'default':
+            default:
+                body.classList.add('theme-dark'); // Default à dark
+                break;
+        }
+        
+        console.log('🎨 Nouveau thème appliqué:', theme, 'Classes finales:', body.className);
+        
+        // Sauvegarder le thème
+        this.applySetting('theme', theme);
+        console.log('🎨 Thème sauvegardé en cookies');
+        
+        // Mettre à jour l'affichage du thème actuel si l'élément existe
+        const currentThemeElement = document.getElementById('current-theme');
+        if (currentThemeElement) {
+            const themeNames = {
+                'default': 'CLK Default',
+                'dark': 'Dark Mode',
+                'light': 'Light Mode',
+                'cyberpunk': 'Cyberpunk',
+                'neon': 'Neon',
+                'matrix': 'Matrix',
+                'minimal': 'Minimal'
+            };
+            currentThemeElement.textContent = themeNames[theme] || 'Dark Mode';
+            console.log('🎨 Affichage du thème actuel mis à jour:', themeNames[theme]);
+        }
+    },
+
+    // Nouvelle fonction pour charger tous les paramètres sauvegardés au démarrage
+    loadAllSavedSettings() {
+        try {
+            // Charger et appliquer le thème
+            const savedTheme = this.getSetting('theme', 'default'); // Changé de 'dark' à 'default'
+            this.switchTheme(savedTheme);
+            
+            // Charger et appliquer la police
+            const savedFont = this.getSetting('font_family', "'Courier New', monospace");
+            if (this.consoleOutput) {
+                this.consoleOutput.style.fontFamily = savedFont;
+            }
+            
+            // Charger et appliquer la taille de police
+            const savedFontSize = this.getSetting('font_size', 14);
+            if (this.consoleOutput) {
+                this.consoleOutput.style.fontSize = savedFontSize + 'px';
+            }
+            
+            // Charger les paramètres de comportement
+            const showTimestamps = this.getSetting('show_timestamps', false);
+            this.applySetting('show_timestamps', showTimestamps);
+            
+            const showLineNumbers = this.getSetting('show_line_numbers', false);
+            this.applySetting('show_line_numbers', showLineNumbers);
+            
+            const autoSaveHistory = this.getSetting('auto_save_history', true);
+            this.applySetting('auto_save_history', autoSaveHistory);
+            
+            const enableAutocomplete = this.getSetting('enable_autocomplete', true);
+            this.applySetting('enable_autocomplete', enableAutocomplete);
+            
+            const autocompleteFiles = this.getSetting('autocomplete_files', true);
+            this.applySetting('autocomplete_files', autocompleteFiles);
+            
+            const enableSounds = this.getSetting('enable_sounds', true);
+            this.applySetting('enable_sounds', enableSounds);
+            
+            const enableNotifications = this.getSetting('enable_notifications', true);
+            this.applySetting('enable_notifications', enableNotifications);
+            
+            const smoothAnimations = this.getSetting('smooth_animations', true);
+            this.applySetting('smooth_animations', smoothAnimations);
+            
+            const highContrast = this.getSetting('high_contrast', false);
+            this.applyHighContrast(highContrast);
+            
+            // Charger les paramètres d'arrière-plan (couleur unie par défaut)
+            const bgType = this.getSetting('console_bg_type', 'color');
+            const bgGradient = this.getSetting('console_bg_gradient', { color1: '#1e293b', color2: '#0f172a' });
+            const bgColor = this.getSetting('console_bg_color', '#18181b');
+            const bgImageUrl = this.getSetting('console_bg_image_url', '');
+            
+            if (this.consoleOutput) {
+                if (bgType === 'gradient') {
+                    this.consoleOutput.style.backgroundColor = '';
+                    this.consoleOutput.style.backgroundImage = '';
+                    this.consoleOutput.style.background = `linear-gradient(135deg, ${bgGradient.color1}, ${bgGradient.color2})`;
+                } else if (bgType === 'color') {
+                    this.consoleOutput.style.backgroundImage = '';
+                    this.consoleOutput.style.background = '';
+                    this.consoleOutput.style.backgroundColor = bgColor;
+                } else if (bgType === 'image' && bgImageUrl) {
+                    this.consoleOutput.style.backgroundColor = '';
+                    this.consoleOutput.style.background = '';
+                    this.consoleOutput.style.backgroundImage = `url('${bgImageUrl}')`;
+                    this.consoleOutput.style.backgroundSize = 'cover';
+                    this.consoleOutput.style.backgroundPosition = 'center';
+                } else {
+                    // Type 'default' ou non reconnu - utiliser le dégradé par défaut
+                    this.consoleOutput.style.backgroundColor = '';
+                    this.consoleOutput.style.backgroundImage = '';
+                    this.consoleOutput.style.background = `linear-gradient(135deg, ${bgGradient.color1}, ${bgGradient.color2})`;
+                }
+            }
+            
+            console.log('✅ Tous les paramètres ont été chargés depuis les cookies');
+        } catch (error) {
+            console.warn('Erreur lors du chargement des paramètres:', error);
+        }
+    },
+
+    loadAllSettings() {
+        try {
+            const savedSettings = localStorage.getItem('clk_all_settings');
+            if (!savedSettings) return;
+
+            const settings = JSON.parse(savedSettings);
+            
+            // Appliquer les paramètres
+            Object.entries(settings).forEach(([key, value]) => {
+                const element = document.getElementById(key);
+                if (element) {
+                    if (element.type === 'checkbox') {
+                        element.checked = value;
+                        this.updateToggleAppearance(element);
+                    } else {
+                        element.value = value;
+                    }
+                }
+            });
+
+            // Appliquer les paramètres spéciaux
+            if (settings['high-contrast-mode']) {
+                this.applyHighContrast(settings['high-contrast-mode']);
+            }
+            
+            if (settings['console-bg-type']) {
+                this.switchBackgroundType(settings['console-bg-type']);
+            }
+        } catch (error) {
+            console.warn('Erreur lors du chargement des paramètres:', error);
+        }
+    },
+
+    exportSettings() {
+        const settings = {
+            version: '1.0',
+            exportDate: new Date().toISOString(),
+            settings: {}
+        };
+
+        // Collecter tous les paramètres
+        try {
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('clk_')) {
+                    settings.settings[key] = localStorage.getItem(key);
+                }
+            }
+
+            const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'clk_settings.json';
+            a.click();
+            URL.revokeObjectURL(url);
+
+            this.showNotification({
+                type: 'success',
+                title: 'Export réussi',
+                message: 'Les paramètres ont été exportés avec succès.',
+                duration: 3000
+            });
+        } catch (error) {
+            this.showNotification({
+                type: 'error',
+                title: 'Erreur d\'export',
+                message: 'Impossible d\'exporter les paramètres.',
+                duration: 3000
+            });
+        }
+    },
+
+    importSettings() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json,application/json';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                try {
+                    const importedData = JSON.parse(evt.target.result);
+                    
+                    if (importedData.settings) {
+                        Object.entries(importedData.settings).forEach(([key, value]) => {
+                            localStorage.setItem(key, value);
+                        });
+
+                        // Recharger les paramètres
+                        this.loadAllSettings();
+                        
+                        this.showNotification({
+                            type: 'success',
+                            title: 'Import réussi',
+                            message: 'Les paramètres ont été importés avec succès.',
+                            duration: 3000
+                        });
+                    }
+                } catch (error) {
+                    this.showNotification({
+                        type: 'error',
+                        title: 'Erreur d\'import',
+                        message: 'Fichier de paramètres invalide.',
+                        duration: 3000
+                    });
+                }
+            };
+            reader.readAsText(file);
+        };
+        input.click();
+    },
+
+    resetSettings() {
+        if (confirm('Êtes-vous sûr de vouloir réinitialiser tous les paramètres aux valeurs par défaut ?')) {
+            // Supprimer tous les paramètres
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('clk_')) {
+                    keysToRemove.push(key);
+                }
+            }
+            
+            keysToRemove.forEach(key => localStorage.removeItem(key));
+            
+            // Recharger la page pour appliquer les valeurs par défaut
+            location.reload();
+        }
+    },
+
+    clearAllData() {
+        if (confirm('⚠️ ATTENTION: Cette action supprimera TOUTES vos données (paramètres, historique, plugins, etc.). Cette action est irréversible. Continuer ?')) {
+            try {
+                // Vider localStorage
+                localStorage.clear();
+                
+                // Vider les cookies
+                document.cookie.split(";").forEach(cookie => {
+                    const eqPos = cookie.indexOf("=");
+                    const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+                    document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+                });
+                
+                this.showNotification({
+                    type: 'success',
+                    title: 'Données effacées',
+                    message: 'Toutes les données ont été supprimées. Rechargement...',
+                    duration: 2000
+                });
+                
+                setTimeout(() => location.reload(), 2000);
+            } catch (error) {
+                this.showNotification({
+                    type: 'error',
+                    title: 'Erreur',
+                    message: 'Impossible d\'effacer toutes les données.',
+                    duration: 3000
+                });
+            }
+        }
+    },
+
+    updateSettingsStats() {
+        try {
+            // Mettre à jour les statistiques
+            const commandsCount = this.history ? this.history.length : 0;
+            const historySize = commandsCount;
+            const pluginsCount = this.pluginManager ? this.pluginManager.listPlugins().length : 0;
+            
+            // Calculer l'espace de stockage utilisé
+            let storageSize = 0;
+            for (let key in localStorage) {
+                if (localStorage.hasOwnProperty(key)) {
+                    storageSize += localStorage[key].length + key.length;
+                }
+            }
+            storageSize = Math.round(storageSize / 1024); // Convertir en KB
+
+            // Mettre à jour l'affichage
+            const statsCommands = document.getElementById('stats-commands');
+            const statsHistory = document.getElementById('stats-history');
+            const statsPlugins = document.getElementById('stats-plugins');
+            const statsStorage = document.getElementById('stats-storage');
+
+            if (statsCommands) statsCommands.textContent = commandsCount;
+            if (statsHistory) statsHistory.textContent = historySize;
+            if (statsPlugins) statsPlugins.textContent = pluginsCount;
+            if (statsStorage) statsStorage.textContent = storageSize + ' KB';
+        } catch (error) {
+            console.warn('Erreur lors de la mise à jour des statistiques:', error);
+        }
+    }
+
 };
 
 // Rendre l'objet app accessible globalement
@@ -8679,6 +11520,29 @@ console.log('App object defined and exposed globally:', typeof window.app !== 'u
 // --- Initialize the App ---
 document.addEventListener('DOMContentLoaded', function () {
     console.log('DOM loaded, initializing app...');
+    
+    // Nettoyer les cookies corrompus au démarrage
+    try {
+        const cookies = document.cookie.split(';');
+        cookies.forEach(cookie => {
+            const [name, value] = cookie.split('=').map(s => s.trim());
+            if (name && value) {
+                try {
+                    // Tenter de décoder et parser les cookies qui semblent être du JSON
+                    if (value.includes('%7B') || value.startsWith('{')) {
+                        const decoded = decodeURIComponent(value);
+                        JSON.parse(decoded);
+                    }
+                } catch (error) {
+                    console.warn(`🧹 Nettoyage du cookie corrompu: ${name}`);
+                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+                }
+            }
+        });
+    } catch (error) {
+        console.warn('Erreur lors du nettoyage des cookies:', error);
+    }
+    
     try {
         app.init();
         // Appel initial

@@ -1,8 +1,74 @@
 {
-  "version": "2.2.9",
-  "date": "2025-08-05",
-  "changelog": "Fix bug catégorie ouverte mais visuel fermer par default",
+  "version": "2.3.7",
+  "date": "2025-08-11",
+  "changelog": "Décharger les éléments de l'onglet inactif",
   "history": [
+    {
+      "version": "2.3.7",
+      "date": "2025-08-11",
+      "changelog": "Décharger les éléments de l'onglet inactif",
+      "type": "patch"
+    },
+    {
+      "version": "2.3.6",
+      "date": "2025-08-11",
+      "changelog": "Ajout d'un plugin de simulation Windows",
+      "type": "patch"
+    },
+    {
+      "version": "2.3.5",
+      "date": "2025-08-11",
+      "changelog": "Refactorise la logique de notification pour plus de flexibilité et une meilleure expérience utilisateur.",
+      "type": "patch"
+    },
+    {
+      "version": "2.3.4",
+      "date": "2025-08-11",
+      "changelog": "Met à jour les styles de l'interface utilisateur pour les boutons et curseurs.",
+      "type": "patch"
+    },
+    {
+      "version": "2.3.3",
+      "date": "2025-08-11",
+      "changelog": "Améliore la gestion des paramètres et le gestionnaire de commandes avec import/export et recherche.",
+      "type": "patch"
+    },
+    {
+      "version": "2.3.2",
+      "date": "2025-08-11",
+      "changelog": "Ajoute de nouveaux thèmes : cyberpunk, matrix, minimal, et par défaut.",
+      "type": "patch"
+    },
+    {
+      "version": "2.3.1",
+      "date": "2025-08-11",
+      "changelog": "Ajoute la prise en charge des notifications natives sur le bureau et un mode hybride.",
+      "type": "patch"
+    },
+    {
+      "version": "2.3.0",
+      "date": "2025-08-11",
+      "changelog": "Ajoute une documentation sur la structure modulaire des plugins, de nouvelles options d'apparence pour la console, et un support avancé des notifications.",
+      "type": "minor"
+    },
+    {
+      "version": "2.2.12",
+      "date": "2025-08-06",
+      "changelog": "Better paramettre avec plus d'option",
+      "type": "patch"
+    },
+    {
+      "version": "2.2.11",
+      "date": "2025-08-06",
+      "changelog": "Better UI pour les paramettres",
+      "type": "patch"
+    },
+    {
+      "version": "2.2.10",
+      "date": "2025-08-06",
+      "changelog": "Ajout du clique molette pour fermer un onglet",
+      "type": "patch"
+    },
     {
       "version": "2.2.9",
       "date": "2025-08-05",

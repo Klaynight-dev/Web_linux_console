@@ -6,6 +6,8 @@
     <title>Console Linux Klaynight</title>
     <link rel="icon" type="image/svg" href="./contents/img/logo.svg">
     <link rel="stylesheet" href="./contents/css/styles.css">
+    <!-- Tailwind CSS CDN - POUR DÉVELOPPEMENT UNIQUEMENT -->
+    <!-- Pour la production, installer Tailwind localement: https://tailwindcss.com/docs/installation -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -109,6 +111,94 @@
         .command-toggle.enabled::before {
             transform: translateX(24px);
         }
+
+        /* Styles pour les paramètres */
+        .toggle-bg {
+            transition: background-color 0.3s ease;
+        }
+        
+        .toggle-dot {
+            transition: all 0.3s ease;
+        }
+        
+        .settings-tab-btn.active {
+            background: linear-gradient(135deg, rgb(147 51 234 / 0.3), rgb(168 85 247 / 0.3));
+            border: 1px solid rgb(147 51 234 / 0.5);
+        }
+        
+        .high-contrast {
+            filter: contrast(1.5) brightness(1.1);
+        }
+        
+        .high-contrast .bg-slate-800 {
+            background-color: #000000 !important;
+        }
+        
+        .high-contrast .text-slate-300 {
+            color: #ffffff !important;
+        }
+        
+        .high-contrast .border-slate-600 {
+            border-color: #ffffff !important;
+        }
+
+        /* Animation pour les onglets */
+        .settings-tab-content {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Styles pour les sliders */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-track {
+            background: rgb(51 65 85);
+            height: 8px;
+            border-radius: 4px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            background: rgb(147 51 234);
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 0 2px rgba(147, 51, 234, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: rgb(168 85 247);
+            transform: scale(1.1);
+        }
+
+        input[type="range"]::-moz-range-track {
+            background: rgb(51 65 85);
+            height: 8px;
+            border-radius: 4px;
+            border: none;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            background: rgb(147 51 234);
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 0 2px rgba(147, 51, 234, 0.3);
+        }
     </style>
 
     <!-- SEO Meta Tags -->
@@ -177,7 +267,7 @@
                                     Fichier
                                 </span>
                             </button>
-                            <div id="file-menu-dropdown" class="hidden absolute top-full left-0 mt-3 w-64 bg-slate-800/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-slate-600/40 py-3 z-20 animate-slide-up pr-4">
+                            <div id="file-menu-dropdown" class="hidden absolute top-full left-0 mt-3 w-64 bg-slate-800/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-slate-600/40 py-3 dropdown-menu animate-slide-up pr-4">
                                 <button id="plugin-manager-button" class="block w-full text-left px-6 py-4 hover:bg-slate-700/50 text-sm transition-all duration-200 flex items-center group/item rounded-2xl mx-2">
                                     <div class="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center mr-4 group-hover/item:bg-purple-500/30 transition-colors">
                                         <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -226,7 +316,7 @@
                                     Outils
                                 </span>
                             </button>
-                            <div id="tools-menu-dropdown" class="hidden absolute top-full left-0 mt-3 w-64 bg-slate-800/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-slate-600/40 py-3 z-20 animate-slide-up pr-4">
+                            <div id="tools-menu-dropdown" class="hidden absolute top-full left-0 mt-3 w-64 bg-slate-800/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-slate-600/40 py-3 dropdown-menu animate-slide-up pr-4">
                                 <button class="block w-full text-left px-6 py-4 hover:bg-slate-700/50 text-sm transition-all duration-200 flex items-center group/item rounded-2xl mx-2"
                                     onclick="document.getElementById('settings-modal').classList.remove('hidden'); app.closeAllMenus();">
                                     <div class="w-10 h-10 bg-purple-500/20 rounded-xl flex items-center justify-center mr-4 group-hover/item:bg-purple-500/30 transition-colors">
@@ -287,7 +377,7 @@
                                     Aide
                                 </span>
                             </button>
-                            <div id="help-menu-dropdown" class="hidden absolute top-full left-0 mt-3 w-64 bg-slate-800/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-slate-600/40 py-3 z-20 animate-slide-up pr-4" >
+                            <div id="help-menu-dropdown" class="hidden absolute top-full left-0 mt-3 w-64 bg-slate-800/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-slate-600/40 py-3 dropdown-menu animate-slide-up pr-4" >
                                 <button class="block w-full text-left px-6 py-4 hover:bg-slate-700/50 text-sm transition-all duration-200 flex items-center group/item rounded-2xl mx-2" onclick="app.showCommandManagerModal(); app.closeAllMenus();">
                                     <div class="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center mr-4 group-hover/item:bg-green-500/30 transition-colors">
                                         <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -653,70 +743,294 @@
                 </h2>
 
                 <div class="flex-1 overflow-y-auto custom-scrollbar pr-2">
-                    <form class="space-y-6">
-                    <div class="space-y-4">
-                        <!-- Thème -->
-                        <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700/40">
-                        <label class="block mb-3 font-semibold text-white">Thème</label>
-                        <select id="theme-select" class="w-full bg-slate-700/60 text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-400/50 border border-slate-600/40">
-                            <option value="dark">Sombre (par défaut)</option>
-                            <option value="light">Clair</option>
-                        </select>
+                    <form class="space-y-6" id="settings-form">
+                    <!-- Section Navigation par onglets -->
+                    <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700/40">
+                        <div class="flex space-x-2 mb-4">
+                            <button type="button" class="settings-tab-btn active px-4 py-2 bg-purple-600/30 text-purple-300 rounded-lg transition-colors" data-tab="appearance">
+                                <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z"/>
+                                </svg>
+                                Apparence
+                            </button>
+                            <button type="button" class="settings-tab-btn px-4 py-2 bg-slate-700/60 text-slate-300 rounded-lg transition-colors hover:bg-slate-600/60" data-tab="behavior">
+                                <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                                </svg>
+                                Comportement
+                            </button>
+                            <button type="button" class="settings-tab-btn px-4 py-2 bg-slate-700/60 text-slate-300 rounded-lg transition-colors hover:bg-slate-600/60" data-tab="data">
+                                <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
+                                </svg>
+                                Données
+                            </button>
                         </div>
-                        
-                        <!-- Police et Taille de police sur la même ligne -->
-                        <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700/40">
-                            <div class="flex space-x-4">
-                                <!-- Police -->
-                                <div class="flex-1">
-                                    <label for="font-family-select" class="block mb-3 font-semibold text-white">Police</label>
-                                    <select id="font-family-select" class="w-full bg-slate-700/60 text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-400/50 border border-slate-600/40">
-                                        <option value="monospace">Monospace (défaut)</option>
-                                        <option value="Fira Mono, monospace">Fira Mono</option>
-                                        <option value="Consolas, monospace">Consolas</option>
-                                        <option value="Courier New, monospace">Courier New</option>
-                                        <option value="Arial, sans-serif">Arial</option>
-                                        <option value="Roboto Mono, monospace">Roboto Mono</option>
+                    </div>
+
+                    <!-- Onglet Apparence -->
+                    <div class="settings-tab-content" id="appearance-tab">
+                        <div class="space-y-4">
+                            <!-- Thème et Mode sombre/clair -->
+                            <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700/40">
+                                <label class="block mb-3 font-semibold text-white">Thème</label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <select id="theme-select" class="bg-slate-700/60 text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-400/50 border border-slate-600/40">
+                                        <option value="dark">Sombre (par défaut)</option>
+                                        <option value="light">Clair</option>
                                     </select>
-                                </div>
-                                
-                                <!-- Taille de police -->
-                                <div class="flex-1">
-                                    <label class="block mb-3 font-semibold text-white">Taille de police</label>
                                     <div class="flex items-center space-x-3">
-                                        <input type="range" id="font-size-range" min="12" max="24" value="16" class="flex-1 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer slider">
-                                        <span id="font-size-value" class="text-emerald-400 font-bold min-w-[50px]">16px</span>
+                                        <label class="text-sm text-slate-300">Mode haute contraste</label>
+                                        <div class="relative inline-block w-12 h-6">
+                                            <input type="checkbox" id="high-contrast-mode" class="sr-only">
+                                            <div class="toggle-bg bg-slate-600 w-12 h-6 rounded-full cursor-pointer"></div>
+                                            <div class="toggle-dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Police et Taille de police -->
+                            <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700/40">
+                                <div class="flex space-x-4">
+                                    <!-- Police -->
+                                    <div class="flex-1">
+                                        <label for="font-family-select" class="block mb-3 font-semibold text-white">Police</label>
+                                        <select id="font-family-select" class="w-full bg-slate-700/60 text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-400/50 border border-slate-600/40">
+                                            <option value="monospace">Monospace (défaut)</option>
+                                            <option value="Fira Mono, monospace">Fira Mono</option>
+                                            <option value="Consolas, monospace">Consolas</option>
+                                            <option value="Courier New, monospace">Courier New</option>
+                                            <option value="Arial, sans-serif">Arial</option>
+                                            <option value="Roboto Mono, monospace">Roboto Mono</option>
+                                            <option value="Source Code Pro, monospace">Source Code Pro</option>
+                                            <option value="JetBrains Mono, monospace">JetBrains Mono</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <!-- Taille de police -->
+                                    <div class="flex-1">
+                                        <label class="block mb-3 font-semibold text-white">Taille de police</label>
+                                        <div class="flex items-center space-x-3">
+                                            <input type="range" id="font-size-range" min="10" max="28" value="16" class="flex-1 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer slider">
+                                            <span id="font-size-value" class="text-emerald-400 font-bold min-w-[50px]">16px</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Fond de la console -->
+                            <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700/40">
+                                <label for="console-bg-type" class="block mb-3 font-semibold text-white">Fond de la console</label>
+                                <div class="space-y-3">
+                                    <select id="console-bg-type" class="w-full bg-slate-700/60 text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-400/50 border border-slate-600/40">
+                                        <option value="color" selected>Couleur unie</option>
+                                        <option value="image">Image personnalisée</option>
+                                        <option value="gradient">Dégradé</option>
+                                    </select>
+                                    <div class="bg-control-group" id="color-controls">
+                                        <div class="flex items-center space-x-3">
+                                            <input type="color" id="console-bg-color" value="#1f2937" class="w-12 h-12 p-0 border-0 bg-transparent rounded-lg cursor-pointer">
+                                            <label class="text-sm text-slate-300">Couleur de fond</label>
+                                        </div>
+                                    </div>
+                                    <div class="bg-control-group hidden" id="image-controls">
+                                        <input type="text" id="console-bg-url" placeholder="URL de l'image" class="w-full bg-slate-700/60 text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-400/50 border border-slate-600/40 mb-3">
+                                        <div id="console-bg-image-import-group">
+                                            <label for="console-bg-file" class="block mb-2 text-sm text-slate-300">Importer une image :</label>
+                                            <input type="file" id="console-bg-file" accept="image/*" class="w-full text-slate-300 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-purple-500 file:text-white hover:file:bg-purple-600">
+                                        </div>
+                                    </div>
+                                    <div class="bg-control-group hidden" id="gradient-controls">
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label class="block text-sm text-slate-300 mb-2">Couleur 1</label>
+                                                <input type="color" id="gradient-color1" value="#1f2937" class="w-full h-10 p-0 border-0 bg-transparent rounded-lg cursor-pointer">
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm text-slate-300 mb-2">Couleur 2</label>
+                                                <input type="color" id="gradient-color2" value="#374151" class="w-full h-10 p-0 border-0 bg-transparent rounded-lg cursor-pointer">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Apparence des commandes -->
+                            <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700/40">
+                                <label class="block mb-3 font-semibold text-white">Apparence des commandes</label>
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <label class="text-sm text-slate-300">Afficher les timestamps</label>
+                                        <div class="relative inline-block w-12 h-6">
+                                            <input type="checkbox" id="show-timestamps" class="sr-only">
+                                            <div class="toggle-bg bg-slate-600 w-12 h-6 rounded-full cursor-pointer"></div>
+                                            <div class="toggle-dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <label class="text-sm text-slate-300">Numéroter les lignes</label>
+                                        <div class="relative inline-block w-12 h-6">
+                                            <input type="checkbox" id="show-line-numbers" class="sr-only">
+                                            <div class="toggle-bg bg-slate-600 w-12 h-6 rounded-full cursor-pointer"></div>
+                                            <div class="toggle-dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition"></div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- Fond de la console et Taille de l'historique sur la même ligne -->
-                        <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700/40">
-                            <div class="flex space-x-4">
-                                <!-- Fond de la console -->
-                                <div class="flex-1">
-                                    <label for="console-bg-type" class="block mb-3 font-semibold text-white">Fond de la console</label>
-                                    <div class="space-y-3">
-                                        <select id="console-bg-type" class="w-full bg-slate-700/60 text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-400/50 border border-slate-600/40">
-                                        <option value="color" selected>Couleur</option>
-                                        <option value="image">Image</option>
-                                        </select>
-                                        <div class="flex items-center space-x-3">
-                                        <input type="color" id="console-bg-color" value="#1f2937" class="w-12 h-12 p-0 border-0 bg-transparent rounded-lg cursor-pointer">
-                                        <input type="text" id="console-bg-url" placeholder="URL de l'image" class="flex-1 bg-slate-700/60 text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-400/50 border border-slate-600/40 hidden">
-                                        </div>
-                                        <div id="console-bg-image-import-group" class="hidden">
-                                        <label for="console-bg-file" class="block mb-2 text-sm text-slate-300">Importer une image :</label>
-                                        <input type="file" id="console-bg-file" accept="image/*" class="w-full text-slate-300 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-purple-500 file:text-white hover:file:bg-purple-600">
+                    </div>
+
+                    <!-- Onglet Comportement -->
+                    <div class="settings-tab-content hidden" id="behavior-tab">
+                        <div class="space-y-4">
+                            <!-- Historique -->
+                            <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700/40">
+                                <label class="block mb-3 font-semibold text-white">Gestion de l'historique</label>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm text-slate-300 mb-2">Taille maximale</label>
+                                        <input type="number" id="history-size" min="10" max="500" value="50" class="w-full bg-slate-700/60 text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-400/50 border border-slate-600/40">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm text-slate-300 mb-2">Auto-sauvegarde</label>
+                                        <div class="relative inline-block w-12 h-6 mt-3">
+                                            <input type="checkbox" id="auto-save-history" class="sr-only" checked>
+                                            <div class="toggle-bg bg-green-600 w-12 h-6 rounded-full cursor-pointer"></div>
+                                            <div class="toggle-dot absolute right-1 top-1 bg-white w-4 h-4 rounded-full transition"></div>
                                         </div>
                                     </div>
                                 </div>
-                                
-                                <!-- Historique -->
-                                <div class="flex-1">
-                                    <label class="block mb-3 font-semibold text-white">Taille de l'historique</label>
-                                    <input type="number" id="history-size" min="10" max="200" value="50" class="w-full bg-slate-700/60 text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-400/50 border border-slate-600/40">
+                            </div>
+
+                            <!-- Autocomplétion -->
+                            <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700/40">
+                                <label class="block mb-3 font-semibold text-white">Autocomplétion</label>
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <label class="text-sm text-slate-300">Activer l'autocomplétion</label>
+                                        <div class="relative inline-block w-12 h-6">
+                                            <input type="checkbox" id="enable-autocomplete" class="sr-only" checked>
+                                            <div class="toggle-bg bg-green-600 w-12 h-6 rounded-full cursor-pointer"></div>
+                                            <div class="toggle-dot absolute right-1 top-1 bg-white w-4 h-4 rounded-full transition"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <label class="text-sm text-slate-300">Autocomplétion des fichiers</label>
+                                        <div class="relative inline-block w-12 h-6">
+                                            <input type="checkbox" id="autocomplete-files" class="sr-only" checked>
+                                            <div class="toggle-bg bg-green-600 w-12 h-6 rounded-full cursor-pointer"></div>
+                                            <div class="toggle-dot absolute right-1 top-1 bg-white w-4 h-4 rounded-full transition"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Sons et notifications -->
+                            <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700/40">
+                                <label class="block mb-3 font-semibold text-white">Sons et notifications</label>
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between">
+                                        <label class="text-sm text-slate-300">Sons système</label>
+                                        <div class="relative inline-block w-12 h-6">
+                                            <input type="checkbox" id="enable-sounds" class="sr-only">
+                                            <div class="toggle-bg bg-slate-600 w-12 h-6 rounded-full cursor-pointer"></div>
+                                            <div class="toggle-dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <label class="text-sm text-slate-300">Notifications bureau</label>
+                                        <div class="relative inline-block w-12 h-6">
+                                            <input type="checkbox" id="enable-notifications" class="sr-only">
+                                            <div class="toggle-bg bg-slate-600 w-12 h-6 rounded-full cursor-pointer"></div>
+                                            <div class="toggle-dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Performance -->
+                            <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700/40">
+                                <label class="block mb-3 font-semibold text-white">Performance</label>
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-sm text-slate-300 mb-2">Limite d'affichage (lignes)</label>
+                                        <input type="number" id="output-limit" min="100" max="5000" value="1000" class="w-full bg-slate-700/60 text-white rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-purple-400/50 border border-slate-600/40">
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <label class="text-sm text-slate-300">Animation fluide</label>
+                                        <div class="relative inline-block w-12 h-6">
+                                            <input type="checkbox" id="smooth-animations" class="sr-only" checked>
+                                            <div class="toggle-bg bg-green-600 w-12 h-6 rounded-full cursor-pointer"></div>
+                                            <div class="toggle-dot absolute right-1 top-1 bg-white w-4 h-4 rounded-full transition"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Onglet Données -->
+                    <div class="settings-tab-content hidden" id="data-tab">
+                        <div class="space-y-4">
+                            <!-- Sauvegarde et restauration -->
+                            <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700/40">
+                                <label class="block mb-3 font-semibold text-white">Sauvegarde et restauration</label>
+                                <div class="space-y-3">
+                                    <button type="button" id="export-settings-btn" class="w-full px-4 py-3 bg-blue-600/30 text-blue-300 border border-blue-500/40 rounded-lg hover:bg-blue-600/40 transition-colors">
+                                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                        </svg>
+                                        Exporter les paramètres
+                                    </button>
+                                    <button type="button" id="import-settings-btn" class="w-full px-4 py-3 bg-green-600/30 text-green-300 border border-green-500/40 rounded-lg hover:bg-green-600/40 transition-colors">
+                                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+                                        </svg>
+                                        Importer les paramètres
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Réinitialisation -->
+                            <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700/40">
+                                <label class="block mb-3 font-semibold text-white">Réinitialisation</label>
+                                <div class="space-y-3">
+                                    <button type="button" id="reset-settings-btn" class="w-full px-4 py-3 bg-yellow-600/30 text-yellow-300 border border-yellow-500/40 rounded-lg hover:bg-yellow-600/40 transition-colors">
+                                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                        </svg>
+                                        Réinitialiser aux valeurs par défaut
+                                    </button>
+                                    <button type="button" id="clear-all-data-btn" class="w-full px-4 py-3 bg-red-600/30 text-red-300 border border-red-500/40 rounded-lg hover:bg-red-600/40 transition-colors">
+                                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                                        </svg>
+                                        Effacer toutes les données
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Statistiques -->
+                            <div class="bg-slate-900/40 p-4 rounded-xl border border-slate-700/40">
+                                <label class="block mb-3 font-semibold text-white">Statistiques</label>
+                                <div class="grid grid-cols-2 gap-4 text-sm">
+                                    <div class="bg-slate-800/50 p-3 rounded-lg">
+                                        <div class="text-slate-400">Commandes exécutées</div>
+                                        <div class="text-xl font-bold text-green-400" id="stats-commands">0</div>
+                                    </div>
+                                    <div class="bg-slate-800/50 p-3 rounded-lg">
+                                        <div class="text-slate-400">Taille de l'historique</div>
+                                        <div class="text-xl font-bold text-blue-400" id="stats-history">0</div>
+                                    </div>
+                                    <div class="bg-slate-800/50 p-3 rounded-lg">
+                                        <div class="text-slate-400">Plugins chargés</div>
+                                        <div class="text-xl font-bold text-purple-400" id="stats-plugins">0</div>
+                                    </div>
+                                    <div class="bg-slate-800/50 p-3 rounded-lg">
+                                        <div class="text-slate-400">Espace utilisé</div>
+                                        <div class="text-xl font-bold text-orange-400" id="stats-storage">0 KB</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

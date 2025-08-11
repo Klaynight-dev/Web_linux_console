@@ -8,8 +8,37 @@ class PluginManager {
         this.pluginStates = new Map(); // État d'activation des plugins
         this.cookieName = 'clk_plugins_config';
         
+        // Nettoyer les cookies corrompus au démarrage
+        this.cleanupCorruptedCookies();
+        
         // Charger la configuration depuis les cookies
         this.loadPluginConfigFromCookie();
+        
+        // Charger les états des plugins depuis les cookies
+        this.loadPluginStatesFromCookie();
+        
+        console.log('🚀 Plugin Manager initialisé');
+    }
+
+    // Nettoyer les cookies corrompus
+    cleanupCorruptedCookies() {
+        const cookiesToCheck = ['clk_plugins_config', 'plugin_states'];
+        
+        cookiesToCheck.forEach(cookieName => {
+            try {
+                const cookieValue = this.getCookie(cookieName);
+                if (cookieValue) {
+                    // Tenter de décoder et parser
+                    const decoded = decodeURIComponent(cookieValue);
+                    if (decoded && (decoded.startsWith('{') || decoded.startsWith('['))) {
+                        JSON.parse(decoded); // Test de parsing
+                    }
+                }
+            } catch (error) {
+                console.warn(`🧹 Nettoyage du cookie corrompu: ${cookieName}`);
+                document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+            }
+        });
     }
 
     // Gestion des cookies pour la configuration des plugins
@@ -164,23 +193,138 @@ class PluginManager {
 
     async loadAllPlugins() {
         try {
-            // Charger la liste des plugins depuis un endpoint ou fichier de configuration
-            // Pour l'instant, on charge les plugins connus
-            const knownPlugins = ['exemple']; // Liste des plugins disponibles
+            console.log('🔍 Recherche de plugins disponibles...');
             
-            for (const pluginName of knownPlugins) {
+            // Liste des plugins potentiels à rechercher (réduite pour éviter les 404)
+            // Découvrir automatiquement tous les dossiers dans le répertoire plugins
+            const potentialPlugins = await this.discoverAllPluginFolders();
+            console.log(`📝 Liste des plugins prédéfinis: ${potentialPlugins.join(', ')}`);
+            
+            // Aussi essayer de découvrir automatiquement via l'API de listing des dossiers
+            // (si disponible dans l'environnement)
+            // DÉSACTIVÉ temporairement pour éviter les erreurs 404
+            // const discoveredPlugins = await this.discoverAvailablePlugins();
+            const discoveredPlugins = [];
+            console.log(`🔍 Plugins découverts automatiquement: ${discoveredPlugins.length > 0 ? discoveredPlugins.join(', ') : 'aucun'}`);
+            
+            // Combiner les listes
+            const allPotentialPlugins = [...new Set([...potentialPlugins, ...discoveredPlugins])];
+            
+            console.log(`📋 Plugins finaux à vérifier: ${allPotentialPlugins.join(', ')}`);
+            console.log(`📊 Nombre total: ${allPotentialPlugins.length}`);
+            
+            let loadedCount = 0;
+            for (const pluginName of allPotentialPlugins) {
                 try {
-                    // Vérifier si le plugin est activé
-                    if (this.pluginStates.get(pluginName) !== false) {
-                        await this.loadPlugin(pluginName);
+                    // Vérifier si le plugin existe en tentant de charger son manifest
+                    const manifestResponse = await fetch(`${this.pluginsPath}${pluginName}/manifest.json`);
+                    if (manifestResponse.ok) {
+                        console.log(`✅ Plugin trouvé: ${pluginName}`);
+                        
+                        // Vérifier si le plugin est activé (défaut: activé si pas défini)
+                        const pluginState = this.pluginStates.get(pluginName);
+                        if (pluginState !== false) {
+                            // Si le plugin n'a pas d'état défini, l'activer par défaut
+                            if (pluginState === undefined) {
+                                console.log(`🔧 Activation automatique du plugin: ${pluginName}`);
+                                this.pluginStates.set(pluginName, true);
+                                this.savePluginStatesToCookie();
+                            }
+                            await this.loadPlugin(pluginName);
+                            loadedCount++;
+                        } else {
+                            console.log(`⏸️ Plugin désactivé: ${pluginName}`);
+                        }
+                    } else if (manifestResponse.status !== 404) {
+                        // Ne logger que les erreurs non-404
+                        console.warn(`⚠️ Erreur ${manifestResponse.status} lors du chargement de ${pluginName}`);
                     }
                 } catch (error) {
-                    console.warn(`Échec du chargement du plugin ${pluginName}:`, error.message);
+                    // Ignorer silencieusement les erreurs de fetch pour éviter le spam 404
+                    if (!error.message.includes('Failed to fetch')) {
+                        console.warn(`⚠️ Erreur lors du chargement du plugin ${pluginName}:`, error.message);
+                    }
+                }
+            }
+            
+            console.log(`🎉 ${loadedCount} plugin(s) chargé(s) avec succès`);
+            
+        } catch (error) {
+            console.warn('❌ Erreur lors du chargement des plugins:', error.message);
+        }
+    }
+
+    // Méthode pour découvrir automatiquement les plugins disponibles
+    async discoverAvailablePlugins() {
+        const discoveredPlugins = [];
+        
+        try {
+            // Technique 1: Essayer de lister le contenu du répertoire plugins via une API
+            // Note: Cette fonctionnalité peut ne pas être disponible selon l'environnement
+            const response = await fetch(this.pluginsPath, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            
+            if (response.ok) {
+                const text = await response.text();
+                // Essayer d'extraire les noms de dossiers depuis la réponse HTML/JSON
+                const folderMatches = text.match(/href="([^"]+)\/"/g);
+                if (folderMatches) {
+                    folderMatches.forEach(match => {
+                        const folderName = match.match(/href="([^"]+)\//)[1];
+                        if (folderName && !folderName.startsWith('.') && folderName !== '..') {
+                            discoveredPlugins.push(folderName);
+                        }
+                    });
                 }
             }
         } catch (error) {
-            console.warn('Erreur lors du chargement des plugins:', error.message);
+            console.log('💡 Découverte automatique des plugins non disponible, utilisation de la liste prédéfinie');
         }
+        
+        return discoveredPlugins;
+    }
+
+    // Méthode pour découvrir tous les dossiers de plugins
+    async discoverAllPluginFolders() {
+        const knownPlugins = ['exemple', 'windows-os']; // Liste des plugins connus
+        const discoveredPlugins = [];
+        
+        // D'abord essayer les plugins connus
+        for (const pluginName of knownPlugins) {
+            try {
+                const response = await fetch(`${this.pluginsPath}${pluginName}/manifest.json`);
+                if (response.ok) {
+                    discoveredPlugins.push(pluginName);
+                }
+            } catch (error) {
+                // Ignorer silencieusement les erreurs de fetch
+            }
+        }
+        
+        // Ensuite essayer de découvrir automatiquement
+        try {
+            const response = await fetch(this.pluginsPath);
+            if (response.ok) {
+                const text = await response.text();
+                const folderMatches = text.match(/href="([^"]+)\/"/g);
+                if (folderMatches) {
+                    folderMatches.forEach(match => {
+                        const folderName = match.match(/href="([^"]+)\//)[1];
+                        if (folderName && !folderName.startsWith('.') && folderName !== '..' && !discoveredPlugins.includes(folderName)) {
+                            discoveredPlugins.push(folderName);
+                        }
+                    });
+                }
+            }
+        } catch (error) {
+            console.log('💡 Découverte automatique des plugins non disponible, utilisation de la liste prédéfinie');
+        }
+        
+        return discoveredPlugins;
     }
 
     async loadPlugin(pluginName) {
@@ -205,14 +349,34 @@ class PluginManager {
             const pluginModule = this.evaluatePluginCode(pluginCode, pluginName);
             const commands = [];
 
-            // Utiliser les informations du manifest pour enrichir les commandes
-            for (const [commandName, commandInfo] of Object.entries(manifest.commands || {})) {
-                if (pluginModule[commandName] && typeof pluginModule[commandName].execute === 'function') {
-                    const command = { ...pluginModule[commandName] };
-                    // Enrichir avec les infos du manifest
-                    command.manifestInfo = commandInfo;
-                    command.description = commandInfo.description || command.description;
+            // D'abord, récupérer toutes les commandes exportées par le module
+            for (const [key, value] of Object.entries(pluginModule)) {
+                if (value && typeof value.execute === 'function' && value.name && value.description) {
+                    const command = { ...value };
+                    
+                    // Enrichir avec les infos du manifest si disponibles
+                    const manifestCommandInfo = manifest.commands && manifest.commands[key];
+                    if (manifestCommandInfo) {
+                        command.manifestInfo = manifestCommandInfo;
+                        command.description = manifestCommandInfo.description || command.description;
+                        command.category = manifestCommandInfo.category || 'General';
+                        command.synopsis = manifestCommandInfo.synopsis || command.usage || command.name;
+                        command.examples = manifestCommandInfo.examples || [];
+                    }
+                    
                     commands.push(command);
+                }
+            }
+
+            // Si aucune commande trouvée dans les exports, essayer l'ancienne méthode
+            if (commands.length === 0) {
+                for (const [commandName, commandInfo] of Object.entries(manifest.commands || {})) {
+                    if (pluginModule[commandName] && typeof pluginModule[commandName].execute === 'function') {
+                        const command = { ...pluginModule[commandName] };
+                        command.manifestInfo = commandInfo;
+                        command.description = commandInfo.description || command.description;
+                        commands.push(command);
+                    }
                 }
             }
 
@@ -573,6 +737,57 @@ class PluginManager {
         }
 
         return info;
+    }
+
+    // Sauvegarder les états des plugins dans les cookies
+    savePluginStatesToCookie() {
+        try {
+            const pluginStatesObject = {};
+            for (const [pluginName, state] of this.pluginStates.entries()) {
+                pluginStatesObject[pluginName] = state;
+            }
+            
+            const cookieValue = encodeURIComponent(JSON.stringify(pluginStatesObject));
+            document.cookie = `plugin_states=${cookieValue};path=/;max-age=31536000`; // 1 an
+            console.log('✅ États des plugins sauvegardés:', pluginStatesObject);
+        } catch (error) {
+            console.warn('❌ Erreur lors de la sauvegarde des états des plugins:', error.message);
+        }
+    }
+
+    // Charger les états des plugins depuis les cookies
+    loadPluginStatesFromCookie() {
+        try {
+            const cookieMatch = document.cookie.match(/(?:^|;\s*)plugin_states=([^;]*)/);
+            if (cookieMatch) {
+                const cookieValue = decodeURIComponent(cookieMatch[1]);
+                
+                // Validation basique avant parsing
+                if (cookieValue && cookieValue.startsWith('{') && cookieValue.endsWith('}')) {
+                    const pluginStatesObject = JSON.parse(cookieValue);
+                    
+                    // Vérifier que c'est un objet valide
+                    if (pluginStatesObject && typeof pluginStatesObject === 'object') {
+                        for (const [pluginName, state] of Object.entries(pluginStatesObject)) {
+                            this.pluginStates.set(pluginName, state);
+                        }
+                        
+                        console.log('✅ États des plugins chargés depuis les cookies:', pluginStatesObject);
+                        return true;
+                    }
+                } else {
+                    console.warn('⚠️ Cookie plugin_states mal formé, réinitialisation...');
+                    // Supprimer le cookie corrompu
+                    document.cookie = 'plugin_states=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+                }
+            }
+        } catch (error) {
+            console.warn('❌ Erreur lors du chargement des états des plugins:', error.message);
+            // En cas d'erreur, supprimer le cookie corrompu
+            document.cookie = 'plugin_states=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        }
+        
+        return false;
     }
 }
 

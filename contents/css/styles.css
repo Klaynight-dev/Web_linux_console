@@ -50,8 +50,40 @@ html, body {
   color: #18181b !important;
 }
 
-/* Animation de transition pour le filtre invert */
-.theme-dark, .theme-light {
+.theme-cyberpunk {
+  background: linear-gradient(135deg, #0f0f0f, #1a0033, #330066) !important;
+  color: #00ffff !important;
+  --primary-color: #ff00ff;
+  --secondary-color: #00ffff;
+  --accent-color: #ffff00;
+}
+
+.theme-matrix {
+  background: linear-gradient(135deg, #000000, #001100, #003300) !important;
+  color: #00ff00 !important;
+  --primary-color: #00ff00;
+  --secondary-color: #008800;
+  --accent-color: #66ff66;
+}
+
+.theme-minimal {
+  background: #ffffff !important;
+  color: #333333 !important;
+  --primary-color: #666666;
+  --secondary-color: #999999;
+  --accent-color: #0066cc;
+}
+
+.theme-default {
+  background: linear-gradient(135deg, #1e293b, #0f172a) !important;
+  color: #f1f5f9 !important;
+  --primary-color: #3b82f6;
+  --secondary-color: #6366f1;
+  --accent-color: #8b5cf6;
+}
+
+/* Animation de transition pour tous les thèmes */
+.theme-dark, .theme-light, .theme-cyberpunk, .theme-matrix, .theme-minimal, .theme-default {
     transition:
         filter 0.5s cubic-bezier(.4,2,.6,1),
         background 0.5s cubic-bezier(.4,0,.2,1),
@@ -141,5 +173,156 @@ body {
 
 .command-toggle:active {
     transform: scale(0.95);
+}
+
+/* Styles pour les sliders/range inputs */
+input[type="range"] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 8px;
+    border-radius: 4px;
+    background: #374151;
+    outline: none;
+    position: relative;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #3b82f6;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+    transition: all 0.2s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    background: #2563eb;
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5);
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #3b82f6;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+    transition: all 0.2s ease;
+}
+
+input[type="range"]::-moz-range-thumb:hover {
+    background: #2563eb;
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.5);
+}
+
+input[type="range"]::-moz-range-track {
+    width: 100%;
+    height: 8px;
+    cursor: pointer;
+    background: #374151;
+    border-radius: 4px;
+    border: none;
+}
+
+/* Styles pour les toggles switch améliorés */
+.toggle-bg {
+    width: 48px !important;
+    height: 24px !important;
+    background-color: #374151 !important;
+    border-radius: 12px !important;
+    position: relative !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    border: 1px solid #4b5563 !important;
+    display: flex !important;
+    align-items: center !important;
+    box-sizing: border-box !important;
+}
+
+.toggle-bg.active,
+input:checked + .toggle-bg {
+    background-color: #10b981 !important;
+    border-color: #059669 !important;
+}
+
+.toggle-dot {
+    width: 18px !important;
+    height: 18px !important;
+    background-color: #ffffff !important;
+    border-radius: 50% !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+    position: absolute !important;
+    left: 2px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    box-sizing: border-box !important;
+}
+
+.toggle-bg.active .toggle-dot,
+input:checked + .toggle-bg .toggle-dot {
+    transform: translateX(24px) translateY(-50%) !important;
+    background-color: #ffffff !important;
+}
+
+.toggle-bg:hover {
+    opacity: 0.8;
+    transform: scale(1.05);
+}
+
+.toggle-bg:active {
+    transform: scale(0.95);
+}
+
+/* Z-index pour les modals et notifications - Hiérarchie optimisée */
+/* Base: éléments normaux = 1-10 */
+/* Dropdowns et menus = 100-200 */
+/* Modals et overlays = 1000-2000 */
+/* Notifications = 9000+ (toujours au-dessus) */
+
+.modal-backdrop, [class*="modal"]:not(.notification-container) {
+    z-index: 1000 !important;
+}
+
+.modal-content {
+    z-index: 1010 !important;
+}
+
+.plugin-manager-modal {
+    z-index: 1020 !important;
+}
+
+.settings-modal {
+    z-index: 1030 !important;
+}
+
+/* Tous les éléments de modal générique */
+[id*="modal"], [class*="modal"]:not(.notification-container),
+[id*="dropdown"], [class*="dropdown"] {
+    z-index: 1000 !important;
+}
+
+/* Menu dropdowns */
+.dropdown-menu, [class*="dropdown-menu"] {
+    z-index: 200 !important;
+}
+
+/* Notifications - TOUJOURS au-dessus de tout */
+.notification-container, 
+#notification-container {
+    z-index: 9999 !important;
+    position: fixed !important;
+    pointer-events: none;
+}
+
+/* Les notifications individuelles doivent avoir pointer-events auto */
+.notification-container > * {
+    pointer-events: auto;
 }
 
