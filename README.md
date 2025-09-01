@@ -3,7 +3,7 @@
 <div align="center">
 
 ![Console Linux Web](https://img.shields.io/badge/Console-Linux%20Web-blue?style=for-the-badge&logo=linux)
-![Version](https://img.shields.io/badge/Version-2.0.0-green?style=for-the-badge)
+![Version](https://img.shields.io/badge/Version-2.3.7-green?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
 ![Build Status](https://img.shields.io/badge/Build-Passing-brightgreen?style=for-the-badge)
 
