@@ -1,8 +1,20 @@
 {
-  "version": "2.3.7",
-  "date": "2025-08-11",
-  "changelog": "Décharger les éléments de l'onglet inactif",
+  "version": "2.4.0",
+  "date": "2025-09-03",
+  "changelog": "Ajout des I-Nodes pour un meilleur files system",
   "history": [
+    {
+      "version": "2.4.0",
+      "date": "2025-09-03",
+      "changelog": "Ajout des I-Nodes pour un meilleur files system",
+      "type": "minor"
+    },
+    {
+      "version": "2.3.8",
+      "date": "2025-09-03",
+      "changelog": "fix qrcode download problem",
+      "type": "patch"
+    },
     {
       "version": "2.3.7",
       "date": "2025-08-11",

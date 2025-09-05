@@ -1,4 +1,7 @@
 import { COMMAND_METADATA, commandHelpers } from './assets/cmdList.js';
+import INodeFileSystem from './assets/I-Nodes/inode-filesystem.js';
+import INodeAdapter from './assets/I-Nodes/inode-adapter.js';
+import { inodeCommands, inodeUtilities } from './assets/I-Nodes/inode-commands.js';
 import TabManager from './assets/tabs.js';
 import { PluginManager } from './assets/plugin-manager.js';
 import { SettingsManager } from './assets/settings-manager.js';
@@ -252,7 +255,7 @@ const app = {
         }
 
         this.loadHistoryFromCookie();
-        this.initFileSystem();
+        this.initInodeSystem();
 
         // Charger les informations de version
         this.loadVersionInfo();
@@ -1715,7 +1718,31 @@ const app = {
             this.commands.echo.call(this, args);
         },
         ls(args) {
-            const targetPathArg = args[0] || '.';
+            // Parser les options avec support de toutes les options standard de ls
+            const options = this.parseOptions(args, {
+                'l': 'long',
+                'a': 'all',
+                'A': 'almost-all',
+                'h': 'human-readable',
+                'r': 'reverse',
+                't': 'time',
+                'S': 'size',
+                '1': 'one',
+                'd': 'directory',
+                'R': 'recursive',
+                'F': 'classify',
+                'G': 'no-group',
+                'help': 'help'
+            });
+
+            // Afficher l'aide si demandée
+            if (options.help) {
+                this.commands.man.call(this, ['ls']);
+                return;
+            }
+
+            // Déterminer le chemin cible
+            const targetPathArg = options._[0] || '.';
             const targetPath = this.resolvePath(targetPathArg);
             const targetNode = this.getPath(targetPath);
 
@@ -1723,21 +1750,52 @@ const app = {
                 this.addOutput(`ls: impossible d'accéder à '${targetPathArg}': Aucun fichier ou dossier de ce type`, 'error');
                 return;
             }
-            if (targetNode.type !== 'directory') {
-                this.addOutput(targetPath.split('/').pop() || targetPathArg);
+
+            // Si c'est un fichier et pas l'option -d, afficher juste le nom
+            if (targetNode.type !== 'directory' && !options.directory) {
+                if (options.long) {
+                    const stats = this.getFileStats(targetNode, targetPath.split('/').pop());
+                    this.addOutput(this.formatLongListing([stats], options));
+                } else {
+                    this.addOutput(targetPath.split('/').pop() || targetPathArg);
+                }
                 return;
             }
 
-            const childrenNames = Object.keys(targetNode.children).sort();
-            if (childrenNames.length === 0) {
-                // this.addOutput(''); // Empty directory, output nothing as per typical ls
+            // Si option -d, afficher juste le répertoire lui-même
+            if (options.directory && targetNode.type === 'directory') {
+                if (options.long) {
+                    const stats = this.getFileStats(targetNode, targetPath.split('/').pop() || '.');
+                    this.addOutput(this.formatLongListing([stats], options));
+                } else {
+                    this.addOutput(targetPath.split('/').pop() || '.');
+                }
                 return;
             }
-            // Output with HTML for colors
-            this.addOutput(childrenNames.map(name => {
-                const child = targetNode.children[name];
-                return child.type === 'directory' ? `<span class="text-blue-400">${name}/</span>` : name;
-            }).join('<span class="mx-1"></span>')); // Use spans for spacing to allow wrapping
+
+            // Obtenir la liste des fichiers
+            let files = this.getFileList(targetNode, options);
+
+            // Trier selon les options
+            files = this.sortFileList(files, options);
+
+            // Afficher selon le format demandé
+            if (options.long) {
+                this.addOutput(this.formatLongListing(files, options));
+            } else if (options.one) {
+                this.addOutput(files.map(file => this.formatFileName(file, options)).join('\n'));
+            } else {
+                if (files.length === 0) {
+                    return; // Répertoire vide
+                }
+                // Affichage en colonnes avec couleurs
+                this.addOutput(files.map(file => this.formatFileName(file, options)).join('<span class="mx-1"></span>'));
+            }
+
+            // Affichage récursif si demandé
+            if (options.recursive) {
+                this.displayRecursive(targetNode, targetPath, options, 1);
+            }
         },
         cd(args) {
             if (args.length === 0) {
@@ -1875,6 +1933,24 @@ const app = {
                 this.addOutput('mkdir: le nom du dossier ne doit pas contenir de "/"', 'error');
                 return;
             }
+
+            // Utiliser le système I-Node si disponible
+            if (this.inodeAdapter) {
+                const success = this.inodeAdapter.createDirectory(this.currentDir, dirName);
+                if (success) {
+                    this.addOutput(`Dossier '${dirName}' créé.`);
+                    this.addToHistory(`mkdir ${dirName}`, `Dossier '${dirName}' créé.`, 'system');
+                    
+                    // Sauvegarder le système I-Node
+                    this.saveFileSystemToLocalStorage();
+                    this.saveFileSystemToCookie();
+                } else {
+                    this.addOutput(`mkdir: impossible de créer le dossier '${dirName}'`, 'error');
+                }
+                return;
+            }
+
+            // Fallback vers l'ancien système
             const currentNode = this.getPath(this.currentDir);
             if (!currentNode || currentNode.type !== 'directory') {
                 this.addOutput('mkdir: dossier courant invalide', 'error');
@@ -1910,6 +1986,23 @@ const app = {
                 this.addOutput(`rm: suppression de '${targetName}' non autorisée`, 'error');
                 return;
             }
+
+            // Utiliser le système I-Node si disponible
+            if (this.inodeAdapter) {
+                const success = this.inodeAdapter.remove(this.currentDir, targetName);
+                if (success) {
+                    this.addOutput(`'${targetName}' supprimé.`);
+                    
+                    // Sauvegarder le système I-Node
+                    this.saveFileSystemToLocalStorage();
+                    this.saveFileSystemToCookie();
+                } else {
+                    this.addOutput(`rm: impossible de supprimer '${targetName}'`, 'error');
+                }
+                return;
+            }
+
+            // Fallback vers l'ancien système
             const currentNode = this.getPath(this.currentDir);
             if (!currentNode || currentNode.type !== 'directory') {
                 this.addOutput('rm: dossier courant invalide', 'error');
@@ -1939,6 +2032,29 @@ const app = {
                 this.addOutput('touch: le nom du fichier ne doit pas contenir de "/"', 'error');
                 return;
             }
+
+            // Utiliser le système I-Node si disponible
+            if (this.inodeAdapter) {
+                const currentNode = this.getPath(this.currentDir);
+                if (currentNode && currentNode.children && currentNode.children[fileName]) {
+                    this.addOutput(`Fichier '${fileName}' déjà existant.`);
+                    return;
+                }
+
+                const success = this.inodeAdapter.createFile(this.currentDir, fileName, '');
+                if (success) {
+                    this.addOutput(`Fichier '${fileName}' créé.`);
+                    
+                    // Sauvegarder le système I-Node
+                    this.saveFileSystemToLocalStorage();
+                    this.saveFileSystemToCookie();
+                } else {
+                    this.addOutput(`touch: impossible de créer '${fileName}'`, 'error');
+                }
+                return;
+            }
+
+            // Fallback vers l'ancien système
             const currentNode = this.getPath(this.currentDir);
             if (!currentNode || currentNode.type !== 'directory') {
                 this.addOutput('touch: dossier courant invalide', 'error');
@@ -6456,29 +6572,35 @@ ${isSupported && permission === 'denied' ? '<span class="text-red-400">⚠️ Pe
             return;
         }
 
-        // Créer un canvas pour convertir l'image
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
+        // Utiliser fetch pour télécharger l'image directement sans canvas
+        const qrUrl = img.src;
+        const cleanFilename = `qrcode-${filename.replace(/[^a-zA-Z0-9]/g, '_')}.${format}`;
         
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        
-        // Dessiner l'image sur le canvas
-        ctx.drawImage(img, 0, 0);
-        
-        // Convertir en blob et télécharger
-        canvas.toBlob((blob) => {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `qrcode-${filename.replace(/[^a-zA-Z0-9]/g, '_')}.${format}`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            this.addOutput(`📥 QR Code téléchargé: ${a.download}`, 'system');
-        }, `image/${format}`);
+        fetch(qrUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = cleanFilename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                this.addOutput(`📥 QR Code téléchargé: ${cleanFilename}`, 'system');
+            })
+            .catch(error => {
+                console.error('Erreur lors du téléchargement:', error);
+                this.addOutput('❌ Erreur lors du téléchargement. Ouverture dans un nouvel onglet...', 'error');
+                // Fallback: ouvrir l'image dans un nouvel onglet
+                window.open(qrUrl, '_blank');
+            });
     },
 
     // Fonction globale accessible depuis d'autres sites
@@ -6510,22 +6632,33 @@ ${isSupported && permission === 'denied' ? '<span class="text-red-400">⚠️ Pe
             text: text,
             // Fonction pour obtenir l'image en tant que Promise
             getImage: () => {
-                return new Promise((resolve, reject) => {
-                    const img = new Image();
-                    img.onload = () => resolve(img);
-                    img.onerror = () => reject(new Error('Impossible de charger le QR Code'));
-                    img.src = qrUrl;
-                });
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error('Impossible de charger le QR Code'));
+                img.src = qrUrl;
+            });
             },
-            // Fonction pour télécharger directement
+            // Fonction pour télécharger directement l'image
             download: (filename = 'qrcode') => {
-                const a = document.createElement('a');
-                a.href = qrUrl;
-                a.download = `${filename}.${config.format}`;
-                a.target = '_blank';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+                // Utiliser fetch pour contourner les restrictions CORS
+                fetch(qrUrl)
+                    .then(response => response.blob())
+                    .then(blob => {
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `${filename}.${config.format}`;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    })
+                    .catch(error => {
+                        console.error('Erreur lors du téléchargement:', error);
+                        // Fallback: ouvrir l'image dans un nouvel onglet
+                        window.open(qrUrl, '_blank');
+                    });
             }
         };
     },
@@ -6558,10 +6691,26 @@ ${isSupported && permission === 'denied' ? '<span class="text-red-400">⚠️ Pe
                 saveBtn.onclick = () => {
                     const editor = document.getElementById('edit-rich-text-editor');
                     if (editor) {
-                        targetNode.content = editor.innerHTML;
+                        const newContent = editor.innerHTML;
+                        
+                        // Utiliser le système I-Node si disponible
+                        if (this.inodeAdapter) {
+                            const filePath = this.resolvePath(fileName);
+                            const success = this.inodeAdapter.writeFile(filePath, newContent);
+                            if (success) {
+                                this.addOutput(`✅ Fichier "${fileName}" sauvegardé (I-Node)`, 'system');
+                            } else {
+                                this.addOutput(`❌ Erreur lors de la sauvegarde de "${fileName}"`, 'error');
+                                return;
+                            }
+                        } else {
+                            // Fallback vers l'ancien système
+                            targetNode.content = newContent;
+                        }
+                        
                         this.saveFileSystemToCookie();
+                        this.saveFileSystemToLocalStorage();
                         this.saveCurrentTabState();
-                        this.addOutput(`✅ Fichier "${fileName}" sauvegardé`, 'system');
                         modal.classList.add('hidden');
                         this.commandInputElement.focus();
                     }
@@ -6840,8 +6989,25 @@ ${isSupported && permission === 'denied' ? '<span class="text-red-400">⚠️ Pe
                 return;
             }
 
-            // Sauvegarder le contenu dans le nœud
-            targetNode.content = editor.innerHTML;
+            const newContent = editor.innerHTML;
+            
+            // Utiliser le système I-Node si disponible
+            if (this.inodeAdapter) {
+                const filePath = this.resolvePath(fileName);
+                const success = this.inodeAdapter.writeFile(filePath, newContent);
+                if (!success) {
+                    this.showNotification({
+                        type: 'error',
+                        title: '❌ Erreur de sauvegarde',
+                        message: `Impossible de sauvegarder ${fileName}`,
+                        duration: 3000
+                    });
+                    return;
+                }
+            } else {
+                // Fallback vers l'ancien système
+                targetNode.content = newContent;
+            }
             
             // Sauvegarder immédiatement dans localStorage ET cookies
             this.saveFileSystemToLocalStorage();
@@ -6897,7 +7063,24 @@ ${isSupported && permission === 'denied' ? '<span class="text-red-400">⚠️ Pe
             }
 
             // Il y a des changements, procéder à la sauvegarde
-            targetNode.content = currentContent;
+            
+            // Utiliser le système I-Node si disponible
+            if (this.inodeAdapter) {
+                const filePath = this.resolvePath(fileName);
+                const success = this.inodeAdapter.writeFile(filePath, currentContent);
+                if (!success) {
+                    this.showNotification({
+                        type: 'error',
+                        title: '❌ Erreur de sauvegarde',
+                        message: `Impossible de sauvegarder ${fileName}`,
+                        duration: 3000
+                    });
+                    return;
+                }
+            } else {
+                // Fallback vers l'ancien système
+                targetNode.content = currentContent;
+            }
             
             // Sauvegarder immédiatement dans localStorage ET cookies
             this.saveFileSystemToLocalStorage();
@@ -7009,6 +7192,207 @@ ${isSupported && permission === 'denied' ? '<span class="text-red-400">⚠️ Pe
         // Sauvegarder le système par défaut
         this.saveFileSystemToLocalStorage();
         this.saveFileSystemToCookie();
+    },
+
+    // --- Système I-Node ---
+    initInodeSystem() {
+        try {
+            console.log('🔧 Initialisation du système I-Node...');
+            
+            // Créer l'adaptateur I-Node (les dépendances sont maintenant importées)
+            this.inodeAdapter = new INodeAdapter(this);
+            
+            // Intégrer les nouvelles commandes
+            Object.assign(this.commands, inodeCommands);
+            
+            // Intégrer les méthodes utilitaires
+            Object.assign(this, inodeUtilities);
+            
+            // Redéfinir les méthodes de gestion du système de fichiers
+            this.setupInodeCompatibility();
+            
+            // Charger le système de fichiers sauvegardé
+            this.loadInodeFileSystem();
+            
+            // Peupler le répertoire bin après un court délai
+            setTimeout(() => {
+                if (this.inodeAdapter) {
+                    this.inodeAdapter.populateBinDirectory();
+                }
+            }, 100);
+            
+            // Ajouter les métadonnées des nouvelles commandes
+            this.addInodeCommandMetadata();
+            
+            console.log('✅ Système I-Node initialisé avec succès');
+            
+        } catch (error) {
+            console.error('❌ Erreur lors de l\'initialisation du système I-Node:', error);
+            // Fallback vers l'ancien système
+            this.initFileSystem();
+        }
+    },
+
+    setupInodeCompatibility() {
+        // Sauvegarder les méthodes originales
+        this._originalGetPath = this.getPath;
+        this._originalSaveFileSystem = this.saveFileSystemToCookie;
+        this._originalLoadFileSystem = this.loadFileSystemFromCookie;
+        this._originalSaveToLocalStorage = this.saveFileSystemToLocalStorage;
+        this._originalLoadFromLocalStorage = this.loadFileSystemFromLocalStorage;
+
+        // Redéfinir getPath pour utiliser l'adaptateur I-Node
+        this.getPath = (path, fs = null) => {
+            if (this.inodeAdapter) {
+                return this.inodeAdapter.getPath(path);
+            }
+            return this._originalGetPath(path, fs || this.fileSystem);
+        };
+
+        // Redéfinir les méthodes de sauvegarde
+        this.saveFileSystemToCookie = () => {
+            if (this.inodeAdapter) {
+                try {
+                    const inodeData = this.inodeAdapter.export();
+                    const compressedData = btoa(JSON.stringify(inodeData));
+                    document.cookie = `console_inode_system=${compressedData};path=/;max-age=${365*24*60*60}`;
+                    
+                    const legacyFS = this.inodeAdapter.saveToLegacyFormat();
+                    if (legacyFS) {
+                        this.fileSystem = legacyFS;
+                        this._originalSaveFileSystem.call(this);
+                    }
+                    
+                    console.log('💾 Système I-Node sauvegardé');
+                    return true;
+                } catch (error) {
+                    console.error('Erreur sauvegarde I-Node:', error);
+                    return false;
+                }
+            }
+            return this._originalSaveFileSystem.call(this);
+        };
+
+        this.loadFileSystemFromCookie = () => {
+            try {
+                const inodeCookieMatch = document.cookie.match(/(?:^|;\s*)console_inode_system=([^;]*)/);
+                if (inodeCookieMatch && this.inodeAdapter) {
+                    const inodeData = JSON.parse(atob(inodeCookieMatch[1]));
+                    this.inodeAdapter.import(inodeData);
+                    console.log('📁 Système I-Node chargé depuis cookie');
+                    return true;
+                }
+            } catch (error) {
+                console.warn('Erreur chargement I-Node, fallback vers ancien système:', error);
+            }
+            
+            return this._originalLoadFileSystem.call(this);
+        };
+
+        this.saveFileSystemToLocalStorage = () => {
+            if (this.inodeAdapter) {
+                try {
+                    const inodeData = this.inodeAdapter.export();
+                    localStorage.setItem('console_inode_system', JSON.stringify(inodeData));
+                    localStorage.setItem('console_inode_timestamp', Date.now().toString());
+                    
+                    const legacyFS = this.inodeAdapter.saveToLegacyFormat();
+                    if (legacyFS) {
+                        this.fileSystem = legacyFS;
+                        return this._originalSaveToLocalStorage.call(this);
+                    }
+                    
+                    return true;
+                } catch (error) {
+                    console.error('Erreur sauvegarde localStorage I-Node:', error);
+                    return false;
+                }
+            }
+            return this._originalSaveToLocalStorage.call(this);
+        };
+
+        this.loadFileSystemFromLocalStorage = () => {
+            try {
+                const inodeData = localStorage.getItem('console_inode_system');
+                if (inodeData && this.inodeAdapter) {
+                    this.inodeAdapter.import(JSON.parse(inodeData));
+                    console.log('📁 Système I-Node chargé depuis localStorage');
+                    return true;
+                }
+            } catch (error) {
+                console.warn('Erreur chargement localStorage I-Node, fallback:', error);
+            }
+            
+            return this._originalLoadFromLocalStorage.call(this);
+        };
+    },
+
+    loadInodeFileSystem() {
+        // Essayer de charger depuis localStorage d'abord
+        if (this.loadFileSystemFromLocalStorage()) {
+            console.log('Système I-Node chargé depuis localStorage');
+            // Sauvegarder aussi dans les cookies pour backup
+            this.saveFileSystemToCookie();
+            return;
+        }
+        
+        // Sinon essayer les cookies
+        if (this.loadFileSystemFromCookie()) {
+            console.log('Système I-Node chargé depuis les cookies');
+            // Sauvegarder dans localStorage pour les prochaines fois
+            this.saveFileSystemToLocalStorage();
+            return;
+        }
+        
+        console.log('Utilisation du système I-Node par défaut');
+        // Sauvegarder le système par défaut
+        this.saveFileSystemToLocalStorage();
+        this.saveFileSystemToCookie();
+    },
+
+    addInodeCommandMetadata() {
+        // Ajouter les métadonnées des nouvelles commandes I-Node
+        if (typeof COMMAND_METADATA !== 'undefined' && COMMAND_METADATA) {
+            COMMAND_METADATA.ln = {
+                category: 'Fichiers & Dossiers',
+                description: 'Crée un lien dur vers un fichier',
+                synopsis: 'ln [OPTIONS] SOURCE LIEN',
+                helpOption: "[OPTIONS] <source> <lien>",
+                options: ['-v : mode verbeux', '--help : affiche cette aide'],
+                examples: ['ln file1.txt file2.txt', 'ln /home/user/important.txt /tmp/backup.txt'],
+                seeAlso: ['cp', 'mv', 'stat', 'links']
+            };
+
+            COMMAND_METADATA.stat = {
+                category: 'Fichiers & Dossiers',
+                description: 'Affiche les informations détaillées d\'un fichier',
+                synopsis: 'stat FICHIER',
+                helpOption: "<fichier>",
+                options: ['--help : affiche cette aide'],
+                examples: ['stat welcome.txt', 'stat /home/user', 'stat .'],
+                seeAlso: ['ls', 'links', 'du']
+            };
+
+            COMMAND_METADATA.links = {
+                category: 'Fichiers & Dossiers',
+                description: 'Affiche tous les liens vers un fichier',
+                synopsis: 'links FICHIER',
+                helpOption: "<fichier>",
+                options: ['--help : affiche cette aide'],
+                examples: ['links important.txt', 'links /home/user/document.pdf'],
+                seeAlso: ['ln', 'stat', 'find']
+            };
+
+            COMMAND_METADATA.fsck = {
+                category: 'Système & Processus',
+                description: 'Vérifie l\'intégrité du système de fichiers',
+                synopsis: 'fsck [OPTIONS]',
+                helpOption: "[options]",
+                options: ['-v : mode verbeux', '-f : force la vérification', '--help : affiche cette aide'],
+                examples: ['fsck', 'fsck -v', 'fsck -f'],
+                seeAlso: ['du', 'stat']
+            };
+        }
     },
 
     checkFileContent(fileName) {
@@ -11506,6 +11890,179 @@ ${isSupported && permission === 'denied' ? '<span class="text-red-400">⚠️ Pe
             if (statsStorage) statsStorage.textContent = storageSize + ' KB';
         } catch (error) {
             console.warn('Erreur lors de la mise à jour des statistiques:', error);
+        }
+    },
+
+    // === FONCTIONS HELPER POUR LA COMMANDE LS ===
+
+    // Obtenir la liste des fichiers selon les options
+    getFileList(targetNode, options) {
+        const files = [];
+        
+        for (const [name, node] of Object.entries(targetNode.children)) {
+            // Filtrer les fichiers cachés selon les options
+            if (name.startsWith('.')) {
+                if (!options.all && !options['almost-all']) {
+                    continue; // Ignorer les fichiers cachés
+                }
+                if (options['almost-all'] && (name === '.' || name === '..')) {
+                    continue; // Ignorer . et .. avec -A
+                }
+            }
+            
+            files.push(this.getFileStats(node, name));
+        }
+
+        // Ajouter . et .. si -a est utilisé
+        if (options.all) {
+            files.unshift(
+                this.getFileStats({ type: 'directory', children: {} }, '..'),
+                this.getFileStats(targetNode, '.')
+            );
+        }
+
+        return files;
+    },
+
+    // Obtenir les statistiques d'un fichier/dossier
+    getFileStats(node, name) {
+        const now = new Date();
+        const size = node.type === 'directory' ? 4096 : (node.content ? node.content.length : 0);
+        
+        return {
+            name: name,
+            type: node.type,
+            size: size,
+            permissions: node.type === 'directory' ? 'drwxr-xr-x' : '-rw-r--r--',
+            owner: 'user',
+            group: 'user',
+            modified: now.toLocaleDateString('fr-FR') + ' ' + now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+            links: 1,
+            node: node
+        };
+    },
+
+    // Trier la liste des fichiers
+    sortFileList(files, options) {
+        let sortedFiles = [...files];
+
+        // Trier par nom par défaut
+        sortedFiles.sort((a, b) => a.name.localeCompare(b.name));
+
+        // Trier par taille si demandé
+        if (options.size) {
+            sortedFiles.sort((a, b) => b.size - a.size);
+        }
+
+        // Trier par temps de modification si demandé
+        if (options.time) {
+            sortedFiles.sort((a, b) => new Date(b.modified) - new Date(a.modified));
+        }
+
+        // Inverser l'ordre si demandé
+        if (options.reverse) {
+            sortedFiles.reverse();
+        }
+
+        return sortedFiles;
+    },
+
+    // Formater le nom d'un fichier avec couleurs et indicateurs
+    formatFileName(file, options) {
+        let name = file.name;
+        let color = '';
+        let suffix = '';
+
+        // Couleurs selon le type
+        if (file.type === 'directory') {
+            color = 'text-blue-400';
+            if (options.classify) suffix = '/';
+        } else {
+            // Déterminer le type de fichier par extension
+            const ext = name.split('.').pop().toLowerCase();
+            if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg'].includes(ext)) {
+                color = 'text-purple-400';
+            } else if (['txt', 'md', 'log'].includes(ext)) {
+                color = 'text-green-400';
+            } else if (['js', 'html', 'css', 'json'].includes(ext)) {
+                color = 'text-yellow-400';
+            } else {
+                color = 'text-white';
+            }
+        }
+
+        return color ? `<span class="${color}">${name}${suffix}</span>` : name + suffix;
+    },
+
+    // Formater l'affichage long (-l)
+    formatLongListing(files, options) {
+        if (files.length === 0) return '';
+
+        const lines = [];
+        
+        // Calculer les largeurs maximales pour l'alignement
+        const maxSizeWidth = Math.max(...files.map(f => this.formatSize(f.size, options).length));
+        const maxOwnerWidth = Math.max(...files.map(f => f.owner.length));
+        const maxGroupWidth = options['no-group'] ? 0 : Math.max(...files.map(f => f.group.length));
+
+        files.forEach(file => {
+            const permissions = file.permissions;
+            const links = file.links.toString().padStart(3);
+            const owner = file.owner.padEnd(maxOwnerWidth);
+            const group = options['no-group'] ? '' : file.group.padEnd(maxGroupWidth) + ' ';
+            const size = this.formatSize(file.size, options).padStart(maxSizeWidth);
+            const modified = file.modified;
+            const name = this.formatFileName(file, options);
+
+            const line = `${permissions} ${links} ${owner} ${group}${size} ${modified} ${name}`;
+            lines.push(line);
+        });
+
+        return lines.join('\n');
+    },
+
+    // Formater la taille avec option human-readable
+    formatSize(size, options) {
+        if (options['human-readable']) {
+            const units = ['B', 'K', 'M', 'G', 'T'];
+            let unitIndex = 0;
+            let humanSize = size;
+
+            while (humanSize >= 1024 && unitIndex < units.length - 1) {
+                humanSize /= 1024;
+                unitIndex++;
+            }
+
+            if (unitIndex === 0) {
+                return humanSize.toString();
+            } else {
+                return humanSize.toFixed(1).replace(/\.0$/, '') + units[unitIndex];
+            }
+        }
+
+        return size.toString();
+    },
+
+    // Affichage récursif (-R)
+    displayRecursive(node, basePath, options, depth) {
+        if (depth > 10) return; // Limite de profondeur pour éviter les boucles infinies
+
+        for (const [name, childNode] of Object.entries(node.children)) {
+            if (childNode.type === 'directory' && !name.startsWith('.')) {
+                const childPath = basePath + '/' + name;
+                this.addOutput(`\n${childPath}:`);
+                
+                const childFiles = this.getFileList(childNode, options);
+                const sortedChildFiles = this.sortFileList(childFiles, options);
+                
+                if (options.long) {
+                    this.addOutput(this.formatLongListing(sortedChildFiles, options));
+                } else {
+                    this.addOutput(sortedChildFiles.map(file => this.formatFileName(file, options)).join('<span class="mx-1"></span>'));
+                }
+                
+                this.displayRecursive(childNode, childPath, options, depth + 1);
+            }
         }
     }
 

@@ -576,7 +576,7 @@ function initializeWindowsEvents() {
             `;
             document.head.appendChild(style);
         }
-        // Intégration avec le système de fichiers CLK
+        // Intégration avec le système de fichiers CLK (I-Node)
         let currentDir = '/';
         let fileSystemData = null;
         
@@ -585,7 +585,11 @@ function initializeWindowsEvents() {
             if (window.app && window.app.currentDir) {
                 currentDir = window.app.currentDir;
             }
-            if (window.app && window.app.fileSystem) {
+            if (window.app && window.app.inodeAdapter) {
+                // Utiliser le nouveau système I-Node
+                fileSystemData = 'inode';
+            } else if (window.app && window.app.fileSystem) {
+                // Fallback vers l'ancien système
                 fileSystemData = window.app.fileSystem;
             }
         } catch (error) {
@@ -665,18 +669,120 @@ function initializeWindowsEvents() {
             window.createNewFileType = function(type) {
                 const menu = document.getElementById('explorer-context-menu');
                 if (menu) menu.style.display = 'none';
+                
+                const pathInput = document.getElementById('current-path');
+                const currentPath = pathInput ? pathInput.value : '/';
+                
                 let name = '';
                 if (type === 'folder') {
                     name = prompt('Nom du nouveau dossier :', 'Nouveau dossier');
-                    if (name) {
-                        // À adapter selon l'API réelle de gestion de fichiers
-                        alert('Création du dossier : ' + name + ' (fonction à implémenter)');
+                    if (name && name.trim()) {
+                        const newFolderPath = currentPath === '/' ? '/' + name.trim() : currentPath + '/' + name.trim();
+                        
+                        try {
+                            let created = false;
+                            
+                            // Utiliser le système I-Node si disponible
+                            if (window.app && window.app.inodeAdapter) {
+                                created = window.app.inodeAdapter.createDirectory(currentPath, name.trim());
+                                if (created) {
+                                    console.log('Dossier créé avec succès via I-Node: ' + newFolderPath);
+                                }
+                            }
+                            
+                            // Fallback vers l'ancien système
+                            if (!created && window.app && window.app.fileSystem) {
+                                const parentDir = getFileFromPath(currentPath, window.app.fileSystem);
+                                if (parentDir && parentDir.type === 'directory' && parentDir.children) {
+                                    parentDir.children[name.trim()] = {
+                                        type: 'directory',
+                                        children: {}
+                                    };
+                                    created = true;
+                                    console.log('Dossier créé via ancien système: ' + newFolderPath);
+                                }
+                            }
+                            
+                            if (created) {
+                                showNotification('✓ Dossier "' + name.trim() + '" créé', '#28a745');
+                                setTimeout(() => refreshExplorer(), 300);
+                            } else {
+                                showNotification('✗ Impossible de créer le dossier "' + name.trim() + '"', '#dc3545');
+                            }
+                            
+                        } catch (error) {
+                            console.error('Erreur lors de la création du dossier:', error);
+                            showNotification('✗ Erreur lors de la création du dossier', '#dc3545');
+                        }
                     }
                 } else {
-                    name = prompt('Nom du nouveau fichier :', 'Nouveau fichier.' + type);
-                    if (name) {
-                        // À adapter selon l'API réelle de gestion de fichiers
-                        alert('Création du fichier : ' + name + ' (fonction à implémenter)');
+                    name = prompt('Nom du nouveau fichier :', 'nouveau-fichier.' + type);
+                    if (name && name.trim()) {
+                        const newFilePath = currentPath === '/' ? '/' + name.trim() : currentPath + '/' + name.trim();
+                        
+                        // Contenu par défaut selon le type de fichier
+                        let defaultContent = '';
+                        switch (type) {
+                            case 'txt':
+                                defaultContent = 'Nouveau fichier texte';
+                                break;
+                            case 'md':
+                                defaultContent = '# Nouveau document Markdown\\n\\nVotre contenu ici...';
+                                break;
+                            case 'js':
+                                defaultContent = '// Nouveau fichier JavaScript\\nconsole.log("Hello, World!");';
+                                break;
+                            case 'json':
+                                defaultContent = '{\\n  "name": "nouveau-fichier",\\n  "version": "1.0.0"\\n}';
+                                break;
+                            case 'html':
+                                defaultContent = '<!DOCTYPE html>\\n<html>\\n<head>\\n    <title>Nouveau document</title>\\n</head>\\n<body>\\n    <h1>Hello, World!</h1>\\n</body>\\n</html>';
+                                break;
+                            default:
+                                defaultContent = '';
+                        }
+                        
+                        try {
+                            let created = false;
+                            
+                            // Utiliser le système I-Node si disponible
+                            if (window.app && window.app.inodeAdapter) {
+                                created = window.app.inodeAdapter.createFile(currentPath, name.trim(), defaultContent);
+                                if (created) {
+                                    console.log('Fichier créé avec succès via I-Node: ' + newFilePath);
+                                }
+                            }
+                            
+                            // Fallback vers l'ancien système
+                            if (!created && window.app && window.app.fileSystem) {
+                                const parentDir = getFileFromPath(currentPath, window.app.fileSystem);
+                                if (parentDir && parentDir.type === 'directory' && parentDir.children) {
+                                    parentDir.children[name.trim()] = {
+                                        type: 'file',
+                                        content: defaultContent
+                                    };
+                                    created = true;
+                                    console.log('Fichier créé via ancien système: ' + newFilePath);
+                                }
+                            }
+                            
+                            if (created) {
+                                showNotification('✓ Fichier "' + name.trim() + '" créé', '#28a745');
+                                setTimeout(() => {
+                                    refreshExplorer();
+                                    // Ouvrir automatiquement le fichier créé
+                                    setTimeout(() => {
+                                        openFileInNotepad(name.trim(), currentPath);
+                                    }, 500);
+                                }, 300);
+                            } else {
+                                showNotification('✗ Impossible de créer le fichier "' + name.trim() + '"', '#dc3545');
+                            }
+                            
+                        } catch (error) {
+                            console.error('Erreur lors de la création du fichier:', error);
+                            showNotification('✗ Erreur lors de la création du fichier', '#dc3545');
+                        }
                     }
                 }
                 window.hideNewMenu();
@@ -988,9 +1094,66 @@ function initializeWindowsEvents() {
 
     function getFileListHTML(directory, fileSystemData = null) {
         try {
-            const mode = window.explorerViewMode || 'list';
-            // Utiliser le système de fichiers CLK si disponible
-            if (fileSystemData) {
+            // Utiliser le système I-Node si disponible
+            if (window.app && window.app.inodeAdapter) {
+                const files = getDirectoryContents(directory, 'inode');
+                if (files.length === 0) {
+                    return '<div style="padding: 16px; color: #666; text-align: center;">Répertoire vide</div>';
+                }
+                if (mode === 'gallery') {
+                    return `<div style="display: flex; flex-wrap: wrap; gap: 18px; padding: 12px;">` +
+                        files.map((file, i) => {
+                            const isDirectory = file.type === 'directory';
+                            const iconName = isDirectory ? 'folder' : getFileIcon(file.name);
+                            const iconColor = isDirectory ? '#0078d4' : getFileIconColor(file.name);
+                            return `
+                                <div class="file-item gallery-anim" style="animation-delay:${i*40}ms;flex-direction:column;align-items:center;justify-content:center;width:110px;height:110px;display:flex;cursor:pointer;border-radius:12px;padding:10px;transition:background 0.2s;" data-filename="${file.name}" data-filetype="${file.type}" ondblclick="openFile('${file.name}', '${file.type}', '${directory}')">
+                                    <div class="file-icon" style="font-size:38px;width:48px;height:48px;">${createIcon(iconName, '38px', iconColor)}</div>
+                                    <div class="file-name" style="font-size:13px;text-align:center;margin-top:8px;word-break:break-all;">${file.name}</div>
+                                </div>
+                            `;
+                        }).join('') + '</div>';
+                } else if (mode === 'details') {
+                    return `<table class="explorer-details-table">
+                        <thead><tr>
+                            <th class="name">Nom</th>
+                            <th class="type">Type</th>
+                            <th class="size">Taille</th>
+                            <th class="date">Modifié</th>
+                        </tr></thead>
+                        <tbody>` +
+                        files.map((file, i) => {
+                            const isDirectory = file.type === 'directory';
+                            const iconName = isDirectory ? 'folder' : getFileIcon(file.name);
+                            const iconColor = isDirectory ? '#0078d4' : getFileIconColor(file.name);
+                            return `<tr class="file-item details-anim explorer-details-row" style="animation-delay:${i*40}ms;cursor:pointer;" data-filename="${file.name}" data-filetype="${file.type}" ondblclick="openFile('${file.name}', '${file.type}', '${directory}')">
+                                <td class="name">
+                                    ${createIcon(iconName, '16px', iconColor)} <span>${file.name}</span>
+                                </td>
+                                <td class="type">${isDirectory ? 'Dossier' : 'Fichier'}</td>
+                                <td class="size">${isDirectory ? '' : formatFileSize(file.content ? file.content.length : 0)}</td>
+                                <td class="date">-</td>
+                            </tr>`;
+                        }).join('') + '</tbody></table>';
+                } else { // mode list
+                    return files.map(file => {
+                        const isDirectory = file.type === 'directory';
+                        const iconName = isDirectory ? 'folder' : getFileIcon(file.name);
+                        const iconColor = isDirectory ? '#0078d4' : getFileIconColor(file.name);
+                        return `
+                            <div class="file-item explorer-list-item" data-filename="${file.name}" data-filetype="${file.type}" ondblclick="openFile('${file.name}', '${file.type}', '${directory}')">
+                                <div class="file-icon">${createIcon(iconName, '16px', iconColor)}</div>
+                                <div class="file-name">${file.name}</div>
+                                <div class="file-details" style="margin-left: auto; font-size: 11px; color: #999;">
+                                    ${isDirectory ? 'Dossier' : formatFileSize(file.content ? file.content.length : 0)}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            }
+            // Utiliser l'ancien système de fichiers CLK si I-Node n'est pas disponible
+            else if (fileSystemData && fileSystemData !== 'inode') {
                 const files = getDirectoryContents(directory, fileSystemData);
                 if (files.length === 0) {
                     return '<div style="padding: 16px; color: #666; text-align: center;">Répertoire vide</div>';
@@ -1002,35 +1165,32 @@ function initializeWindowsEvents() {
                             const iconName = isDirectory ? 'folder' : getFileIcon(file.name);
                             const iconColor = isDirectory ? '#0078d4' : getFileIconColor(file.name);
                             return `
-                                <div class="file-item gallery-anim" style="animation-delay:${i*40}ms;flex-direction:column;align-items:center;justify-content:center;width:110px;height:110px;display:flex;cursor:pointer;border-radius:12px;padding:10px;transition:background 0.2s;" ondblclick="openFile('${file.name}', '${file.type}', '${directory}')">
+                                <div class="file-item gallery-anim" style="animation-delay:${i*40}ms;flex-direction:column;align-items:center;justify-content:center;width:110px;height:110px;display:flex;cursor:pointer;border-radius:12px;padding:10px;transition:background 0.2s;" data-filename="${file.name}" data-filetype="${file.type}" ondblclick="openFile('${file.name}', '${file.type}', '${directory}')">
                                     <div class="file-icon" style="font-size:38px;width:48px;height:48px;">${createIcon(iconName, '38px', iconColor)}</div>
                                     <div class="file-name" style="font-size:13px;text-align:center;margin-top:8px;word-break:break-all;">${file.name}</div>
                                 </div>
                             `;
                         }).join('') + '</div>';
                 } else if (mode === 'details') {
-                    return `<table style="width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;">
-                        <colgroup>
-                            <col style="width:60%">
-                            <col style="width:20%">
-                            <col style="width:20%">
-                        </colgroup>
-                        <thead><tr style="background:#f3f3f3;">
-                            <th style="text-align:left;padding:6px 8px;">Nom</th>
-                            <th style="text-align:left;padding:6px 8px;">Type</th>
-                            <th style="text-align:right;padding:6px 8px;">Taille</th>
+                    return `<table class="explorer-details-table">
+                        <thead><tr>
+                            <th class="name">Nom</th>
+                            <th class="type">Type</th>
+                            <th class="size">Taille</th>
+                            <th class="date">Modifié</th>
                         </tr></thead>
                         <tbody>` +
                         files.map((file, i) => {
                             const isDirectory = file.type === 'directory';
                             const iconName = isDirectory ? 'folder' : getFileIcon(file.name);
                             const iconColor = isDirectory ? '#0078d4' : getFileIconColor(file.name);
-                            return `<tr class="file-item details-anim" style="animation-delay:${i*40}ms;cursor:pointer;" ondblclick="openFile('${file.name}', '${file.type}', '${directory}')">
-                                <td style="padding:6px 8px;vertical-align:middle;display:flex;align-items:center;gap:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-                                    ${createIcon(iconName, '16px', iconColor)} <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${file.name}</span>
+                            return `<tr class="file-item details-anim explorer-details-row" style="animation-delay:${i*40}ms;cursor:pointer;" data-filename="${file.name}" data-filetype="${file.type}" ondblclick="openFile('${file.name}', '${file.type}', '${directory}')">
+                                <td class="name">
+                                    ${createIcon(iconName, '16px', iconColor)} <span>${file.name}</span>
                                 </td>
-                                <td style="padding:6px 8px;vertical-align:middle;">${isDirectory ? 'Dossier' : 'Fichier'}</td>
-                                <td style="padding:6px 8px;vertical-align:middle;text-align:right;">${isDirectory ? '' : formatFileSize(file.content ? file.content.length : 0)}</td>
+                                <td class="type">${isDirectory ? 'Dossier' : 'Fichier'}</td>
+                                <td class="size">${isDirectory ? '' : formatFileSize(file.content ? file.content.length : 0)}</td>
+                                <td class="date">-</td>
                             </tr>`;
                         }).join('') + '</tbody></table>';
                 } else { // mode list
@@ -1039,7 +1199,7 @@ function initializeWindowsEvents() {
                         const iconName = isDirectory ? 'folder' : getFileIcon(file.name);
                         const iconColor = isDirectory ? '#0078d4' : getFileIconColor(file.name);
                         return `
-                            <div class="file-item" ondblclick="openFile('${file.name}', '${file.type}', '${directory}')">
+                            <div class="file-item explorer-list-item" data-filename="${file.name}" data-filetype="${file.type}" ondblclick="openFile('${file.name}', '${file.type}', '${directory}')">
                                 <div class="file-icon">${createIcon(iconName, '16px', iconColor)}</div>
                                 <div class="file-name">${file.name}</div>
                                 <div class="file-details" style="margin-left: auto; font-size: 11px; color: #999;">
@@ -1062,9 +1222,27 @@ function initializeWindowsEvents() {
         refreshExplorer();
     };
 
-    // Fonction pour parser le système de fichiers CLK
+    // Fonction pour parser le système de fichiers CLK (I-Node et Legacy)
     function getDirectoryContents(directory, fileSystemData) {
         try {
+            // Utiliser le système I-Node si disponible
+            if (fileSystemData === 'inode' && window.app && window.app.inodeAdapter) {
+                const dirNode = window.app.inodeAdapter.getPath(directory);
+                if (dirNode && dirNode.children) {
+                    return Object.keys(dirNode.children).map(name => {
+                        const item = dirNode.children[name];
+                        return {
+                            name: name,
+                            type: item.type === 'directory' ? 'directory' : 'file',
+                            content: item.content || null,
+                            children: item.children || null
+                        };
+                    });
+                }
+                return [];
+            }
+            
+            // Fallback vers l'ancien système de fichiers
             const parts = directory === '/' ? [] : directory.split('/').filter(p => p !== '');
             let current = fileSystemData['/'];
             
@@ -1277,26 +1455,61 @@ function initializeWindowsEvents() {
     function openFileInNotepad(fileName, currentPath) {
         // Récupérer le contenu du fichier depuis le système de fichiers CLK
         let fileContent = '';
+        let fullPath = '';
+        
         try {
-            if (window.app && window.app.fileSystem) {
-                const filePath = currentPath === '/' ? `/${fileName}` : `${currentPath}/${fileName}`;
-                const file = getFileFromPath(filePath, window.app.fileSystem);
-                if (file && file.content !== undefined) {
-                    fileContent = typeof file.content === 'function' ? file.content() : file.content;
+            // Construire le chemin complet
+            fullPath = currentPath === '/' ? `/${fileName}` : `${currentPath}/${fileName}`;
+            console.log(`Tentative d'ouverture du fichier: ${fullPath}`);
+            
+            // Utiliser le système I-Node si disponible
+            if (window.app && window.app.inodeAdapter) {
+                console.log(`Lecture via I-Node: ${fullPath}`);
+                const file = window.app.inodeAdapter.getPath(fullPath);
+                
+                if (file && file.type === 'file') {
+                    fileContent = typeof file.content === 'function' ? file.content() : (file.content || '');
+                    console.log(`Fichier lu avec succès via I-Node`);
+                } else {
+                    console.warn(`Fichier non trouvé via I-Node: ${fullPath}`);
+                    fileContent = `Fichier non trouvé: ${fileName}`;
                 }
             }
+            // Fallback vers l'ancien système
+            else if (window.app && window.app.fileSystem) {
+                console.log(`Lecture via ancien système: ${fullPath}`);
+                const file = getFileFromPath(fullPath, window.app.fileSystem);
+                
+                if (file && file.type === 'file') {
+                    fileContent = typeof file.content === 'function' ? file.content() : (file.content || '');
+                    console.log(`Fichier lu avec succès via ancien système`);
+                } else {
+                    console.warn(`Fichier non trouvé via ancien système: ${fullPath}`);
+                    fileContent = `Fichier non trouvé: ${fileName}`;
+                }
+            }
+            else {
+                fileContent = `Système de fichiers non disponible`;
+                console.warn('Aucun système de fichiers disponible');
+            }
         } catch (error) {
-            console.warn('Impossible de lire le fichier:', error);
+            console.error('Erreur lors de la lecture du fichier:', error);
             fileContent = `Erreur lors de la lecture du fichier: ${fileName}`;
         }
 
         // Créer une fenêtre Bloc-notes avec le contenu
-        const notepadWindow = createCustomNotepadWindow(fileName, fileContent);
+        const notepadWindow = createCustomNotepadWindow(fileName, fileContent, fullPath);
         document.querySelector('.windows-desktop').appendChild(notepadWindow);
     }
 
     function getFileFromPath(filePath, fileSystemData) {
         try {
+            // Utiliser le système I-Node si disponible
+            if (window.app && window.app.inodeAdapter) {
+                return window.app.inodeAdapter.getPath(filePath);
+            }
+            
+            // Fallback vers l'ancien système
             const parts = filePath === '/' ? [] : filePath.split('/').filter(p => p !== '');
             let current = fileSystemData['/'];
             
@@ -1317,11 +1530,15 @@ function initializeWindowsEvents() {
         }
     }
 
-    function createCustomNotepadWindow(fileName, content) {
+    function createCustomNotepadWindow(fileName, content, filePath = null) {
         const windowId = 'notepad-' + Date.now();
         const window = document.createElement('div');
         window.className = 'window';
         window.id = windowId;
+        
+        // Stocker le chemin du fichier dans l'élément pour la sauvegarde
+        window.setAttribute('data-file-path', filePath || fileName);
+        
         window.style.left = (120 + openWindows.length * 30) + 'px';
         window.style.top = (120 + openWindows.length * 30) + 'px';
         window.style.width = '700px';
@@ -1343,10 +1560,10 @@ function initializeWindowsEvents() {
             <div class="window-content">
                 <div style="height: 100%; display: flex; flex-direction: column; background: #ffffff; color: #333;">
                     <div style="padding: 8px 16px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-bottom: 1px solid rgba(0,0,0,0.1); display: flex; gap: 8px; align-items: center;">
-                        <button onclick="saveFileContent('${windowId}', '${fileName}')" style="padding: 6px 12px; border: 1px solid #0078d4; background: white; border-radius: 4px; color: #0078d4; cursor: pointer; font-size: 12px;">${createIcon('files', '12px')} Enregistrer</button>
-                        <button onclick="refreshFileContent('${windowId}', '${fileName}')" style="padding: 6px 12px; border: 1px solid #28a745; background: white; border-radius: 4px; color: #28a745; cursor: pointer; font-size: 12px;">${createIcon('refresh', '12px')} Actualiser</button>
+                        <button onclick="saveFileContentAdvanced('${windowId}', '${fileName}')" style="padding: 6px 12px; border: 1px solid #0078d4; background: white; border-radius: 4px; color: #0078d4; cursor: pointer; font-size: 12px;">${createIcon('files', '12px')} Enregistrer</button>
+                        <button onclick="refreshFileContentAdvanced('${windowId}', '${fileName}')" style="padding: 6px 12px; border: 1px solid #28a745; background: white; border-radius: 4px; color: #28a745; cursor: pointer; font-size: 12px;">${createIcon('refresh', '12px')} Actualiser</button>
                         <div style="margin-left: auto; font-size: 12px; color: #666;">
-                            Fichier: ${fileName} | Taille: ${formatFileSize(content.length)}
+                            Fichier: ${filePath || fileName} | Taille: ${formatFileSize(content.length)}
                         </div>
                     </div>
                     <textarea id="notepad-content-${windowId}" style="flex: 1; border: none; outline: none; resize: none; font-family: 'Consolas', 'Monaco', monospace; font-size: 14px; line-height: 1.5; padding: 16px; background: #ffffff; color: #333;" placeholder="Contenu du fichier...">${content}</textarea>
@@ -1378,35 +1595,252 @@ function initializeWindowsEvents() {
         if (textarea) {
             const content = textarea.value;
             console.log(`Sauvegarde de ${fileName}:`, content);
-            // TODO: Implémenter la sauvegarde dans le système de fichiers CLK
             
-            // Notification de sauvegarde
-            const notification = document.createElement('div');
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: #28a745;
-                color: white;
-                padding: 12px 20px;
-                border-radius: 6px;
-                z-index: 30000;
-                font-size: 14px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            `;
-            notification.textContent = `✓ ${fileName} sauvegardé`;
-            document.body.appendChild(notification);
-            
-            setTimeout(() => notification.remove(), 3000);
+            // Sauvegarder dans le système de fichiers CLK
+            try {
+                let saved = false;
+                
+                // Utiliser le système I-Node si disponible
+                if (window.app && window.app.inodeAdapter) {
+                    // Obtenir le répertoire courant de l'explorateur
+                    const pathInput = document.getElementById('current-path');
+                    const currentPath = pathInput ? pathInput.value : '/';
+                    const fullPath = currentPath.endsWith('/') ? currentPath + fileName : currentPath + '/' + fileName;
+                    
+                    // Essayer d'écrire le fichier
+                    saved = window.app.inodeAdapter.writeFile(fullPath, content);
+                    
+                    if (saved) {
+                        console.log(`Fichier ${fullPath} sauvegardé avec succès via I-Node`);
+                    }
+                }
+                
+                // Fallback vers l'ancien système si I-Node échoue
+                if (!saved && window.app && window.app.fileSystem) {
+                    // Code de fallback pour l'ancien système
+                    const file = getFileFromPath(`/${fileName}`, window.app.fileSystem);
+                    if (file) {
+                        file.content = content;
+                        saved = true;
+                        console.log(`Fichier ${fileName} sauvegardé via ancien système`);
+                    }
+                }
+                
+                // Notification de sauvegarde
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: ${saved ? '#28a745' : '#dc3545'};
+                    color: white;
+                    padding: 12px 20px;
+                    border-radius: 6px;
+                    z-index: 30000;
+                    font-size: 14px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                `;
+                notification.textContent = saved ? `✓ ${fileName} sauvegardé` : `✗ Erreur lors de la sauvegarde de ${fileName}`;
+                document.body.appendChild(notification);
+                
+                setTimeout(() => notification.remove(), 3000);
+                
+                // Actualiser l'explorateur si la sauvegarde a réussi
+                if (saved) {
+                    setTimeout(() => {
+                        const refreshBtn = document.querySelector('.explorer-button[onclick="refreshExplorer()"]');
+                        if (refreshBtn) {
+                            refreshExplorer();
+                        }
+                    }, 500);
+                }
+                
+            } catch (error) {
+                console.error('Erreur lors de la sauvegarde:', error);
+                
+                // Notification d'erreur
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #dc3545;
+                    color: white;
+                    padding: 12px 20px;
+                    border-radius: 6px;
+                    z-index: 30000;
+                    font-size: 14px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                `;
+                notification.textContent = `✗ Erreur lors de la sauvegarde de ${fileName}`;
+                document.body.appendChild(notification);
+                
+                setTimeout(() => notification.remove(), 3000);
+            }
         }
     };
+
+    // Nouvelles fonctions avancées pour le bloc-notes
+    window.saveFileContentAdvanced = function(windowId, fileName) {
+        const textarea = document.getElementById(`notepad-content-${windowId}`);
+        const windowElement = document.getElementById(windowId);
+        
+        if (textarea && windowElement) {
+            const content = textarea.value;
+            const filePath = windowElement.getAttribute('data-file-path') || fileName;
+            
+            console.log(`Sauvegarde avancée de ${filePath}:`, content);
+            
+            try {
+                let saved = false;
+                
+                // Utiliser le système I-Node si disponible
+                if (window.app && window.app.inodeAdapter) {
+                    console.log(`Tentative de sauvegarde via I-Node: ${filePath}`);
+                    saved = window.app.inodeAdapter.writeFile(filePath, content);
+                    
+                    if (saved) {
+                        console.log(`Fichier sauvegardé avec succès via I-Node: ${filePath}`);
+                    } else {
+                        console.warn(`Échec de la sauvegarde via I-Node: ${filePath}`);
+                    }
+                }
+                
+                // Fallback vers l'ancien système si I-Node échoue
+                if (!saved && window.app && window.app.fileSystem) {
+                    console.log(`Tentative de sauvegarde via ancien système: ${filePath}`);
+                    const file = getFileFromPath(filePath, window.app.fileSystem);
+                    if (file && file.type === 'file') {
+                        file.content = content;
+                        saved = true;
+                        console.log(`Fichier sauvegardé via ancien système: ${filePath}`);
+                    }
+                }
+                
+                // Mettre à jour la taille affichée
+                const sizeDisplay = windowElement.querySelector('.window-content [style*="margin-left: auto"]');
+                if (sizeDisplay) {
+                    sizeDisplay.innerHTML = `Fichier: ${filePath} | Taille: ${formatFileSize(content.length)}`;
+                }
+                
+                // Notification de sauvegarde
+                showNotification(
+                    saved ? `✓ ${fileName} sauvegardé` : `✗ Erreur lors de la sauvegarde de ${fileName}`,
+                    saved ? '#28a745' : '#dc3545'
+                );
+                
+                // Actualiser l'explorateur si la sauvegarde a réussi
+                if (saved) {
+                    setTimeout(() => {
+                        if (typeof refreshExplorer === 'function') {
+                            refreshExplorer();
+                        }
+                    }, 500);
+                }
+                
+            } catch (error) {
+                console.error('Erreur lors de la sauvegarde avancée:', error);
+                showNotification(`✗ Erreur lors de la sauvegarde de ${fileName}`, '#dc3545');
+            }
+        }
+    };
+
+    window.refreshFileContentAdvanced = function(windowId, fileName) {
+        const textarea = document.getElementById(`notepad-content-${windowId}`);
+        const windowElement = document.getElementById(windowId);
+        
+        if (textarea && windowElement) {
+            const filePath = windowElement.getAttribute('data-file-path') || fileName;
+            
+            try {
+                let content = '';
+                let found = false;
+                
+                // Utiliser le système I-Node si disponible
+                if (window.app && window.app.inodeAdapter) {
+                    console.log(`Rafraîchissement via I-Node: ${filePath}`);
+                    const file = window.app.inodeAdapter.getPath(filePath);
+                    
+                    if (file && file.type === 'file') {
+                        content = typeof file.content === 'function' ? file.content() : (file.content || '');
+                        found = true;
+                        console.log(`Fichier rafraîchi avec succès via I-Node`);
+                    }
+                }
+                
+                // Fallback vers l'ancien système
+                if (!found && window.app && window.app.fileSystem) {
+                    console.log(`Rafraîchissement via ancien système: ${filePath}`);
+                    const file = getFileFromPath(filePath, window.app.fileSystem);
+                    
+                    if (file && file.type === 'file') {
+                        content = typeof file.content === 'function' ? file.content() : (file.content || '');
+                        found = true;
+                        console.log(`Fichier rafraîchi avec succès via ancien système`);
+                    }
+                }
+                
+                if (found) {
+                    textarea.value = content;
+                    
+                    // Mettre à jour la taille affichée
+                    const sizeDisplay = windowElement.querySelector('.window-content [style*="margin-left: auto"]');
+                    if (sizeDisplay) {
+                        sizeDisplay.innerHTML = `Fichier: ${filePath} | Taille: ${formatFileSize(content.length)}`;
+                    }
+                    
+                    showNotification(`✓ ${fileName} actualisé`, '#28a745');
+                } else {
+                    showNotification(`✗ Impossible d'actualiser ${fileName}`, '#dc3545');
+                }
+                
+            } catch (error) {
+                console.error('Erreur lors du rafraîchissement:', error);
+                showNotification(`✗ Erreur lors de l'actualisation de ${fileName}`, '#dc3545');
+            }
+        }
+    };
+
+    // Fonction utilitaire pour afficher les notifications
+    function showNotification(message, backgroundColor = '#28a745') {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: ${backgroundColor};
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            z-index: 30000;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            animation: slideInRight 0.3s ease-out;
+        `;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.style.animation = 'slideOutRight 0.3s ease-out';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
 
     window.refreshFileContent = function(windowId, fileName) {
         const textarea = document.getElementById(`notepad-content-${windowId}`);
         if (textarea) {
             // Recharger le contenu depuis le système de fichiers
             try {
-                if (window.app && window.app.fileSystem) {
+                // Utiliser le système I-Node si disponible
+                if (window.app && window.app.inodeAdapter) {
+                    const file = window.app.inodeAdapter.getPath(`/${fileName}`);
+                    if (file && file.content !== undefined) {
+                        const content = typeof file.content === 'function' ? file.content() : file.content;
+                        textarea.value = content;
+                    }
+                }
+                // Fallback vers l'ancien système
+                else if (window.app && window.app.fileSystem) {
                     const file = getFileFromPath(`/${fileName}`, window.app.fileSystem);
                     if (file && file.content !== undefined) {
                         const content = typeof file.content === 'function' ? file.content() : file.content;
@@ -1424,9 +1858,28 @@ function initializeWindowsEvents() {
         const explorerFiles = document.getElementById('explorer-files');
         
         if (pathInput && explorerFiles) {
-            pathInput.value = newPath;
-            const fileSystemData = window.app ? window.app.fileSystem : null;
-            explorerFiles.innerHTML = getFileListHTML(newPath, fileSystemData);
+            console.log(`Navigation vers: ${newPath}`);
+            
+            // Vérifier si le répertoire existe
+            let directoryExists = false;
+            
+            if (window.app && window.app.inodeAdapter) {
+                const dirNode = window.app.inodeAdapter.getPath(newPath);
+                directoryExists = dirNode && dirNode.type === 'directory';
+            } else if (window.app && window.app.fileSystem) {
+                const dirNode = getFileFromPath(newPath, window.app.fileSystem);
+                directoryExists = dirNode && dirNode.type === 'directory';
+            }
+            
+            if (directoryExists) {
+                pathInput.value = newPath;
+                const fileSystemData = (window.app && window.app.inodeAdapter) ? 'inode' : (window.app ? window.app.fileSystem : null);
+                explorerFiles.innerHTML = getFileListHTML(newPath, fileSystemData);
+                console.log(`Navigation réussie vers: ${newPath}`);
+            } else {
+                console.warn(`Répertoire inexistant: ${newPath}`);
+                showNotification(`Répertoire inexistant: ${newPath}`, '#dc3545');
+            }
         }
     }
 
@@ -1434,8 +1887,9 @@ function initializeWindowsEvents() {
         const pathInput = document.getElementById('current-path');
         if (pathInput) {
             const currentPath = pathInput.value;
-            // Utiliser l'historique de navigation si implémenté
             console.log('Navigation arrière depuis:', currentPath);
+            // Pour l'instant, aller au répertoire parent comme navigateUp
+            window.navigateUp();
         }
     };
 
@@ -1447,7 +1901,10 @@ function initializeWindowsEvents() {
                 const parts = currentPath.split('/').filter(p => p !== '');
                 parts.pop(); // Enlever le dernier élément
                 const parentPath = parts.length === 0 ? '/' : '/' + parts.join('/');
+                console.log(`Navigation vers le parent: ${currentPath} -> ${parentPath}`);
                 navigateToDirectory(parentPath);
+            } else {
+                console.log('Déjà à la racine, impossible de remonter');
             }
         }
     };
@@ -1457,38 +1914,63 @@ function initializeWindowsEvents() {
         const pathInput = document.getElementById('current-path');
         if (explorerFiles && pathInput) {
             const currentPath = pathInput.value;
-            const fileSystemData = window.app ? window.app.fileSystem : null;
+            console.log(`Actualisation de l'explorateur: ${currentPath}`);
+            
+            // Utiliser le système I-Node si disponible, sinon fallback
+            const fileSystemData = (window.app && window.app.inodeAdapter) ? 'inode' : (window.app ? window.app.fileSystem : null);
             explorerFiles.innerHTML = getFileListHTML(currentPath, fileSystemData);
+            
+            showNotification(`✓ Explorateur actualisé`, '#28a745');
         }
     };
 
     window.createNewFolder = function() {
         const folderName = prompt('Nom du nouveau dossier:');
         if (folderName && folderName.trim()) {
-            // TODO: Implémenter la création de dossier dans le système de fichiers CLK
-            console.log('Création du dossier:', folderName.trim());
+            const pathInput = document.getElementById('current-path');
+            const currentPath = pathInput ? pathInput.value : '/';
+            const newFolderPath = currentPath === '/' ? `/${folderName.trim()}` : `${currentPath}/${folderName.trim()}`;
             
-            // Notification
-            const notification = document.createElement('div');
-            notification.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: #0078d4;
-                color: white;
-                padding: 12px 20px;
-                border-radius: 6px;
-                z-index: 30000;
-                font-size: 14px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            `;
-            notification.textContent = `📁 Dossier "${folderName}" créé`;
-            document.body.appendChild(notification);
+            console.log(`Création du dossier: ${newFolderPath}`);
             
-            setTimeout(() => notification.remove(), 3000);
-            
-            // Actualiser l'explorateur
-            refreshExplorer();
+            try {
+                let created = false;
+                
+                // Utiliser le système I-Node si disponible
+                if (window.app && window.app.inodeAdapter) {
+                    created = window.app.inodeAdapter.createDirectory(currentPath, folderName.trim());
+                    if (created) {
+                        console.log(`Dossier créé avec succès via I-Node: ${newFolderPath}`);
+                    }
+                }
+                
+                // Fallback vers l'ancien système
+                if (!created && window.app && window.app.fileSystem) {
+                    // Implémentation pour l'ancien système
+                    const parentDir = getFileFromPath(currentPath, window.app.fileSystem);
+                    if (parentDir && parentDir.type === 'directory' && parentDir.children) {
+                        parentDir.children[folderName.trim()] = {
+                            type: 'directory',
+                            children: {}
+                        };
+                        created = true;
+                        console.log(`Dossier créé via ancien système: ${newFolderPath}`);
+                    }
+                }
+                
+                if (created) {
+                    showNotification(`✓ Dossier "${folderName.trim()}" créé`, '#28a745');
+                    setTimeout(() => {
+                        refreshExplorer();
+                    }, 300);
+                } else {
+                    showNotification(`✗ Impossible de créer le dossier "${folderName.trim()}"`, '#dc3545');
+                }
+                
+            } catch (error) {
+                console.error('Erreur lors de la création du dossier:', error);
+                showNotification(`✗ Erreur lors de la création du dossier`, '#dc3545');
+            }
         }
     };
 

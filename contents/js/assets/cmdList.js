@@ -24,14 +24,37 @@ const COMMAND_METADATA = {
     ls: {
         category: 'Navigation',
         description: 'Liste le contenu du dossier',
-        synopsis: 'ls',
-        helpOption: "[dossier]",
+        synopsis: 'ls [OPTIONS] [DOSSIER]',
+        helpOption: "[OPTIONS] [dossier]",
         options: [
-            '-l : format de liste détaillée',
-            '-a : affiche tous les fichiers (y compris cachés)',
-            '-h : tailles lisibles par l\'homme'
+            '-l : format de liste détaillée (permissions, propriétaire, taille, date)',
+            '-a : affiche tous les fichiers y compris les fichiers cachés (. et ..)',
+            '-A : affiche tous les fichiers sauf . et ..',
+            '-h : tailles lisibles par l\'homme (1K, 234M, 2G, etc.)',
+            '-r : inverse l\'ordre de tri',
+            '-t : trie par date de modification (plus récent en premier)',
+            '-S : trie par taille (plus gros en premier)',
+            '-1 : affiche un fichier par ligne',
+            '-d : liste les répertoires eux-mêmes, pas leur contenu',
+            '-R : liste récursivement les sous-répertoires',
+            '-F : ajoute un indicateur de type (/ pour les dossiers)',
+            '-G : n\'affiche pas le groupe dans le format long',
+            '--help : affiche cette aide et quitte'
         ],
-        examples: ['ls', 'ls /home', 'ls -l']
+        examples: [
+            'ls',
+            'ls /home',
+            'ls -l',
+            'ls -la',
+            'ls -lah',
+            'ls -lt',
+            'ls -lSr',
+            'ls -1',
+            'ls -d */',
+            'ls -R',
+            'ls -F'
+        ],
+        seeAlso: ['cd', 'pwd', 'find', 'tree']
     },
 
     // Fichiers & Dossiers
