@@ -1,18 +1,42 @@
 {
-  "version": "2.4.2",
+  "version": "2.4.6",
   "date": "2025-09-05",
-  "changelog": "Ajout Fix du err 404 liée à la decouverte des plugins automatique dans le dossier ./plugins",
+  "changelog": "Fix des prblm liée au espacement du tree",
   "history": [
+    {
+      "version": "2.4.6",
+      "date": "2025-09-05",
+      "changelog": "Fix des prblm liée au espacement du tree",
+      "type": "patch"
+    },
+    {
+      "version": "2.4.5",
+      "date": "2025-09-05",
+      "changelog": "Fix des noms des MAJ",
+      "type": "patch"
+    },
+    {
+      "version": "2.4.4",
+      "date": "2025-09-05",
+      "changelog": "Amélioration du tree suite à la nouvelle MAJ I-Node",
+      "type": "patch"
+    },
+    {
+      "version": "2.4.3",
+      "date": "2025-09-05",
+      "changelog": "Fix du ls et du tree",
+      "type": "patch"
+    },
     {
       "version": "2.4.2",
       "date": "2025-09-05",
-      "changelog": "Ajout Fix du err 404 liée à la decouverte des plugins automatique dans le dossier ./plugins",
+      "changelog": "Fix du err 404 liée à la decouverte des plugins automatique dans le dossier ./plugins",
       "type": "patch"
     },
     {
       "version": "2.4.1",
       "date": "2025-09-05",
-      "changelog": "Ajout Fix QuotaExceededError pour les images de fond",
+      "changelog": "Fix QuotaExceededError pour les images de fond",
       "type": "patch"
     },
     {

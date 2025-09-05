@@ -1786,7 +1786,14 @@ const app = {
             if (targetNode.type !== 'directory' && !options.directory) {
                 if (options.long) {
                     const stats = this.getFileStats(targetNode, targetPath.split('/').pop());
-                    this.addOutput(this.formatLongListing([stats], options));
+                    const longOutput = this.formatLongListing([stats], options);
+                    if (longOutput) {
+                        longOutput.split('\n').forEach(line => {
+                            if (line.trim()) {
+                                this.addOutput(line);
+                            }
+                        });
+                    }
                 } else {
                     this.addOutput(targetPath.split('/').pop() || targetPathArg);
                 }
@@ -1797,7 +1804,14 @@ const app = {
             if (options.directory && targetNode.type === 'directory') {
                 if (options.long) {
                     const stats = this.getFileStats(targetNode, targetPath.split('/').pop() || '.');
-                    this.addOutput(this.formatLongListing([stats], options));
+                    const longOutput = this.formatLongListing([stats], options);
+                    if (longOutput) {
+                        longOutput.split('\n').forEach(line => {
+                            if (line.trim()) {
+                                this.addOutput(line);
+                            }
+                        });
+                    }
                 } else {
                     this.addOutput(targetPath.split('/').pop() || '.');
                 }
@@ -1812,7 +1826,15 @@ const app = {
 
             // Afficher selon le format demandé
             if (options.long) {
-                this.addOutput(this.formatLongListing(files, options));
+                const longOutput = this.formatLongListing(files, options);
+                if (longOutput) {
+                    // Diviser en lignes et ajouter chaque ligne séparément
+                    longOutput.split('\n').forEach(line => {
+                        if (line.trim()) {
+                            this.addOutput(line);
+                        }
+                    });
+                }
             } else if (options.one) {
                 this.addOutput(files.map(file => this.formatFileName(file, options)).join('\n'));
             } else {
@@ -4593,6 +4615,14 @@ const app = {
                 result['date-modified'] = true;
                 } else if (arg === '-F') {
                 result.classify = true;
+                } else if (arg === '--inode') {
+                result.inode = true;
+                } else if (arg === '--links') {
+                result.links = true;
+                } else if (arg === '--legacy') {
+                result.legacy = true;
+                } else if (arg === '--debug') {
+                result.debug = true;
                 } else if (arg === '--help') {
                 result.help = true;
                 } else if (arg === '-L' && i + 1 < args.length) {
@@ -4614,198 +4644,435 @@ const app = {
 
             // Help option
             if (options.help) {
-                this.commands.man.call(this, ['tree']);
+                this.addOutput(`
+                    <div class="bg-gray-800/50 border border-green-600 rounded-lg p-4 my-2">
+                        <div class="text-green-400 font-bold text-lg mb-2">TREE - Arborescence des fichiers</div>
+                        <div class="text-gray-300 mb-2">Affiche l'arborescence des fichiers et dossiers.</div>
+                        <div class="text-yellow-300 font-bold mb-1">SYNOPSIS:</div>
+                        <div class="ml-4 text-green-400 font-mono mb-2">tree [OPTIONS] [CHEMIN]</div>
+                        <div class="text-yellow-300 font-bold mb-1">OPTIONS:</div>
+                        <div class="ml-4 space-y-1">
+                            <div class="text-gray-300">-a         Affiche tous les fichiers (y compris cachés)</div>
+                            <div class="text-gray-300">-d         Affiche seulement les répertoires</div>
+                            <div class="text-gray-300">-f         Affiche le chemin complet</div>
+                            <div class="text-gray-300">-F         Ajoute des indicateurs de type (/, *, @)</div>
+                            <div class="text-gray-300">-s         Affiche la taille des fichiers</div>
+                            <div class="text-gray-300">-h         Tailles lisibles par l'homme</div>
+                            <div class="text-gray-300">-D         Affiche la date de modification</div>
+                            <div class="text-gray-300">-L niveau  Limite la profondeur d'affichage</div>
+                            <div class="text-gray-300">-P motif   Filtre par motif</div>
+                            <div class="text-gray-300">--inode    Affiche les numéros I-Node</div>
+                            <div class="text-gray-300">--links    Affiche le nombre de liens durs</div>
+                            <div class="text-gray-300">--legacy   Force l'utilisation de l'ancien système</div>
+                            <div class="text-gray-300">--debug    Affiche les informations de débogage</div>
+                        </div>
+                        <div class="text-yellow-300 font-bold mb-1 mt-3">EXEMPLES:</div>
+                        <div class="ml-4 space-y-1 font-mono text-green-400">
+                            <div>tree</div>
+                            <div>tree -L 2</div>
+                            <div>tree -F --inode</div>
+                            <div>tree -d /home</div>
+                        </div>
+                    </div>
+                `, 'system');
                 return;
             }
 
             const maxLevel = options.level || 20;
             const targetPath = options._[0] || '.';
             const resolvedPath = this.resolvePath(targetPath);
-            const targetNode = this.getPath(resolvedPath);
-
-            if (!targetNode) {
-            this.addOutput(`tree: ${targetPath}: Aucun fichier ou dossier de ce type`, 'error');
-            return;
-            }
-
-            if (targetNode.type !== 'directory') {
-            this.addOutput(`tree: ${targetPath}: N'est pas un répertoire`, 'error');
-            return;
-            }
 
             let dirCount = 0;
             let fileCount = 0;
             const treeLines = [];
 
-            // Helper function to get file info
+            // Vérifier si le système I-Node est disponible
+            const useInodeSystem = !options.legacy && this.inodeAdapter && this.inodeAdapter.inodeFS;
+
+            if (options.debug) {
+                this.addOutput(`<span class="text-cyan-400">🔍 Debug: Système I-Node ${useInodeSystem ? 'DISPONIBLE' : 'NON DISPONIBLE'}</span>`);
+                this.addOutput(`<span class="text-cyan-400">🔍 Debug: Chemin cible: ${resolvedPath}</span>`);
+                if (options.legacy) {
+                    this.addOutput(`<span class="text-cyan-400">🔍 Debug: Mode legacy forcé</span>`);
+                }
+            }
+
+            // Fonction pour obtenir les informations d'un nœud avec le système I-Node
+            const getInodeNodeInfo = (path) => {
+                try {
+                    const inode = this.inodeAdapter.inodeFS.getInodeByPath(path);
+                    if (!inode) return null;
+
+                    return {
+                        type: inode.type,
+                        content: inode.type === 'file' ? inode.data : null,
+                        inodeId: inode.id,
+                        linkCount: inode.linkCount,
+                        created: inode.created,
+                        modified: inode.modified,
+                        accessed: inode.accessed,
+                        size: inode.type === 'file' ? inode.data.length : 0
+                    };
+                } catch (error) {
+                    return null;
+                }
+            };
+
+            // Fonction pour lister les enfants d'un répertoire avec le système I-Node
+            const getInodeChildren = (path) => {
+                try {
+                    const inode = this.inodeAdapter.inodeFS.getInodeByPath(path);
+                    if (!inode || inode.type !== 'directory') return {};
+
+                    const children = {};
+                    const dirEntries = this.inodeAdapter.inodeFS.directories.get(inode.id);
+                    
+                    if (dirEntries) {
+                        for (const [name, childInodeId] of dirEntries.entries()) {
+                            if (name !== '.' && name !== '..') {
+                                const childInode = this.inodeAdapter.inodeFS.inodes.get(childInodeId);
+                                if (childInode) {
+                                    children[name] = {
+                                        type: childInode.type,
+                                        content: childInode.type === 'file' ? childInode.data : null,
+                                        inodeId: childInode.id,
+                                        linkCount: childInode.linkCount,
+                                        created: childInode.created,
+                                        modified: childInode.modified,
+                                        accessed: childInode.accessed,
+                                        size: childInode.type === 'file' ? childInode.data.length : 0
+                                    };
+                                }
+                            }
+                        }
+                    }
+                    return children;
+                } catch (error) {
+                    return {};
+                }
+            };
+
+            // Fonction pour obtenir les informations d'un fichier/dossier
             const getFileInfo = (node, name, currentPath) => {
-            let info = '';
-            let size = 0;
+                let info = '';
 
-            if (node.type === 'file') {
-                size = new Blob([node.content || '']).size;
-                fileCount++;
-                
-                if (options.size) {
-                const sizeStr = options['human-readable'] ? 
-                    this.formatBytes(size) : 
-                    size.toString();
-                info += ` <span class="text-gray-400">[${sizeStr}]</span>`;
+                if (options.inode && node.inodeId) {
+                    info += ` <span class="text-cyan-400">[${node.inodeId}]</span>`;
                 }
-            } else if (node.type === 'directory') {
-                dirCount++;
-            }
 
-            if (options['date-modified']) {
-                // Simulate last modified date
-                const now = new Date();
-                const modDate = new Date(now.getTime() - Math.random() * 30 * 24 * 60 * 60 * 1000);
-                info += ` <span class="text-yellow-400">${modDate.toLocaleDateString()}</span>`;
-            }
+                if (options.links && node.linkCount) {
+                    info += ` <span class="text-orange-400">(${node.linkCount})</span>`;
+                }
 
-            return { info, size };
+                if (node.type === 'file') {
+                    fileCount++;
+                    
+                    if (options.size) {
+                        const size = node.size || 0;
+                        const sizeStr = options['human-readable'] ? 
+                            this.formatBytes(size) : 
+                            size.toString();
+                        info += ` <span class="text-gray-400">[${sizeStr}]</span>`;
+                    }
+                } else if (node.type === 'directory') {
+                    dirCount++;
+                }
+
+                if (options['date-modified'] && node.modified) {
+                    info += ` <span class="text-yellow-400">${node.modified.toLocaleDateString()}</span>`;
+                }
+
+                return { info };
             };
 
-            // Helper function to format name with colors and classifiers
+            // Fonction pour formater le nom avec couleurs et classificateurs
             const formatName = (name, node, currentPath) => {
-            let displayName = name;
-            let color = 'text-white';
+                let displayName = name;
+                let color = 'text-white';
 
-            if (node.type === 'directory') {
-                color = 'text-blue-400';
-                if (options.classify) displayName += '/';
-            } else if (node.type === 'file') {
-                // Color based on file extension
-                const ext = name.split('.').pop().toLowerCase();
-                switch (ext) {
-                case 'txt':
-                case 'md':
-                case 'readme':
-                    color = 'text-gray-300';
-                    break;
-                case 'js':
-                case 'json':
-                case 'html':
-                case 'css':
-                    color = 'text-green-400';
-                    if (options.classify) displayName += '*';
-                    break;
-                case 'exe':
-                case 'bin':
-                    color = 'text-red-400';
-                    if (options.classify) displayName += '*';
-                    break;
-                case 'zip':
-                case 'tar':
-                case 'gz':
-                    color = 'text-purple-400';
-                    break;
-                default:
-                    color = 'text-gray-300';
+                if (node.type === 'directory') {
+                    color = 'text-blue-400';
+                    if (options.classify) displayName += '/';
+                } else if (node.type === 'file') {
+                    // Couleur basée sur l'extension
+                    const ext = name.split('.').pop().toLowerCase();
+                    switch (ext) {
+                    case 'txt':
+                    case 'md':
+                    case 'readme':
+                        color = 'text-gray-300';
+                        break;
+                    case 'js':
+                    case 'json':
+                    case 'html':
+                    case 'css':
+                        color = 'text-green-400';
+                        if (options.classify) displayName += '*';
+                        break;
+                    case 'exe':
+                    case 'bin':
+                        color = 'text-red-400';
+                        if (options.classify) displayName += '*';
+                        break;
+                    case 'zip':
+                    case 'tar':
+                    case 'gz':
+                        color = 'text-purple-400';
+                        break;
+                    default:
+                        color = 'text-gray-300';
+                    }
+
+                    // Marquer les liens multiples
+                    if (node.linkCount && node.linkCount > 1) {
+                        if (options.classify) displayName += '@';
+                    }
                 }
-            }
 
-            // Apply pattern filter if specified
-            if (options.pattern) {
-                const regex = new RegExp(options.pattern.replace(/\*/g, '.*').replace(/\?/g, '.'), 'i');
-                if (!regex.test(name)) {
-                return null; // Skip this file
+                // Appliquer le filtre de motif si spécifié
+                if (options.pattern) {
+                    const regex = new RegExp(options.pattern.replace(/\*/g, '.*').replace(/\?/g, '.'), 'i');
+                    if (!regex.test(name)) {
+                        return null;
+                    }
                 }
-            }
 
-            const finalPath = options['full-path'] ? currentPath : displayName;
-            return `<span class="${color}">${finalPath}</span>`;
+                const finalPath = options['full-path'] ? currentPath : displayName;
+                return `<span class="${color}">${finalPath}</span>`;
             };
 
-            // Enhanced tree building function
-            const buildTree = (node, currentPath, prefix = '', level = 0, isLast = true) => {
-            if (level >= maxLevel) return;
+            // Fonction de construction de l'arbre améliorée pour I-Node
+            const buildInodeTree = (currentPath, prefix = '', level = 0, isLast = true) => {
+                if (level >= maxLevel) return;
 
-            if (node.type === 'directory') {
-                const children = Object.keys(node.children).sort((a, b) => {
-                const aNode = node.children[a];
-                const bNode = node.children[b];
-                
-                // Directories first, then files
-                if (aNode.type === 'directory' && bNode.type === 'file') return -1;
-                if (aNode.type === 'file' && bNode.type === 'directory') return 1;
-                return a.localeCompare(b);
+                const children = getInodeChildren(currentPath);
+                const childNames = Object.keys(children).sort((a, b) => {
+                    const aNode = children[a];
+                    const bNode = children[b];
+                    
+                    // Répertoires d'abord, puis fichiers
+                    if (aNode.type === 'directory' && bNode.type === 'file') return -1;
+                    if (aNode.type === 'file' && bNode.type === 'directory') return 1;
+                    return a.localeCompare(b);
                 });
 
-                let filteredChildren = children;
+                if (options.debug && level < 3) {
+                    this.addOutput(`<span class="text-yellow-400">🔍 Debug niveau ${level}: ${childNames.length} enfants dans ${currentPath}</span>`);
+                    this.addOutput(`<span class="text-yellow-400">🔍 Debug préfixe: "${prefix}"</span>`);
+                }
 
-                // Apply filters
+                let filteredChildren = childNames;
+
+                // Appliquer les filtres
                 if (!options.all) {
-                filteredChildren = filteredChildren.filter(name => !name.startsWith('.'));
+                    filteredChildren = filteredChildren.filter(name => !name.startsWith('.'));
                 }
 
                 if (options['dirs-only']) {
-                filteredChildren = filteredChildren.filter(name => 
-                    node.children[name].type === 'directory'
-                );
+                    filteredChildren = filteredChildren.filter(name => 
+                        children[name].type === 'directory'
+                    );
                 }
 
                 filteredChildren.forEach((childName, index) => {
-                const child = node.children[childName];
-                const isLastChild = index === filteredChildren.length - 1;
-                const childPath = currentPath === '/' ? `/${childName}` : `${currentPath}/${childName}`;
+                    const child = children[childName];
+                    const isLastChild = index === filteredChildren.length - 1;
+                    const childPath = currentPath === '/' ? `/${childName}` : `${currentPath}/${childName}`;
 
-                // Format the tree line
-                let line;
-                if (options['no-indent']) {
-                    line = '';
-                } else {
-                    const connector = isLastChild ? '└── ' : '├── ';
-                    line = prefix + connector;
-                }
+                    // Formater la ligne de l'arbre avec indentation correcte
+                    let line;
+                    if (options['no-indent']) {
+                        line = '';
+                    } else {
+                        const connector = isLastChild ? '└── ' : '├── ';
+                        line = prefix + connector;
+                    }
 
-                const formattedName = formatName(childName, child, childPath);
-                if (formattedName === null) return; // Skip if filtered out
+                    const formattedName = formatName(childName, child, childPath);
+                    if (formattedName === null) return; // Ignoré par le filtre
 
-                const { info } = getFileInfo(child, childName, childPath);
-                
-                const fullLine = `<span class="font-mono">${line}${formattedName}${info}</span>`;
-                treeLines.push(fullLine);
+                    const { info } = getFileInfo(child, childName, childPath);
+                    
+                    const fullLine = `<span class="font-mono">${line}${formattedName}${info}</span>`;
+                    treeLines.push(fullLine);
 
-                // Recurse into subdirectories
-                if (child.type === 'directory' && level < maxLevel - 1) {
-                    const nextPrefix = options['no-indent'] ? '' : 
-                    prefix + (isLastChild ? '    ' : '│   ');
-                    buildTree(child, childPath, nextPrefix, level + 1, isLastChild);
-                }
+                    // Récursion dans les sous-répertoires avec préfixe correct
+                    if (child.type === 'directory' && level < maxLevel - 1) {
+                        // Le préfixe pour les enfants : espaces insécables pour l'alignement visible
+                        const nextPrefix = options['no-indent'] ? '' : 
+                            prefix + (isLastChild ? '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' : '│&nbsp;&nbsp;&nbsp;&nbsp;');  // Espaces insécables visibles
+                        buildInodeTree(childPath, nextPrefix, level + 1, isLastChild);
+                    }
                 });
-            }
             };
 
-            // Build and display the tree
-            buildTree(targetNode, resolvedPath);
-            
-            if (treeLines.length === 0) {
-            this.addOutput('<span class="text-gray-400 italic">Répertoire vide ou aucun fichier correspondant au filtre</span>');
+            // Fonction de construction de l'arbre pour l'ancien système
+            const buildLegacyTree = (node, currentPath, prefix = '', level = 0, isLast = true) => {
+                if (level >= maxLevel) return;
+
+                const nodeType = node && node.type ? node.type : (node && node.children ? 'directory' : 'file');
+                
+                if (nodeType === 'directory' && node.children) {
+                    const children = Object.keys(node.children).sort((a, b) => {
+                        const aNode = node.children[a];
+                        const bNode = node.children[b];
+                        
+                        const aType = aNode && aNode.type ? aNode.type : (aNode && aNode.children ? 'directory' : 'file');
+                        const bType = bNode && bNode.type ? bNode.type : (bNode && bNode.children ? 'directory' : 'file');
+                        
+                        if (aType === 'directory' && bType === 'file') return -1;
+                        if (aType === 'file' && bType === 'directory') return 1;
+                        return a.localeCompare(b);
+                    });
+
+                    let filteredChildren = children;
+
+                    if (!options.all) {
+                        filteredChildren = filteredChildren.filter(name => !name.startsWith('.'));
+                    }
+
+                    if (options['dirs-only']) {
+                        filteredChildren = filteredChildren.filter(name => {
+                            const child = node.children[name];
+                            const childType = child && child.type ? child.type : (child && child.children ? 'directory' : 'file');
+                            return childType === 'directory';
+                        });
+                    }
+
+                    filteredChildren.forEach((childName, index) => {
+                        const child = node.children[childName];
+                        const isLastChild = index === filteredChildren.length - 1;
+                        const childPath = currentPath === '/' ? `/${childName}` : `${currentPath}/${childName}`;
+
+                        // Formater la ligne avec indentation correcte
+                        let line;
+                        if (options['no-indent']) {
+                            line = '';
+                        } else {
+                            const connector = isLastChild ? '└── ' : '├── ';
+                            line = prefix + connector;
+                        }
+
+                        // Adapter le nœud pour la compatibilité
+                        const adaptedChild = {
+                            type: child && child.type ? child.type : (child && child.children ? 'directory' : 'file'),
+                            content: child.content || '',
+                            size: child.content ? child.content.length : 0,
+                            inodeId: null,
+                            linkCount: 1,
+                            modified: new Date()
+                        };
+
+                        const formattedName = formatName(childName, adaptedChild, childPath);
+                        if (formattedName === null) return;
+
+                        const { info } = getFileInfo(adaptedChild, childName, childPath);
+                        
+                        const fullLine = `<span class="font-mono">${line}${formattedName}${info}</span>`;
+                        treeLines.push(fullLine);
+
+                        // Récursion avec préfixe correct
+                        const childType = adaptedChild.type;
+                        if (childType === 'directory' && level < maxLevel - 1 && child.children) {
+                            const nextPrefix = options['no-indent'] ? '' : 
+                                prefix + (isLastChild ? '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;' : '│&nbsp;&nbsp;&nbsp;&nbsp;');  // Espaces insécables visibles
+                            buildLegacyTree(child, childPath, nextPrefix, level + 1, isLastChild);
+                        }
+                    });
+                }
+            };
+
+            // Vérifier si le chemin cible existe
+            let targetNode = null;
+            let rootDisplayPath = resolvedPath;
+
+            if (useInodeSystem) {
+                targetNode = getInodeNodeInfo(resolvedPath);
+                if (!targetNode) {
+                    this.addOutput(`tree: ${targetPath}: Aucun fichier ou dossier de ce type`, 'error');
+                    return;
+                }
+
+                if (targetNode.type !== 'directory') {
+                    this.addOutput(`tree: ${targetPath}: N'est pas un répertoire`, 'error');
+                    return;
+                }
+
+                // Afficher le répertoire racine
+                const rootFormatted = formatName(targetPath === '.' ? '.' : targetPath.split('/').pop() || '/', targetNode, resolvedPath);
+                if (rootFormatted) {
+                    const { info } = getFileInfo(targetNode, targetPath, resolvedPath);
+                    treeLines.push(`<span class="font-mono text-white font-bold">${rootFormatted}${info}</span>`);
+                }
+
+                // Construire l'arbre avec I-Node
+                buildInodeTree(resolvedPath);
             } else {
-            treeLines.forEach(line => this.addOutput(line));
+                // Utiliser l'ancien système
+                targetNode = this.getPath(resolvedPath);
+                if (!targetNode) {
+                    this.addOutput(`tree: ${targetPath}: Aucun fichier ou dossier de ce type`, 'error');
+                    return;
+                }
+
+                if (targetNode.type !== 'directory') {
+                    this.addOutput(`tree: ${targetPath}: N'est pas un répertoire`, 'error');
+                    return;
+                }
+
+                // Afficher le répertoire racine
+                const adaptedRoot = {
+                    type: 'directory',
+                    content: '',
+                    size: 0,
+                    inodeId: null,
+                    linkCount: 1,
+                    modified: new Date()
+                };
+                const rootFormatted = formatName(targetPath === '.' ? '.' : targetPath.split('/').pop() || '/', adaptedRoot, resolvedPath);
+                if (rootFormatted) {
+                    const { info } = getFileInfo(adaptedRoot, targetPath, resolvedPath);
+                    treeLines.push(`<span class="font-mono text-white font-bold">${rootFormatted}${info}</span>`);
+                }
+
+                // Construire l'arbre avec l'ancien système
+                buildLegacyTree(targetNode, resolvedPath);
+            }
+            
+            if (treeLines.length <= 1) {
+                this.addOutput('<span class="text-gray-400 italic">Répertoire vide ou aucun fichier correspondant au filtre</span>');
+            } else {
+                treeLines.forEach(line => this.addOutput(line));
             }
 
-            // Enhanced statistics with styling
+            // Statistiques améliorées
             const statsHTML = `
-            <div class="border border-gray-600 rounded-lg p-3 bg-gray-800/30 mt-3">
-                <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-4">
-                    <div class="flex items-center">
-                    <span class="text-blue-400 mr-1">📁</span>
-                    <span class="text-blue-300 font-medium">${dirCount} répertoire${dirCount > 1 ? 's' : ''}</span>
+                <div class="border border-gray-600 rounded-lg p-3 bg-gray-800/30 mt-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center">
+                                <span class="text-blue-400 mr-1">📁</span>
+                                <span class="text-blue-300 font-medium">${dirCount} répertoire${dirCount > 1 ? 's' : ''}</span>
+                            </div>
+                            <div class="flex items-center">
+                                <span class="text-gray-400 mr-1">📄</span>
+                                <span class="text-gray-300 font-medium">${fileCount} fichier${fileCount > 1 ? 's' : ''}</span>
+                            </div>
+                            ${useInodeSystem ? `
+                                <div class="flex items-center">
+                                    <span class="text-cyan-400 mr-1">🔗</span>
+                                    <span class="text-cyan-300 font-medium text-sm">I-Node</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                        <div class="text-xs text-gray-500">
+                            ${maxLevel < 20 ? `Limité à ${maxLevel} niveau${maxLevel > 1 ? 'x' : ''}` : 'Profondeur complète'}
+                        </div>
                     </div>
-                    <div class="flex items-center">
-                    <span class="text-gray-400 mr-1">📄</span>
-                    <span class="text-gray-300 font-medium">${fileCount} fichier${fileCount > 1 ? 's' : ''}</span>
-                    </div>
+                    ${options.pattern ? `<div class="text-xs text-yellow-400 mt-2">Filtré par motif: "${options.pattern}"</div>` : ''}
+                    ${options.inode ? `<div class="text-xs text-cyan-400 mt-1">Numéros I-Node affichés</div>` : ''}
+                    ${options.links ? `<div class="text-xs text-orange-400 mt-1">Compteur de liens affichés</div>` : ''}
                 </div>
-                <div class="text-xs text-gray-500">
-                    ${maxLevel < 20 ? `Limité à ${maxLevel} niveau${maxLevel > 1 ? 'x' : ''}` : 'Profondeur complète'}
-                </div>
-                </div>
-                ${options.pattern ? `<div class="text-xs text-yellow-400 mt-2">Filtré par motif: "${options.pattern}"</div>` : ''}
-            </div>
             `;
             this.addOutput(statsHTML, 'system');
         },
@@ -12086,7 +12353,14 @@ ${isSupported && permission === 'denied' ? '<span class="text-red-400">⚠️ Pe
                 const sortedChildFiles = this.sortFileList(childFiles, options);
                 
                 if (options.long) {
-                    this.addOutput(this.formatLongListing(sortedChildFiles, options));
+                    const longOutput = this.formatLongListing(sortedChildFiles, options);
+                    if (longOutput) {
+                        longOutput.split('\n').forEach(line => {
+                            if (line.trim()) {
+                                this.addOutput(line);
+                            }
+                        });
+                    }
                 } else {
                     this.addOutput(sortedChildFiles.map(file => this.formatFileName(file, options)).join('<span class="mx-1"></span>'));
                 }

@@ -201,15 +201,32 @@ const COMMAND_METADATA = {
     },
     tree: {
         category: 'Utilitaires',
-        description: 'Affiche l\'arborescence des dossiers',
-        synopsis: 'tree',
+        description: 'Affiche l\'arborescence des dossiers avec support I-Node',
+        synopsis: 'tree [OPTIONS] [CHEMIN]',
         helpOption: "[options] [chemin]",
         options: [
-            '-a : affiche tous les fichiers',
+            '-a : affiche tous les fichiers (y compris cachés)',
             '-d : affiche seulement les répertoires',
-            '-L niveau : limite la profondeur d\'affichage'
+            '-f : affiche le chemin complet',
+            '-F : ajoute des indicateurs de type (/, *, @)',
+            '-s : affiche la taille des fichiers',
+            '-h : tailles lisibles par l\'homme',
+            '-D : affiche la date de modification',
+            '-L niveau : limite la profondeur d\'affichage',
+            '-P motif : filtre par motif (wildcards supportés)',
+            '--inode : affiche les numéros I-Node',
+            '--links : affiche le nombre de liens durs'
         ],
-        examples: ['tree', 'tree -L 2', 'tree -d']
+        examples: [
+            'tree',
+            'tree -L 2',
+            'tree -F --inode',
+            'tree -d /home',
+            'tree -P "*.txt"',
+            'tree -s -h',
+            'tree --links /etc'
+        ],
+        seeAlso: ['ls', 'find', 'du', 'stat']
     },
     grep: {
         category: 'Utilitaires',
