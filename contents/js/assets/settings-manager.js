@@ -107,13 +107,69 @@ export class SettingsManager {
 
     // --- Core Settings Functions ---
     applySetting(key, value) {
+        // Pour les URLs d'images très longues, les limiter
+        if (key === 'console_bg_image_url' && typeof value === 'string' && value.length > 50000) {
+            console.warn('URL d\'image trop longue, stockage en mémoire uniquement');
+            this.settings[key] = value;
+            return false;
+        }
+        
         try {
             localStorage.setItem(key, JSON.stringify(value));
             this.settings[key] = value;
             return true;
         } catch (error) {
             console.warn('Erreur sauvegarde localStorage:', error);
+            
+            // Si c'est une erreur de quota, essayer de nettoyer l'espace
+            if (error.name === 'QuotaExceededError') {
+                console.log('Quota localStorage dépassé, tentative de nettoyage...');
+                this.cleanupLocalStorage();
+                
+                // Essayer à nouveau après le nettoyage
+                try {
+                    localStorage.setItem(key, JSON.stringify(value));
+                    this.settings[key] = value;
+                    console.log('Sauvegarde réussie après nettoyage');
+                    return true;
+                } catch (secondError) {
+                    console.error('Impossible de sauvegarder même après nettoyage:', secondError);
+                    // En cas d'échec, stocker uniquement en mémoire
+                    this.settings[key] = value;
+                    return false;
+                }
+            }
             return false;
+        }
+    }
+
+    // --- Fonction de nettoyage du localStorage ---
+    cleanupLocalStorage() {
+        try {
+            // Nettoyer les anciennes images de fond
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key && (key.includes('console_bg_last_image') || 
+                           key.includes('temp_') || 
+                           key.includes('cache_') ||
+                           key.includes('_old') ||
+                           key.includes('backup_'))) {
+                    keysToRemove.push(key);
+                }
+            }
+            
+            // Supprimer les clés identifiées
+            keysToRemove.forEach(key => {
+                localStorage.removeItem(key);
+                console.log('Supprimé du localStorage:', key);
+            });
+            
+            console.log(`Nettoyage terminé: ${keysToRemove.length} éléments supprimés`);
+            return keysToRemove.length;
+        } catch (error) {
+            console.error('Erreur lors du nettoyage du localStorage:', error);
+            return 0;
         }
     }
 
@@ -618,6 +674,14 @@ export class SettingsManager {
                         Importer
                     </button>
                 </div>
+                <div class="mt-4">
+                    <button id="cleanup-storage-btn" class="w-full flex items-center justify-center px-4 py-3 bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded-lg hover:bg-yellow-500/30 transition-colors">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                        Nettoyer le stockage local
+                    </button>
+                </div>
             </div>
         </div>`;
     }
@@ -634,6 +698,41 @@ export class SettingsManager {
         const importBtn = document.getElementById('import-settings-btn');
         if (importBtn) {
             importBtn.addEventListener('click', () => this.importSettings());
+        }
+
+        // Nettoyage du stockage local
+        const cleanupBtn = document.getElementById('cleanup-storage-btn');
+        if (cleanupBtn) {
+            cleanupBtn.addEventListener('click', () => this.cleanupStorageWithConfirmation());
+        }
+    }
+
+    // Nettoyage avec confirmation utilisateur
+    cleanupStorageWithConfirmation() {
+        if (confirm('⚠️ Êtes-vous sûr de vouloir nettoyer le stockage local ?\n\nCela supprimera les anciennes données temporaires et peut résoudre les problèmes de quota de stockage.\n\nVos paramètres principaux seront préservés.')) {
+            const itemsRemoved = this.cleanupLocalStorage();
+            
+            // Feedback visuel
+            const cleanupBtn = document.getElementById('cleanup-storage-btn');
+            if (cleanupBtn) {
+                const originalText = cleanupBtn.innerHTML;
+                cleanupBtn.innerHTML = `
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    Nettoyage effectué (${itemsRemoved} éléments)
+                `;
+                cleanupBtn.classList.add('bg-green-500/20', 'text-green-400', 'border-green-500/30');
+                cleanupBtn.classList.remove('bg-yellow-500/20', 'text-yellow-400', 'border-yellow-500/30');
+                
+                setTimeout(() => {
+                    cleanupBtn.innerHTML = originalText;
+                    cleanupBtn.classList.remove('bg-green-500/20', 'text-green-400', 'border-green-500/30');
+                    cleanupBtn.classList.add('bg-yellow-500/20', 'text-yellow-400', 'border-yellow-500/30');
+                }, 3000);
+            }
+            
+            alert(`✅ Nettoyage terminé !\n\n${itemsRemoved} éléments temporaires ont été supprimés.\nL'espace de stockage a été libéré.`);
         }
     }
 

@@ -298,6 +298,37 @@ const app = {
         }, 100);
     },
 
+    // Méthode d'initialisation simplifiée en cas d'erreur de quota
+    initWithDefaults() {
+        console.log('🔄 Initialisation en mode récupération...');
+        
+        try {
+            // Initialisation basique sans accès au localStorage
+            this.settingsManager = new SettingsManager();
+            this.pluginManager = new PluginManager();
+            TabManager.init(this);
+            
+            // Event listeners essentiels seulement
+            if (this.commandFormElement) {
+                this.commandFormElement.addEventListener('submit', this.handleCommandSubmit.bind(this));
+            }
+            if (this.commandInputElement) {
+                this.commandInputElement.addEventListener('keydown', this.handleKeyDown.bind(this));
+                this.commandInputElement.focus();
+            }
+            
+            // Interface basique
+            this.updatePrompt();
+            this.initInodeSystem();
+            
+            console.log('✅ Mode récupération activé - fonctionnalités de base disponibles');
+            
+        } catch (error) {
+            console.error('❌ Échec du mode récupération:', error);
+            throw error;
+        }
+    },
+
     // Méthodes pour gérer les commandes désactivées
     loadDisabledCommands() {
         try {
@@ -8924,8 +8955,7 @@ ${isSupported && permission === 'denied' ? '<span class="text-red-400">⚠️ Pe
             // Utiliser le système unifié de sauvegarde
             this.applySetting('console_bg_type', 'image');
             this.applySetting('console_bg_image_url', value);
-            // Sauvegarde la dernière image utilisée pour compatibilité
-            localStorage.setItem('console_bg_last_image', value);
+            // Note: console_bg_last_image sera nettoyé par le système de cleanup
         }
     },
     loadConsoleBackground() {
@@ -12111,5 +12141,21 @@ document.addEventListener('DOMContentLoaded', function () {
         console.log('App initialized successfully');
     } catch (error) {
         console.error('Error initializing app:', error);
+        
+        // Gestion spécifique des erreurs de quota localStorage
+        if (error.name === 'QuotaExceededError') {
+            console.log('Tentative de nettoyage du localStorage pour résoudre l\'erreur de quota...');
+            try {
+                // Nettoyer le localStorage et réessayer
+                if (app.settingsManager) {
+                    app.settingsManager.cleanupLocalStorage();
+                }
+                // Réessayer l'initialisation avec des paramètres par défaut
+                app.initWithDefaults();
+            } catch (retryError) {
+                console.error('Impossible de récupérer après l\'erreur de quota:', retryError);
+                alert('Erreur de stockage détectée. L\'application fonctionnera avec des paramètres par défaut pour cette session.');
+            }
+        }
     }
 });

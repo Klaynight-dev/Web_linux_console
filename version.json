@@ -1,8 +1,14 @@
 {
-  "version": "2.4.0",
-  "date": "2025-09-03",
-  "changelog": "Ajout des I-Nodes pour un meilleur files system",
+  "version": "2.4.1",
+  "date": "2025-09-05",
+  "changelog": "Ajout Fix QuotaExceededError pour les images de fond",
   "history": [
+    {
+      "version": "2.4.1",
+      "date": "2025-09-05",
+      "changelog": "Ajout Fix QuotaExceededError pour les images de fond",
+      "type": "patch"
+    },
     {
       "version": "2.4.0",
       "date": "2025-09-03",
