@@ -1,8 +1,14 @@
 {
-  "version": "2.4.1",
+  "version": "2.4.2",
   "date": "2025-09-05",
-  "changelog": "Ajout Fix QuotaExceededError pour les images de fond",
+  "changelog": "Ajout Fix du err 404 liée à la decouverte des plugins automatique dans le dossier ./plugins",
   "history": [
+    {
+      "version": "2.4.2",
+      "date": "2025-09-05",
+      "changelog": "Ajout Fix du err 404 liée à la decouverte des plugins automatique dans le dossier ./plugins",
+      "type": "patch"
+    },
     {
       "version": "2.4.1",
       "date": "2025-09-05",
