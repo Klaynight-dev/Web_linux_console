@@ -12074,7 +12074,7 @@ ${isSupported && permission === 'denied' ? '<span class="text-red-400">⚠️ Pe
     },
 
     // Affichage récursif (-R)
-    displayRecursive(node, basePath, options, depth) {
+    displayRecursive(node, baconsePath, options, depth) {
         if (depth > 10) return; // Limite de profondeur pour éviter les boucles infinies
 
         for (const [name, childNode] of Object.entries(node.children)) {

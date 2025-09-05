@@ -290,40 +290,27 @@ class PluginManager {
 
     // Méthode pour découvrir tous les dossiers de plugins
     async discoverAllPluginFolders() {
-        const knownPlugins = ['exemple', 'windows-os']; // Liste des plugins connus
+        // Liste statique des plugins connus pour éviter les erreurs 404
+        const knownPlugins = ['exemple', 'windows-os'];
         const discoveredPlugins = [];
         
-        // D'abord essayer les plugins connus
+        // Vérifier quels plugins connus sont disponibles
         for (const pluginName of knownPlugins) {
             try {
                 const response = await fetch(`${this.pluginsPath}${pluginName}/manifest.json`);
                 if (response.ok) {
                     discoveredPlugins.push(pluginName);
+                    console.log(`✅ Plugin confirmé: ${pluginName}`);
+                } else {
+                    console.log(`❌ Plugin non trouvé: ${pluginName} (${response.status})`);
                 }
             } catch (error) {
-                // Ignorer silencieusement les erreurs de fetch
+                console.log(`❌ Erreur plugin ${pluginName}:`, error.message);
             }
         }
         
-        // Ensuite essayer de découvrir automatiquement
-        try {
-            const response = await fetch(this.pluginsPath);
-            if (response.ok) {
-                const text = await response.text();
-                const folderMatches = text.match(/href="([^"]+)\/"/g);
-                if (folderMatches) {
-                    folderMatches.forEach(match => {
-                        const folderName = match.match(/href="([^"]+)\//)[1];
-                        if (folderName && !folderName.startsWith('.') && folderName !== '..' && !discoveredPlugins.includes(folderName)) {
-                            discoveredPlugins.push(folderName);
-                        }
-                    });
-                }
-            }
-        } catch (error) {
-            console.log('💡 Découverte automatique des plugins non disponible, utilisation de la liste prédéfinie');
-        }
-        
+        // Ne plus essayer de découvrir automatiquement pour éviter les 404
+        console.log(`📋 Plugins disponibles: ${discoveredPlugins.join(', ')}`);
         return discoveredPlugins;
     }
 
