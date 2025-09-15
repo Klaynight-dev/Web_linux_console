@@ -448,7 +448,7 @@
 
                 <!-- Enhanced command input -->
                 <form id="command-form" class="flex flex-shrink-0 bg-gradient-to-r from-slate-800/40 to-slate-700/40 backdrop-blur-xl p-6 border-t border-slate-600/30">
-                    <label for="command-input" id="prompt-label" class="flex-shrink-0 text-emerald-400 mr-4 flex items-center select-none font-bold text-lg"></label>
+                    <label for="command-input" id="prompt-label" class="text-emerald-400 mr-4 flex items-center select-none font-bold text-lg"></label>
                     <input
                         id="command-input"
                         type="text"
@@ -1106,6 +1106,8 @@
     </div>
 
     <script type="module" src="contents/js/app.js"></script>
+    <!-- Script d'urgence pour éviter l'erreur HTTP 431 -->
+    <script src="contents/js/emergency-cleanup-431.js"></script>
 
 </body>
 </html>

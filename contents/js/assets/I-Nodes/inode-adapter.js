@@ -71,6 +71,75 @@ class INodeAdapter {
     }
 
     /**
+     * Récupère les informations d'un nœud
+     */
+    getNodeInfo(path) {
+        try {
+            const inode = this.inodeFS.getInodeByPath(path);
+            if (!inode) return null;
+            
+            return {
+                type: inode.type,
+                size: inode.type === 'file' ? inode.data.length : 0,
+                linkCount: inode.linkCount,
+                created: inode.created,
+                modified: inode.modified,
+                inodeId: inode.id
+            };
+        } catch (error) {
+            console.error('Erreur getNodeInfo:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Déplace un fichier ou dossier
+     */
+    moveNode(sourcePath, destPath) {
+        try {
+            // Vérifier que la source existe
+            const sourceInode = this.inodeFS.getInodeByPath(sourcePath);
+            if (!sourceInode) {
+                throw new Error('Source non trouvée');
+            }
+
+            // Obtenir les informations de la source
+            const sourcePathParts = sourcePath.split('/').filter(p => p !== '');
+            const sourceName = sourcePathParts.pop();
+            const sourceParentPath = sourcePathParts.length > 0 ? '/' + sourcePathParts.join('/') : '/';
+
+            // Obtenir les informations de la destination
+            const destPathParts = destPath.split('/').filter(p => p !== '');
+            const destName = destPathParts.pop();
+            const destParentPath = destPathParts.length > 0 ? '/' + destPathParts.join('/') : '/';
+
+            // Vérifier que le répertoire parent de destination existe
+            const destParentInode = this.inodeFS.getInodeByPath(destParentPath);
+            if (!destParentInode || destParentInode.type !== 'directory') {
+                throw new Error('Répertoire parent de destination non trouvé');
+            }
+
+            // Vérifier qu'on ne déplace pas vers le même endroit
+            if (sourceParentPath === destParentPath && sourceName === destName) {
+                throw new Error('Source et destination identiques');
+            }
+
+            // IMPORTANT: Ajouter d'abord au nouvel emplacement
+            // Cela incrémente le linkCount AVANT de le décrémenter
+            // Utiliser force=true pour permettre l'écrasement en cas de déplacement
+            this.inodeFS.addToDirectory(destParentPath, destName, sourceInode.id, true);
+            
+            // Puis supprimer de l'ancien emplacement
+            this.inodeFS.removeFromDirectory(sourceParentPath, sourceName);
+            
+            return true;
+        } catch (error) {
+            console.error('Erreur moveNode:', error);
+            return false;
+        }
+    }
+
+    /**
      * Crée un nouveau fichier dans le système I-Node
      */
     createFile(dirPath, fileName, content = '') {

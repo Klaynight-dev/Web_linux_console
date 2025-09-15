@@ -12,11 +12,15 @@ const TabManager = {
     newTabButton: null,
     compactTabs: false,
 
-    // Initialisation du gestionnaire d'onglets
+    // Initialisation du gestionnaire d'onglets (OPTIMISÉE)
     init(app) {
         this.app = app;
         this.tabsContainer = document.getElementById('tabs-container');
         this.newTabButton = document.getElementById('new-tab-button');
+
+        // Initialiser les compteurs
+        this.saveCounter = 0;
+        this.renderCounter = 0;
 
         // Charger les onglets depuis les cookies
         this.loadTabsFromCookie();
@@ -29,18 +33,39 @@ const TabManager = {
         if (toggleTabsSizeButton) {
             toggleTabsSizeButton.addEventListener('click', this.toggleTabsSize.bind(this));
         }
+
+        // OPTIMISATION: Démarrer le nettoyage automatique des onglets
+        this.startTabsCleanup();
     },
 
-    // Sauvegarde des onglets dans les cookies
+    // NOUVELLE MÉTHODE: Démarrage du nettoyage automatique
+    startTabsCleanup() {
+        // Nettoyage immédiat
+        setTimeout(() => {
+            this.cleanupTabsData();
+        }, 5000);
+
+        // Nettoyage périodique toutes les 2 minutes
+        setInterval(() => {
+            this.cleanupTabsData();
+            this.resetCounters();
+        }, 120000); // 2 minutes
+
+        console.log('🔄 Nettoyage automatique des onglets activé');
+    },
+
+    // Sauvegarde des onglets dans les cookies avec optimisation
     saveTabsToCookie() {
         const tabsData = {
             tabs: this.tabs.map(tab => ({
                 id: tab.id,
                 title: tab.title,
                 currentDir: tab.currentDir,
-                outputHistory: tab.outputHistory || [],
+                // OPTIMISATION: Limiter drastiquement l'historique pour éviter la croissance
+                outputHistory: this.optimizeOutputHistory(tab.outputHistory || []),
                 isActive: tab.isActive,
-                history: tab.history || [],
+                // OPTIMISATION: Limiter l'historique des commandes aussi
+                history: this.optimizeCommandHistory(tab.history || []),
                 historyIndex: tab.historyIndex || -1,
                 commandCount: tab.commandCount || 0
             })),
@@ -49,9 +74,21 @@ const TabManager = {
         };
         
         try {
-            const jsonString = JSON.stringify(tabsData);
-            localStorage.setItem('console_tabs', jsonString);
+            // Sauvegarder avec le StorageManager optimisé si disponible
+            if (window.StorageManager && typeof window.StorageManager.save === 'function') {
+                window.StorageManager.save('console_tabs', tabsData, true);
+            } 
             
+            // TOUJOURS sauvegarder aussi en localStorage direct pour la compatibilité
+            try {
+                const jsonString = JSON.stringify(tabsData);
+                localStorage.setItem('console_tabs', jsonString);
+                console.log('✅ Onglets sauvegardés en localStorage direct');
+            } catch (e) {
+                console.warn('Erreur sauvegarde localStorage direct:', e);
+            }
+            
+            // Sauvegarde de secours ultra-légère
             const essentialData = {
                 activeTabId: this.activeTabId,
                 nextTabId: this.nextTabId,
@@ -60,44 +97,163 @@ const TabManager = {
             document.cookie = `console_tabs_backup=${encodeURIComponent(JSON.stringify(essentialData))};path=/;max-age=31536000`;
         } catch (error) {
             console.error('Erreur lors de la sauvegarde des onglets:', error);
-            this.app.addOutput('❌ Erreur de sauvegarde des onglets', 'error');
+            // Tentative de sauvegarde d'urgence avec données minimales
+            this.saveMinimalTabsData();
         }
     },
 
-    // Chargement des onglets depuis les cookies
+    // NOUVELLE MÉTHODE: Optimiser l'historique de sortie (CORRIGÉ)
+    optimizeOutputHistory(outputHistory) {
+        if (!outputHistory || outputHistory.length === 0) return [];
+        
+        // Limiter à seulement 25 éléments les plus récents (augmenté de 20 pour préserver plus)
+        const limitedHistory = outputHistory.slice(-25);
+        
+        // Compresser le contenu HTML en préservant la structure
+        return limitedHistory.map(item => ({
+            // Utiliser la compression améliorée qui préserve l'affichage
+            html: this.compressHTML(item.html || ''),
+            className: item.className || ''
+        }));
+    },
+
+    // NOUVELLE MÉTHODE: Optimiser l'historique des commandes
+    optimizeCommandHistory(commandHistory) {
+        if (!commandHistory || commandHistory.length === 0) return [];
+        
+        // Limiter à 50 commandes récentes (au lieu de tout garder)
+        return commandHistory.slice(-50);
+    },
+
+    // NOUVELLE MÉTHODE: Compresser le HTML pour économiser l'espace (CORRIGÉ)
+    compressHTML(html) {
+        if (!html || typeof html !== 'string') return '';
+        
+        return html
+            // Supprimer seulement les espaces multiples en ligne (garder les retours à la ligne)
+            .replace(/[ \t]+/g, ' ')
+            // Supprimer les espaces en début/fin de ligne
+            .replace(/^\s+|\s+$/gm, '')
+            // Supprimer les lignes complètement vides (mais garder les <br> et structures)
+            .replace(/\n\s*\n/g, '\n')
+            // Supprimer les commentaires HTML volumineux
+            .replace(/<!--[\s\S]*?-->/g, '')
+            // Supprimer les attributs style très volumineux (>100 chars) seulement
+            .replace(/\s+style="[^"]{100,}"/g, '')
+            // Limiter la longueur totale à 800 caractères par entrée (augmenté de 500)
+            .substring(0, 800);
+    },
+
+    // NOUVELLE MÉTHODE: Sauvegarde minimale en cas d'urgence
+    saveMinimalTabsData() {
+        try {
+            const minimalData = {
+                tabs: this.tabs.map(tab => ({
+                    id: tab.id,
+                    title: tab.title,
+                    currentDir: tab.currentDir,
+                    isActive: tab.isActive,
+                    commandCount: tab.commandCount || 0
+                    // Pas d'historique pour économiser l'espace
+                })),
+                activeTabId: this.activeTabId,
+                nextTabId: this.nextTabId
+            };
+            
+            localStorage.setItem('console_tabs_minimal', JSON.stringify(minimalData));
+            console.log('🚨 Sauvegarde minimale des onglets effectuée');
+        } catch (error) {
+            console.error('Erreur sauvegarde minimale:', error);
+        }
+    },
+
+    // Chargement des onglets depuis les cookies (CORRIGÉ)
     loadTabsFromCookie() {
         try {
-            const savedData = localStorage.getItem('console_tabs');
-            if (savedData) {
-                const tabsData = JSON.parse(savedData);
+            // Essayer d'abord avec le StorageManager optimisé
+            let savedData = null;
+            if (window.StorageManager && typeof window.StorageManager.load === 'function') {
+                savedData = window.StorageManager.load('console_tabs');
+            } 
+            
+            // Si StorageManager n'a pas de données, essayer localStorage direct
+            if (!savedData) {
+                const rawData = localStorage.getItem('console_tabs');
+                if (rawData) {
+                    try {
+                        savedData = JSON.parse(rawData);
+                    } catch (e) {
+                        console.warn('Erreur parsing console_tabs:', e);
+                    }
+                }
+            }
+            
+            // Si toujours pas de données, essayer avec le préfixe clk_
+            if (!savedData) {
+                const rawDataWithPrefix = localStorage.getItem('clk_console_tabs');
+                if (rawDataWithPrefix) {
+                    try {
+                        savedData = JSON.parse(rawDataWithPrefix);
+                    } catch (e) {
+                        console.warn('Erreur parsing clk_console_tabs:', e);
+                    }
+                }
+            }
+            
+            if (savedData && savedData.tabs && Array.isArray(savedData.tabs) && savedData.tabs.length > 0) {
+                this.tabs = savedData.tabs.map(tab => ({
+                    id: tab.id || this.nextTabId++,
+                    title: tab.title || `Terminal ${tab.id}`,
+                    currentDir: tab.currentDir || '/home/user',
+                    // OPTIMISATION: Les données sont déjà compressées
+                    outputHistory: tab.outputHistory || [],
+                    isActive: false,
+                    history: tab.history || [],
+                    historyIndex: tab.historyIndex || -1,
+                    commandCount: tab.commandCount || 0
+                }));
                 
-                if (tabsData.tabs && Array.isArray(tabsData.tabs) && tabsData.tabs.length > 0) {
-                    this.tabs = tabsData.tabs.map(tab => ({
-                        id: tab.id || this.nextTabId++,
-                        title: tab.title || `Terminal ${tab.id}`,
-                        currentDir: tab.currentDir || '/home/user',
-                        outputHistory: tab.outputHistory || [],
-                        isActive: false,
-                        history: tab.history || [],
-                        historyIndex: tab.historyIndex || -1,
-                        commandCount: tab.commandCount || 0
+                this.nextTabId = savedData.nextTabId || this.tabs.length + 1;
+                this.activeTabId = savedData.activeTabId || this.tabs[0]?.id || null;
+                
+                // Mettre à jour l'état actif
+                this.tabs.forEach(tab => {
+                    tab.isActive = tab.id === this.activeTabId;
+                });
+                
+                this.renderTabs();
+                this.loadTabState(this.activeTabId);
+                console.log('✅ Onglets chargés avec succès:', this.tabs.length, 'onglets');
+                return;
+            }
+            
+            // Fallback vers sauvegarde minimale
+            const minimalData = localStorage.getItem('console_tabs_minimal');
+            if (minimalData) {
+                const parsedMinimal = JSON.parse(minimalData);
+                if (parsedMinimal.tabs && parsedMinimal.tabs.length > 0) {
+                    this.tabs = parsedMinimal.tabs.map(tab => ({
+                        ...tab,
+                        outputHistory: [], // Pas d'historique dans la version minimale
+                        history: [],
+                        historyIndex: -1
                     }));
                     
-                    this.nextTabId = tabsData.nextTabId || this.tabs.length + 1;
-                    this.activeTabId = tabsData.activeTabId || this.tabs[0]?.id || null;
+                    this.nextTabId = parsedMinimal.nextTabId || this.tabs.length + 1;
+                    this.activeTabId = parsedMinimal.activeTabId || this.tabs[0]?.id || null;
                     
-                    // Mettre à jour l'état actif
                     this.tabs.forEach(tab => {
                         tab.isActive = tab.id === this.activeTabId;
                     });
                     
                     this.renderTabs();
                     this.loadTabState(this.activeTabId);
+                    console.log('🔄 Données minimales des onglets restaurées');
                     return;
                 }
             }
             
-            // Fallback vers les cookies si localStorage échoue
+            // Fallback vers les cookies de sauvegarde
             const cookieMatch = document.cookie.match(/(?:^|;\s*)console_tabs_backup=([^;]*)/);
             if (cookieMatch) {
                 const backupData = JSON.parse(decodeURIComponent(cookieMatch[1]));
@@ -174,13 +330,14 @@ const TabManager = {
         this.saveTabsToCookie();
     },
 
-    // Sauvegarde de l'état de l'onglet actuel
+    // Sauvegarde de l'état de l'onglet actuel (CORRIGÉE pour préserver l'affichage)
     saveCurrentTabState() {
         const activeTab = this.tabs.find(tab => tab.id === this.activeTabId);
         if (!activeTab) return;
 
         activeTab.currentDir = this.app.currentDir;
-        activeTab.history = [...this.app.history];
+        // OPTIMISATION: Limiter l'historique des commandes
+        activeTab.history = this.optimizeCommandHistory([...this.app.history]);
         activeTab.historyIndex = this.app.historyIndex;
         
         const outputElements = Array.from(this.app.outputElement.children)
@@ -190,12 +347,32 @@ const TabManager = {
                 !child.classList.contains('loading-animation')
             );
         
-        const limitedElements = outputElements.slice(-100);
+        // OPTIMISATION: Augmenté de 15 à 20 éléments pour préserver plus d'affichage
+        const limitedElements = outputElements.slice(-20);
         
-        activeTab.outputHistory = limitedElements.map(child => ({
-            html: child.innerHTML,
-            className: child.className || ''
-        }));
+        // OPTIMISATION: Compression légère qui préserve l'affichage
+        activeTab.outputHistory = limitedElements.map(child => {
+            let html = child.innerHTML;
+            
+            // Pour les éléments critiques (dessins ASCII, UI), pas de compression
+            if (html.includes('pre') || html.includes('code') || 
+                html.includes('ascii') || html.includes('github') ||
+                html.includes('░') || html.includes('▓') || html.includes('█') ||
+                html.includes('┌') || html.includes('└') || html.includes('│') ||
+                html.includes('CLK') || html.includes('Console')) {
+                // Garder intégralement les dessins et UI spéciaux
+                return {
+                    html: html.length > 1000 ? html.substring(0, 1000) + '...' : html,
+                    className: child.className || ''
+                };
+            } else {
+                // Compression légère pour le reste
+                return {
+                    html: this.compressHTML(html),
+                    className: child.className || ''
+                };
+            }
+        });
 
         if (this.app.loadingLLMIndicator && !this.app.outputElement.contains(this.app.loadingLLMIndicator)) {
             this.app.outputElement.appendChild(this.app.loadingLLMIndicator);
@@ -205,8 +382,14 @@ const TabManager = {
             this.app.outputElement.appendChild(this.app.consoleEndRefElement);
         }
 
-        this.saveTabsToCookie();
-        this.renderTabs();
+        // OPTIMISATION: Sauvegarder seulement tous les 3 appels pour réduire la fréquence
+        if (!this.saveCounter) this.saveCounter = 0;
+        this.saveCounter++;
+        
+        if (this.saveCounter % 3 === 0) {
+            this.saveTabsToCookie();
+            this.renderTabs();
+        }
     },
 
     // Chargement de l'état d'un onglet
@@ -539,7 +722,7 @@ const TabManager = {
         this.saveTabsToCookie();
     },
 
-    // Incrémentation du compteur de commandes de l'onglet actif
+    // Incrémentation du compteur de commandes de l'onglet actif (OPTIMISÉE)
     incrementActiveTabCommandCount(arg) {
         const activeTab = this.tabs.find(tab => tab.id === this.activeTabId);
         if (!activeTab) return;
@@ -554,8 +737,144 @@ const TabManager = {
             activeTab.commandCount++;
         }
 
-        this.renderTabs();
+        // OPTIMISATION: Ne pas rendre/sauvegarder à chaque incrémentation
+        // Seulement tous les 5 appels pour réduire la charge
+        if (!this.renderCounter) this.renderCounter = 0;
+        this.renderCounter++;
+        
+        if (this.renderCounter % 5 === 0) {
+            this.renderTabs();
+            this.saveTabsToCookie();
+        }
+    },
+
+    // NOUVELLE MÉTHODE: Nettoyage périodique des données des onglets
+    cleanupTabsData() {
+        this.tabs.forEach(tab => {
+            // Nettoyer l'historique de sortie trop volumineux
+            if (tab.outputHistory && tab.outputHistory.length > 15) {
+                tab.outputHistory = tab.outputHistory.slice(-15);
+            }
+            
+            // Nettoyer l'historique des commandes trop volumineux
+            if (tab.history && tab.history.length > 50) {
+                tab.history = tab.history.slice(-50);
+            }
+            
+            // Compresser le HTML existant
+            if (tab.outputHistory) {
+                tab.outputHistory = tab.outputHistory.map(item => ({
+                    html: this.compressHTML(item.html),
+                    className: item.className || ''
+                }));
+            }
+        });
+        
+        console.log('🧹 Nettoyage des données des onglets terminé');
         this.saveTabsToCookie();
+    },
+
+    // NOUVELLE MÉTHODE: Réinitialiser les compteurs pour éviter l'accumulation
+    resetCounters() {
+        this.saveCounter = 0;
+        this.renderCounter = 0;
+    },
+
+    // NOUVELLE MÉTHODE: Diagnostic des onglets pour déboguer les problèmes
+    debugTabsStorage() {
+        console.log('=== DIAGNOSTIC DES ONGLETS ===');
+        
+        // Vérifier localStorage direct
+        const directTabs = localStorage.getItem('console_tabs');
+        console.log('📋 localStorage console_tabs:', directTabs ? `${directTabs.length} chars` : 'VIDE');
+        
+        // Vérifier avec préfixe clk_
+        const prefixTabs = localStorage.getItem('clk_console_tabs');
+        console.log('📋 localStorage clk_console_tabs:', prefixTabs ? `${prefixTabs.length} chars` : 'VIDE');
+        
+        // Vérifier sauvegarde minimale
+        const minimalTabs = localStorage.getItem('console_tabs_minimal');
+        console.log('📋 localStorage minimal:', minimalTabs ? `${minimalTabs.length} chars` : 'VIDE');
+        
+        // Vérifier StorageManager
+        if (window.StorageManager && typeof window.StorageManager.load === 'function') {
+            const smTabs = window.StorageManager.load('console_tabs');
+            console.log('📋 StorageManager tabs:', smTabs ? 'DONNÉES TROUVÉES' : 'VIDE');
+        } else {
+            console.log('❌ StorageManager non disponible');
+        }
+        
+        // Vérifier cookies de sauvegarde
+        const cookieMatch = document.cookie.match(/(?:^|;\s*)console_tabs_backup=([^;]*)/);
+        console.log('🍪 Cookie backup:', cookieMatch ? 'TROUVÉ' : 'VIDE');
+        
+        // État actuel des onglets
+        console.log('🗂️ Onglets actuels:', this.tabs.length);
+        console.log('🎯 Onglet actif:', this.activeTabId);
+        
+        return {
+            directTabs: !!directTabs,
+            prefixTabs: !!prefixTabs,
+            minimalTabs: !!minimalTabs,
+            storageManager: !!(window.StorageManager && window.StorageManager.load('console_tabs')),
+            cookieBackup: !!cookieMatch,
+            currentTabsCount: this.tabs.length,
+            activeTabId: this.activeTabId
+        };
+    },
+
+    // NOUVELLE MÉTHODE: Nettoyer et restaurer l'affichage des onglets corrompus
+    fixDisplayIssues() {
+        console.log('🔧 Correction des problèmes d\'affichage...');
+        
+        let fixCount = 0;
+        
+        this.tabs.forEach(tab => {
+            if (tab.outputHistory && tab.outputHistory.length > 0) {
+                tab.outputHistory = tab.outputHistory.map(item => {
+                    let html = item.html;
+                    
+                    // Détecter si le HTML a été sur-compressé (tout sur une ligne)
+                    if (html && html.length > 100 && !html.includes('\n') && 
+                        (html.includes('<div') || html.includes('<span') || html.includes('<pre'))) {
+                        
+                        // Restaurer les retours à la ligne après les balises fermantes importantes
+                        html = html
+                            .replace(/(<\/div>)/g, '$1\n')
+                            .replace(/(<\/p>)/g, '$1\n')
+                            .replace(/(<\/pre>)/g, '$1\n')
+                            .replace(/(<br\s*\/?>)/g, '$1\n')
+                            .replace(/(<\/li>)/g, '$1\n')
+                            // Ajouter des espaces après certaines balises inline
+                            .replace(/(<\/span>)(?=<)/g, '$1 ')
+                            .replace(/(<\/strong>)(?=<)/g, '$1 ')
+                            .replace(/(<\/em>)(?=<)/g, '$1 ');
+                        
+                        fixCount++;
+                    }
+                    
+                    return {
+                        html: html,
+                        className: item.className || ''
+                    };
+                });
+            }
+        });
+        
+        if (fixCount > 0) {
+            console.log(`✅ ${fixCount} éléments d'affichage corrigés`);
+            this.saveTabsToCookie();
+            this.renderTabs();
+            
+            // Recharger l'onglet actif si nécessaire
+            if (this.activeTabId) {
+                this.loadTabState(this.activeTabId);
+            }
+        } else {
+            console.log('ℹ️ Aucun problème d\'affichage détecté');
+        }
+        
+        return fixCount;
     },
 
     // Mise à jour du compteur de sortie de l'onglet actif

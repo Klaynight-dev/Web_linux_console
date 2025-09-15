@@ -103,7 +103,7 @@ class INodeFileSystem {
     /**
      * Ajoute une entrée (fichier ou dossier) à un dossier
      */
-    addToDirectory(dirPath, name, inodeId) {
+    addToDirectory(dirPath, name, inodeId, force = false) {
         const dirInode = this.getInodeByPath(dirPath);
         if (!dirInode || dirInode.type !== 'directory') {
             throw new Error(`Le chemin ${dirPath} n'est pas un dossier valide`);
@@ -114,9 +114,24 @@ class INodeFileSystem {
             throw new Error(`Structure de dossier corrompue pour ${dirPath}`);
         }
 
-        // Vérifier si le nom existe déjà
-        if (dirEntries.has(name)) {
+        // Vérifier si le nom existe déjà (sauf si force=true)
+        if (!force && dirEntries.has(name)) {
             throw new Error(`Le fichier ou dossier "${name}" existe déjà dans ${dirPath}`);
+        }
+
+        // Si force=true et le fichier existe, supprimer l'ancien d'abord
+        if (force && dirEntries.has(name)) {
+            const oldInodeId = dirEntries.get(name);
+            const oldInode = this.inodes.get(oldInodeId);
+            if (oldInode) {
+                oldInode.linkCount--;
+                if (oldInode.linkCount === 0) {
+                    this.inodes.delete(oldInodeId);
+                    if (oldInode.type === 'directory') {
+                        this.directories.delete(oldInodeId);
+                    }
+                }
+            }
         }
 
         // Ajouter l'entrée
